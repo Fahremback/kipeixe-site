@@ -3,14 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Kipeixe — restaurante e pesque-pague em Três Lagoas, Foz do Iguaçu. Peixes, porções, espaço ao ar livre e um dia inteiro para aproveitar."
-    />
+    <meta name="description" content="Kipeixe — restaurante e pesque-pague em Três Lagoas, Foz do Iguaçu. Consulte o cardápio, monte seu pedido e envie direto pelo WhatsApp." />
     <meta name="theme-color" content="#092d24" />
     <title>Kipeixe | Restaurante & Pesque-Pague em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="preload" as="image" href="assets/hero-food.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="assets/ambiente/hero.webp" fetchpriority="high" />
     <link rel="stylesheet" href="styles.css" />
     <script type="application/ld+json">
       {
@@ -29,416 +26,256 @@
           "addressCountry": "BR"
         },
         "sameAs": ["https://www.instagram.com/kipeixe.foz/"],
-        "openingHoursSpecification": [
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": [
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-              "Sunday"
-            ],
-            "opens": "09:00",
-            "closes": "23:40"
-          }
-        ]
+        "openingHoursSpecification": [{
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+          "opens": "09:00",
+          "closes": "23:40"
+        }]
       }
     </script>
   </head>
   <body>
-    <header class="site-header" data-header>
-      <a class="brand" href="#top" aria-label="Kipeixe - início">
+    <header class="site-header">
+      <button class="brand tab-link" type="button" data-page-link="inicio" aria-label="Ir para o início">
         <img src="assets/logo.webp" alt="" width="44" height="44" />
-        <span>
-          <strong>KIPEIXE</strong>
-          <small>restaurante & pesca</small>
-        </span>
-      </a>
+        <span><strong>KIPEIXE</strong><small>restaurante & pesca</small></span>
+      </button>
 
-      <nav class="desktop-nav" aria-label="Navegação principal">
-        <a href="#cardapio">Cardápio</a>
-        <a href="#pesque">Pesque-pague</a>
-        <a href="#estrutura">Estrutura</a>
-        <a href="#contato">Contato</a>
+      <nav class="desktop-tabs" aria-label="Seções do site">
+        <button type="button" class="tab-link is-active" data-page-link="inicio">Início</button>
+        <button type="button" class="tab-link" data-page-link="cardapio">Cardápio</button>
+        <button type="button" class="tab-link" data-page-link="ambiente">Ambiente</button>
+        <button type="button" class="tab-link" data-page-link="pesque">Pesque-pague</button>
+        <button type="button" class="tab-link" data-page-link="contato">Contato</button>
       </nav>
 
-      <a
-        class="header-cta"
-        href="https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu"
-        target="_blank"
-        rel="noreferrer"
-      >Como chegar</a>
+      <button class="header-order" type="button" data-cart-open>
+        <span>Meu pedido</span>
+        <b data-cart-count>0</b>
+      </button>
     </header>
 
-    <main id="top">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-media" aria-hidden="true"></div>
-        <div class="hero-overlay" aria-hidden="true"></div>
-        <div class="hero-content page-shell">
-          <p class="eyebrow reveal">Três Lagoas · Foz do Iguaçu</p>
-          <h1 id="hero-title" class="reveal reveal-delay-1">
-            <span>KIPEIXE</span>
-            Peixe na mesa.<br />Sossego à beira do lago.
-          </h1>
-          <p class="hero-copy reveal reveal-delay-2">
-            Restaurante, pesque-pague e espaço para passar o dia com calma — todos os dias, das 09h às 23h40.
-          </p>
-          <div class="hero-actions reveal reveal-delay-3">
-            <a class="button button-primary" href="#cardapio">Ver cardápio</a>
-            <a
-              class="button button-ghost"
-              href="tel:+554535772363"
-            >Ligar agora</a>
-          </div>
-        </div>
-        <a class="hero-scroll" href="#cardapio" aria-label="Ir para o cardápio">
-          <span></span>
-        </a>
-      </section>
-
-      <section class="quick-info" aria-label="Informações principais">
-        <div class="page-shell quick-info-inner">
-          <p><strong>Hoje</strong><span>09h — 23h40</span></p>
-          <p><strong>Endereço</strong><span>Av. João Ricieri Maran, 1417</span></p>
-          <p><strong>Contato</strong><span>(45) 3577-2363</span></p>
-          <p><strong>Ambiente</strong><span>Ao ar livre · estacionamento</span></p>
-        </div>
-      </section>
-
-      <section class="menu-section section" id="cardapio">
-        <div class="page-shell">
-          <div class="section-heading reveal-on-scroll">
-            <p class="eyebrow dark">Da cozinha</p>
-            <h2>Comida que chega à mesa com cara de domingo.</h2>
-            <p>
-              Peixes, porções e pratos para dividir. O cardápio fica simples de encontrar e fácil de decidir.
-            </p>
-          </div>
-
-          <div class="menu-feature reveal-on-scroll">
-            <figure class="menu-photo">
-              <img
-                src="assets/hero-food.webp"
-                alt="Prato servido no Kipeixe com peixe frito, arroz, batata e salada"
-                loading="lazy"
-              />
-              <figcaption>Cardápio completo do Kipeixe.</figcaption>
-            </figure>
-            <div class="menu-feature-copy">
-              <p class="eyebrow dark">Escolha sua mesa</p>
-              <h3>Peixes, carnes, porções, lanches e bebidas.</h3>
-              <p>Consulte o cardápio por categoria. Os preços abaixo seguem o cardápio físico do Kipeixe.</p>
+    <main class="site-main">
+      <section class="site-page home-page is-active" data-page="inicio">
+        <div class="home-hero">
+          <div class="home-photo" aria-hidden="true"></div>
+          <div class="home-shade" aria-hidden="true"></div>
+          <div class="home-content">
+            <p class="eyebrow light">Três Lagoas · Foz do Iguaçu</p>
+            <h1><span>KIPEIXE</span>Peixe na mesa.<br />O dia inteiro por aqui.</h1>
+            <p class="home-copy">Restaurante, pesque-pague e espaço ao ar livre. Todos os dias, das 09h às 23h40.</p>
+            <div class="hero-actions">
+              <button class="button button-orange tab-link" type="button" data-page-link="cardapio">Abrir cardápio</button>
+              <button class="button button-glass tab-link" type="button" data-page-link="cardapio" data-open-menu>Fazer pedido</button>
             </div>
           </div>
+          <div class="home-dish-card">
+            <img src="assets/produtos/tilapia-vinagrete.webp" alt="Tilápias servidas no Kipeixe" />
+            <div><small>Da nossa cozinha</small><strong>Peixe de verdade, mesa cheia.</strong></div>
+          </div>
+        </div>
 
-          <nav class="menu-category-nav reveal-on-scroll" aria-label="Categorias do cardápio">
-            <a href="#menu-peixes">Peixes</a>
-            <a href="#menu-carnes">Carnes</a>
-            <a href="#menu-frango">Frango & massas</a>
-            <a href="#menu-porcoes">Porções</a>
-            <a href="#menu-saladas">Saladas</a>
-            <a href="#menu-lanches">Lanches</a>
-            <a href="#menu-bebidas">Bebidas</a>
-            <a href="#menu-sucos">Sucos</a>
-            <a href="#menu-vinhos">Vinhos</a>
-            <a href="#menu-coqueteis">Coquetéis</a>
-          </nav>
+        <div class="home-info">
+          <article><span>01</span><strong>Aberto todos os dias</strong><small>09h — 23h40</small></article>
+          <article><span>02</span><strong>Restaurante & pesca</strong><small>Comida, lago e espaço ao ar livre</small></article>
+          <article><span>03</span><strong>Três Lagoas</strong><small>Av. João Ricieri Maran, 1417</small></article>
+        </div>
 
-          <div class="menu-catalog">
-            <section class="menu-category reveal-on-scroll" id="menu-peixes">
-              <div class="menu-category-heading">
-                <span>01</span>
-                <div><p class="eyebrow dark">Especialidade da casa</p><h3>Peixes</h3></div>
-              </div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Tilápia à milanesa</h4><p>Filés de tilápia à milanesa, salada, batata frita, arroz e banana milanesa.</p></div><strong>R$ 112,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia grelhada</h4><p>Filés de tilápia grelhados, salada, legumes na manteiga e arroz.</p></div><strong>R$ 113,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia à parmegiana</h4><p>Filés de tilápia à milanesa cobertos com ervilha, queijo, molho, arroz e batata.</p></div><strong>R$ 117,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia à dorê</h4><p>Filés de tilápia à dorê, salada, batata frita e arroz.</p></div><strong>R$ 106,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia à brasileira</h4><p>Filés de tilápia ao molho, pirão e arroz.</p></div><strong>R$ 112,00</strong></article>
-                <article class="menu-item"><div><h4>Camarão à milanesa</h4><p>Camarão à milanesa, salada, batata frita e arroz.</p></div><strong>R$ 154,00</strong></article>
-                <article class="menu-item"><div><h4>Surubi grelhado</h4><p>Surubi grelhado, salada, batata sotê e arroz à grega.</p></div><strong>R$ 149,00</strong></article>
-                <article class="menu-item"><div><h4>Surubi à milanesa</h4><p>Surubi à milanesa, salada, batata frita e arroz.</p></div><strong>R$ 152,00</strong></article>
-                <article class="menu-item"><div><h4>Salmão ao molho fino</h4><p>Filé de salmão grelhado coberto com molho de alcaparras e champignon, salada, batata grizete e arroz.</p></div><strong>R$ 167,00</strong></article>
-                <article class="menu-item"><div><h4>Sashimi completo</h4><p>Sashimi de tilápia, porção de repolho, alho, gengibre, limão e wasabi.</p></div><strong>R$ 115,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia à vinagrete</h4><p>2 tilápias fritas inteiras, arroz, salada e molho vinagrete.</p></div><strong>R$ 126,00</strong></article>
-                <article class="menu-item menu-item-featured">
-                  <div><h4>Sinfonia de Kipeixe</h4><p>4 filés de tilápia à milanesa, 1 posta de surubi à milanesa, 1 filé de salmão grelhado ao molho fino, 10 camarões à milanesa, 4 filés de tilápia grelhados, 6 bolinhos de bacalhau, arroz à grega, arroz branco, batata sotê, batata frita e salada mista.</p></div>
-                  <strong>R$ 548,00</strong>
-                </article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-carnes">
-              <div class="menu-category-heading"><span>02</span><div><p class="eyebrow dark">Pratos completos</p><h3>Carnes</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Bisteca de porco</h4><p>Bistecas de porco grelhadas, salada, batata frita e arroz.</p></div><strong>R$ 102,00</strong></article>
-                <article class="menu-item"><div><h4>Bisteca de porco à tropeira</h4><p>Bistecas de porco, arroz, polenta frita, couve com bacon, feijão tropeiro e ovo frito.</p></div><strong>R$ 120,00</strong></article>
-                <article class="menu-item"><div><h4>Bistecão à moda da casa</h4><p>Bistecas de boi grelhadas, maionese, batata frita, arroz e farofa.</p></div><strong>R$ 125,00</strong></article>
-                <article class="menu-item"><div><h4>Filé mignon à milanesa</h4><p>Filé mignon à milanesa, salada, batata frita e arroz.</p></div><strong>R$ 135,00</strong></article>
-                <article class="menu-item"><div><h4>Filé mignon à Paraná</h4><p>Filé mignon recheado com presunto e queijo à milanesa coberto com molho sugo, salada, batata frita, arroz à grega e banana milanesa.</p></div><strong>R$ 148,00</strong></article>
-                <article class="menu-item"><div><h4>Filé mignon à parmegiana</h4><p>Filé mignon à parmegiana coberto com ervilha, queijo e molho sugo, arroz e batata frita.</p></div><strong>R$ 146,00</strong></article>
-                <article class="menu-item"><div><h4>Filé mignon com fritas</h4><p>Filé mignon grelhado, salada, batata frita e arroz.</p></div><strong>R$ 127,00</strong></article>
-                <article class="menu-item"><div><h4>Picanha completa</h4><p>4 fatias de picanha grelhada, salada, batata frita e arroz.</p></div></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-frango">
-              <div class="menu-category-heading"><span>03</span><div><p class="eyebrow dark">Outros pratos</p><h3>Frango & massas</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Frango grelhado</h4><p>Peito de frango grelhado, legumes na manteiga, salada e arroz.</p></div><strong>R$ 102,00</strong></article>
-                <article class="menu-item"><div><h4>Frango à milanesa</h4><p>Peito de frango à milanesa, salada, batata frita e arroz.</p></div><strong>R$ 100,00</strong></article>
-                <article class="menu-item"><div><h4>Frango à passarinho</h4><p>Frango à passarinho, salada, batata frita e arroz.</p></div><strong>R$ 95,00</strong></article>
-                <article class="menu-item"><div><h4>Espaguete à bolonhesa</h4><p>Espaguete coberto com molho, carne moída e queijo ralado.</p></div><strong>R$ 65,00</strong></article>
-                <article class="menu-item"><div><h4>Espaguete alho e óleo</h4></div><strong>R$ 60,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-porcoes">
-              <div class="menu-category-heading"><span>04</span><div><p class="eyebrow dark">Para compartilhar</p><h3>Porções & acompanhamentos</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Tilápia</h4></div><strong>R$ 45,00</strong></article>
-                <article class="menu-item"><div><h4>Tilápia em postas</h4></div><strong>R$ 49,00</strong></article>
-                <article class="menu-item"><div><h4>Pacu em postas</h4></div><strong>R$ 60,00</strong></article>
-                <article class="menu-item"><div><h4>Surubi</h4></div><strong>R$ 78,00</strong></article>
-                <article class="menu-item"><div><h4>Camarão</h4></div><strong>R$ 108,00</strong></article>
-                <article class="menu-item"><div><h4>Picanha</h4></div><strong>R$ 90,00</strong></article>
-                <article class="menu-item"><div><h4>Filé mignon</h4></div><strong>R$ 95,00</strong></article>
-                <article class="menu-item"><div><h4>Calabresa</h4></div><strong>R$ 50,00</strong></article>
-                <article class="menu-item"><div><h4>Frango a passarinho</h4></div><strong>R$ 52,00</strong></article>
-                <article class="menu-item"><div><h4>Banana à milanesa</h4></div><strong>R$ 20,00</strong></article>
-                <article class="menu-item"><div><h4>Bolinho de bacalhau</h4></div><strong>R$ 105,00</strong></article>
-                <article class="menu-item"><div><h4>Feijão</h4></div><strong>R$ 13,00</strong></article>
-                <article class="menu-item"><div><h4>Lambari</h4></div><strong>R$ 43,00</strong></article>
-                <article class="menu-item"><div><h4>Batata frita</h4></div><div class="menu-prices"><span>P R$ 25,00</span><span>M R$ 30,00</span><span>G R$ 35,00</span></div></article>
-                <article class="menu-item"><div><h4>Polenta</h4></div><div class="menu-prices"><span>P R$ 22,00</span><span>M R$ 24,00</span><span>G R$ 28,00</span></div></article>
-                <article class="menu-item"><div><h4>Mandioca</h4></div><div class="menu-prices"><span>P R$ 22,00</span><span>M R$ 24,00</span><span>G R$ 28,00</span></div></article>
-                <article class="menu-item"><div><h4>Arroz</h4></div><div class="menu-prices"><span>P R$ 18,00</span><span>M R$ 22,00</span><span>G R$ 25,00</span></div></article>
-                <article class="menu-item"><div><h4>Farofa</h4></div><div class="menu-prices"><span>P R$ 13,00</span><span>G R$ 18,00</span></div></article>
-                <article class="menu-item"><div><h4>Pirão</h4></div><div class="menu-prices"><span>P R$ 17,00</span><span>G R$ 25,00</span></div></article>
-                <article class="menu-item"><div><h4>Creme de alho</h4><p>Molho</p></div><strong>R$ 10,00</strong></article>
-                <article class="menu-item"><div><h4>Molho rosé</h4></div><strong>R$ 9,00</strong></article>
-                <article class="menu-item"><div><h4>Molho tártaro</h4></div><strong>R$ 9,00</strong></article>
-                <article class="menu-item"><div><h4>Vinagrete</h4></div><strong>R$ 10,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-saladas">
-              <div class="menu-category-heading"><span>05</span><div><p class="eyebrow dark">Acompanhamentos frios</p><h3>Saladas</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Palmito</h4></div><strong>R$ 57,00</strong></article>
-                <article class="menu-item"><div><h4>Maionese pequena</h4></div><strong>R$ 28,00</strong></article>
-                <article class="menu-item"><div><h4>Maionese grande</h4></div><strong>R$ 35,00</strong></article>
-                <article class="menu-item"><div><h4>Salada mista pequena</h4></div><strong>R$ 33,00</strong></article>
-                <article class="menu-item"><div><h4>Salada mista média</h4></div><strong>R$ 38,00</strong></article>
-                <article class="menu-item"><div><h4>Salada mista grande</h4></div><strong>R$ 53,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-lanches">
-              <div class="menu-category-heading"><span>06</span><div><p class="eyebrow dark">Lanches</p><h3>Sanduíches</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>X-Salada</h4></div><strong>R$ 22,00</strong></article>
-                <article class="menu-item"><div><h4>X-Burguer</h4></div><strong>R$ 18,00</strong></article>
-                <article class="menu-item"><div><h4>X-Egg</h4></div><strong>R$ 24,00</strong></article>
-                <article class="menu-item"><div><h4>X-Bacon</h4></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>X-Tudo</h4></div><strong>R$ 32,00</strong></article>
-                <article class="menu-item"><div><h4>X-Frango</h4></div><strong>R$ 22,00</strong></article>
-                <article class="menu-item"><div><h4>X-Calabresa</h4></div><strong>R$ 22,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-bebidas">
-              <div class="menu-category-heading"><span>07</span><div><p class="eyebrow dark">Geladas</p><h3>Cervejas & refrigerantes</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Antarctica Original</h4><p>600 ml</p></div><strong>R$ 18,00</strong></article>
-                <article class="menu-item"><div><h4>Spaten</h4><p>600 ml</p></div><strong>R$ 18,00</strong></article>
-                <article class="menu-item"><div><h4>Amstel</h4><p>600 ml</p></div><strong>R$ 16,00</strong></article>
-                <article class="menu-item"><div><h4>Skol</h4><p>600 ml</p></div><strong>R$ 16,00</strong></article>
-                <article class="menu-item"><div><h4>Malzbier</h4><p>600 ml</p></div><strong>R$ 17,00</strong></article>
-                <article class="menu-item"><div><h4>Heineken</h4><p>600 ml</p></div><strong>R$ 19,00</strong></article>
-                <article class="menu-item"><div><h4>Skol</h4><p>Lata</p></div><strong>R$ 9,00</strong></article>
-                <article class="menu-item"><div><h4>Heineken</h4><p>Lata</p></div><strong>R$ 10,00</strong></article>
-                <article class="menu-item"><div><h4>Heineken Zero</h4><p>Lata</p></div><strong>R$ 10,00</strong></article>
-                <article class="menu-item">
-                  <div><h4>Refrigerantes</h4><p>Coca-Cola, Coca-Cola Zero, Guaraná Antarctica, Fanta Laranja, Fanta Uva, Schweppes Citrus, Pepsi, Pepsi Twist e Pepsi Black.</p></div>
-                  <div class="menu-prices"><span>Garrafa 290 ml · R$ 8,00</span><span>Lata 350 ml · R$ 8,00</span></div>
-                </article>
-                <article class="menu-item"><div><h4>Água sem gás</h4></div><strong>R$ 6,00</strong></article>
-                <article class="menu-item"><div><h4>Água com gás</h4></div><strong>R$ 7,00</strong></article>
-                <article class="menu-item"><div><h4>Água tônica</h4></div><strong>R$ 8,00</strong></article>
-                <article class="menu-item"><div><h4>Água H2O</h4></div><strong>R$ 8,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-sucos">
-              <div class="menu-category-heading"><span>08</span><div><p class="eyebrow dark">Naturais</p><h3>Sucos</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Abacaxi</h4><p>Jarra 700 ml</p></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>Acerola</h4><p>Jarra 700 ml</p></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>Laranja</h4><p>Jarra 700 ml</p></div><strong>R$ 34,00</strong></article>
-                <article class="menu-item"><div><h4>Limão</h4><p>Jarra 700 ml</p></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>Manga</h4><p>Jarra 700 ml</p></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>Maracujá</h4><p>Jarra 700 ml</p></div><strong>R$ 30,00</strong></article>
-                <article class="menu-item"><div><h4>Morango</h4><p>Jarra 700 ml</p></div><strong>R$ 28,00</strong></article>
-                <article class="menu-item"><div><h4>Uva</h4><p>Jarra 700 ml</p></div><strong>R$ 25,00</strong></article>
-                <article class="menu-item"><div><h4>Suco no copo</h4><p>300 ml</p></div><strong>R$ 15,00</strong></article>
-                <article class="menu-item"><div><h4>Adicional de leite</h4></div><strong>R$ 3,00</strong></article>
-                <article class="menu-item"><div><h4>Adicional de fruta</h4></div><strong>R$ 4,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-vinhos">
-              <div class="menu-category-heading"><span>09</span><div><p class="eyebrow dark">Carta da casa</p><h3>Vinhos</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>120 Santa Rita Sauvignon Blanc</h4><p>Chile</p></div><strong>R$ 128,00</strong></article>
-                <article class="menu-item"><div><h4>Casa Amada Carmenere</h4><p>Chile</p></div><strong>R$ 94,00</strong></article>
-                <article class="menu-item"><div><h4>Casillero del Diablo Red Blend</h4><p>Chile</p></div><strong>R$ 146,00</strong></article>
-                <article class="menu-item"><div><h4>Estação 36 Bordô Demi-Sec</h4><p>Serra Gaúcha</p></div><strong>R$ 84,00</strong></article>
-                <article class="menu-item"><div><h4>Jarra de vinho</h4><p>Colonial</p></div><strong>R$ 50,00</strong></article>
-                <article class="menu-item"><div><h4>Reservado Cabernet Sauvignon</h4><p>Argentino</p></div><strong>R$ 73,00</strong></article>
-                <article class="menu-item"><div><h4>Reservado Malbec</h4><p>Argentino</p></div><strong>R$ 73,00</strong></article>
-                <article class="menu-item"><div><h4>Santa Veronica Cabernet Sauvignon</h4><p>Argentino</p></div><strong>R$ 97,00</strong></article>
-                <article class="menu-item"><div><h4>Santa Veronica Malbec Alta Reserve</h4><p>Argentino</p></div><strong>R$ 132,00</strong></article>
-                <article class="menu-item"><div><h4>Taça de vinho</h4></div><strong>R$ 23,00</strong></article>
-              </div>
-            </section>
-
-            <section class="menu-category reveal-on-scroll" id="menu-coqueteis">
-              <div class="menu-category-heading"><span>10</span><div><p class="eyebrow dark">Drinks</p><h3>Coquetéis & caipirinhas</h3></div></div>
-              <div class="menu-items">
-                <article class="menu-item"><div><h4>Bérgamo</h4><p>Água com gás, limão, tangerina e xarope.</p></div><strong>R$ 21,00</strong></article>
-                <article class="menu-item"><div><h4>Piña Colada</h4><p>Rum Bacardi, suco de abacaxi, leite de coco, leite condensado e gelo.</p></div><strong>R$ 35,00</strong></article>
-                <article class="menu-item"><div><h4>Daiquiri de morango</h4><p>Limão, rum e purê de morango.</p></div><strong>R$ 34,00</strong></article>
-                <article class="menu-item"><div><h4>Freyr</h4><p>Suco de abacaxi, purê de morango, vinho tinto suave e vodka.</p></div><strong>R$ 38,00</strong></article>
-                <article class="menu-item"><div><h4>Gin tônica mediterrâneo</h4><p>Água tônica, alecrim, canela em pau, gin e limão siciliano.</p></div><strong>R$ 33,00</strong></article>
-                <article class="menu-item"><div><h4>Gin tônica tradicional</h4><p>Água tônica, gin e limão.</p></div><strong>R$ 29,00</strong></article>
-                <article class="menu-item"><div><h4>Mojito</h4><p>Água com gás, hortelã, limão e rum.</p></div><strong>R$ 31,00</strong></article>
-                <article class="menu-item"><div><h4>Rubro Mojito</h4><p>Água com gás, amora, morango, hortelã, limão, rum e xarope grenadine.</p></div><strong>R$ 36,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Bacardi</h4></div><strong>R$ 31,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Cachaça</h4></div><strong>R$ 23,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Steinhäger</h4></div><strong>R$ 31,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Vodka</h4></div><strong>R$ 28,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Vodka Smirnoff</h4></div><strong>R$ 31,00</strong></article>
-                <article class="menu-item"><div><h4>Caipirinha Vodka com fruta</h4></div><strong>R$ 33,00</strong></article>
-                <article class="menu-item"><div><h4>Adicional de frutas</h4></div><strong>R$ 3,00</strong></article>
-              </div>
-            </section>
+        <div class="home-choices section-shell">
+          <div class="section-intro">
+            <p class="eyebrow dark">Escolha como aproveitar</p>
+            <h2>Não é só sentar para comer.</h2>
+          </div>
+          <div class="choice-grid">
+            <button class="choice-card tab-link" type="button" data-page-link="cardapio" data-open-menu>
+              <img src="assets/produtos/tilapia-milanesa.webp" alt="" />
+              <span><small>Restaurante</small><strong>Ver o cardápio e pedir</strong><b>→</b></span>
+            </button>
+            <button class="choice-card tab-link" type="button" data-page-link="pesque">
+              <img src="assets/ambiente/lago.webp" alt="" />
+              <span><small>Pesque-pague</small><strong>Conhecer o lago</strong><b>→</b></span>
+            </button>
+            <button class="choice-card tab-link" type="button" data-page-link="ambiente">
+              <img src="assets/ambiente/salão-cheio.webp" alt="" />
+              <span><small>Estrutura</small><strong>Ver o Kipeixe por dentro</strong><b>→</b></span>
+            </button>
           </div>
         </div>
       </section>
 
-      <section class="experience" id="pesque">
-        <div class="experience-media" aria-hidden="true">
-          <img src="assets/lake.webp" alt="" loading="lazy" />
-        </div>
-        <div class="experience-overlay" aria-hidden="true"></div>
-        <div class="experience-content page-shell reveal-on-scroll">
-          <p class="eyebrow">Muito além do almoço</p>
-          <h2>Você vem para comer.<br />Acaba ficando pelo lugar.</h2>
-          <p>
-            Lagos para pesca, mesas ao ar livre e espaço para reunir a família sem pressa.
-          </p>
-          <a
-            class="text-link"
-            href="https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu"
-            target="_blank"
-            rel="noreferrer"
-          >Abrir rota no mapa</a>
+      <section class="site-page menu-page" data-page="cardapio" hidden>
+        <div class="menu-experience" data-menu-experience>
+          <div class="menu-cover" data-menu-cover>
+            <div class="cover-photo">
+              <img src="assets/produtos/prato-completo.webp" alt="Prato servido no Kipeixe" />
+            </div>
+            <div class="cover-body">
+              <img src="assets/logo.webp" alt="" class="cover-logo" />
+              <p class="eyebrow light">Pesque e Pague Kipeixe</p>
+              <h2>Cardápio</h2>
+              <p>Peixes, pratos, porções, lanches e bebidas. Abra, escolha sua página e monte seu pedido.</p>
+              <button class="button button-orange" type="button" data-menu-open><span>Abrir cardápio</span><b>→</b></button>
+            </div>
+            <div class="cover-binding" aria-hidden="true"></div>
+          </div>
+
+          <div class="menu-inside" data-menu-inside hidden>
+            <div class="menu-inside-head">
+              <div><p class="eyebrow dark">Cardápio Kipeixe</p><h2>Escolha uma página.</h2></div>
+              <div class="menu-head-actions">
+                <button type="button" class="text-button" data-menu-close>Fechar cardápio</button>
+                <button type="button" class="mini-cart" data-cart-open>Pedido <b data-cart-count>0</b></button>
+              </div>
+            </div>
+
+            <div class="book">
+              <aside class="book-index" aria-label="Categorias do cardápio">
+                <p>Índice</p>
+                <div data-category-tabs></div>
+              </aside>
+
+              <article class="book-page">
+                <div class="book-spine" aria-hidden="true"></div>
+                <header class="page-heading">
+                  <div>
+                    <span class="page-number" data-page-number>01</span>
+                    <p class="eyebrow dark" data-category-eyebrow></p>
+                    <h3 data-category-title></h3>
+                  </div>
+                  <img data-category-image src="" alt="" />
+                </header>
+                <div class="menu-items" data-menu-items></div>
+                <footer class="page-turner">
+                  <button type="button" data-category-prev>← Página anterior</button>
+                  <span data-category-progress></span>
+                  <button type="button" data-category-next>Próxima página →</button>
+                </footer>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="section structure" id="estrutura">
-        <div class="page-shell structure-grid">
-          <div class="structure-copy reveal-on-scroll">
-            <p class="eyebrow dark">Um lugar para ficar</p>
-            <h2>Espaço de verdade, dentro e fora do restaurante.</h2>
-            <p>
-              Área externa, estacionamento amplo, Wi-Fi, acessibilidade e mesas próximas aos lagos.
-            </p>
+      <section class="site-page ambient-page" data-page="ambiente" hidden>
+        <div class="page-hero compact">
+          <div>
+            <p class="eyebrow light">O Kipeixe de verdade</p>
+            <h1>Cheio de gente.<br />Ou só esperando você.</h1>
+            <p>Salão, mesas à beira do lago, estacionamento e espaço para passar o dia.</p>
+          </div>
+          <img src="assets/ambiente/lago-mesas.webp" alt="Mesas do Kipeixe à beira do lago" />
+        </div>
 
-            <dl class="fact-list">
-              <div><dt>4,1 ★</dt><dd>avaliação no Google</dd></div>
-              <div><dt>7 dias</dt><dd>aberto a semana inteira</dd></div>
-              <div><dt>09h–23h40</dt><dd>horário diário</dd></div>
+        <div class="gallery-shell section-shell">
+          <div class="section-intro split">
+            <div><p class="eyebrow dark">Ambiente</p><h2>Veja antes de chegar.</h2></div>
+            <p>Fotos do próprio Kipeixe em dias cheios e em momentos tranquilos.</p>
+          </div>
+          <div class="photo-grid">
+            <figure class="wide"><img src="assets/ambiente/lago-cheio.webp" alt="Clientes reunidos à beira do lago no Kipeixe" loading="lazy" /><figcaption>À beira do lago</figcaption></figure>
+            <figure><img src="assets/ambiente/salão-cheio.webp" alt="Salão do Kipeixe com clientes" loading="lazy" /><figcaption>Salão em funcionamento</figcaption></figure>
+            <figure><img src="assets/ambiente/salão-vazio.webp" alt="Salão interno do Kipeixe" loading="lazy" /><figcaption>Salão interno</figcaption></figure>
+            <figure><img src="assets/ambiente/externo.webp" alt="Área externa e lago do Kipeixe" loading="lazy" /><figcaption>Área externa</figcaption></figure>
+            <figure class="wide"><img src="assets/ambiente/entrada.webp" alt="Entrada do Kipeixe" loading="lazy" /><figcaption>Entrada</figcaption></figure>
+            <figure><img src="assets/ambiente/fachada.webp" alt="Fachada do Kipeixe" loading="lazy" /><figcaption>Fácil de encontrar</figcaption></figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="site-page fishing-page" data-page="pesque" hidden>
+        <div class="fishing-hero">
+          <img src="assets/ambiente/pesque.webp" alt="Lago do pesque-pague Kipeixe" />
+          <div class="fishing-overlay"></div>
+          <div class="fishing-copy">
+            <p class="eyebrow light">Pesque-pague</p>
+            <h1>Chegue cedo.<br />Fique sem pressa.</h1>
+            <p>O lago faz parte da experiência Kipeixe: pesca, mesas ao ar livre e restaurante no mesmo lugar.</p>
+            <button class="button button-orange tab-link" type="button" data-page-link="contato">Como chegar</button>
+          </div>
+        </div>
+        <div class="fishing-info section-shell">
+          <article><span>01</span><h3>Pesca & descanso</h3><p>Um espaço grande para aproveitar o lago e passar horas com calma.</p></article>
+          <article><span>02</span><h3>Restaurante no local</h3><p>Quando bater a fome, o cardápio inteiro está a poucos passos.</p></article>
+          <article><span>03</span><h3>Todos os dias</h3><p>O Kipeixe funciona diariamente, das 09h às 23h40.</p></article>
+        </div>
+      </section>
+
+      <section class="site-page contact-page" data-page="contato" hidden>
+        <div class="contact-layout section-shell">
+          <div class="contact-copy">
+            <p class="eyebrow dark">Contato & localização</p>
+            <h1>Seu próximo almoço tem endereço.</h1>
+            <p>Três Lagoas, Foz do Iguaçu. Aberto todos os dias.</p>
+            <div class="contact-actions">
+              <a class="button button-dark" href="https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu" target="_blank" rel="noreferrer">Abrir no Google Maps</a>
+              <a class="button button-outline" href="tel:+554535772363">Ligar agora</a>
+            </div>
+          </div>
+          <div class="contact-card">
+            <img src="assets/ambiente/fachada.webp" alt="Fachada do Kipeixe" />
+            <dl>
+              <div><dt>Endereço</dt><dd>Av. João Ricieri Maran, 1417<br />Três Lagoas · Foz do Iguaçu/PR</dd></div>
+              <div><dt>Horário</dt><dd>Todos os dias<br />09h — 23h40</dd></div>
+              <div><dt>Telefone / WhatsApp</dt><dd><a href="https://wa.me/554535772363" target="_blank" rel="noreferrer">(45) 3577-2363</a></dd></div>
+              <div><dt>Instagram</dt><dd><a href="https://www.instagram.com/kipeixe.foz/" target="_blank" rel="noreferrer">@kipeixe.foz</a></dd></div>
             </dl>
-          </div>
-
-          <figure class="structure-photo reveal-on-scroll">
-            <img
-              src="assets/entrance.webp"
-              alt="Entrada do Kipeixe em Três Lagoas, Foz do Iguaçu"
-              loading="lazy"
-            />
-          </figure>
-        </div>
-      </section>
-
-      <section class="location section" id="contato">
-        <div class="page-shell location-heading reveal-on-scroll">
-          <p class="eyebrow dark">Vem para o Kipeixe</p>
-          <h2>Três Lagoas, Foz do Iguaçu.</h2>
-          <p>Av. João Ricieri Maran, 1417 · CEP 85862-425</p>
-        </div>
-
-        <div class="location-grid page-shell">
-          <div class="contact-panel reveal-on-scroll">
-            <div>
-              <span>Horário</span>
-              <strong>Todos os dias<br />09h — 23h40</strong>
-            </div>
-            <div>
-              <span>Telefone</span>
-              <a href="tel:+554535772363">(45) 3577-2363</a>
-            </div>
-            <div>
-              <span>Instagram</span>
-              <a href="https://www.instagram.com/kipeixe.foz/" target="_blank" rel="noreferrer">@kipeixe.foz</a>
-            </div>
-            <a
-              class="button button-primary"
-              href="https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu"
-              target="_blank"
-              rel="noreferrer"
-            >Traçar rota</a>
-          </div>
-
-          <div class="map-wrap reveal-on-scroll">
-            <iframe
-              title="Mapa do Kipeixe"
-              src="https://www.google.com/maps?q=Pesque%20e%20Pague%20Kipeixe%20Foz%20do%20Iguacu&output=embed"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-            ></iframe>
           </div>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <div class="page-shell footer-inner">
-        <div class="footer-brand">
-          <img src="assets/logo.webp" alt="" width="58" height="58" loading="lazy" />
-          <div><strong>KIPEIXE</strong><span>Restaurante & Pesque-Pague</span></div>
-        </div>
-        <p>Av. João Ricieri Maran, 1417 · Três Lagoas · Foz do Iguaçu/PR</p>
-        <p>© <span data-year></span> Kipeixe</p>
-      </div>
+      <div><strong>KIPEIXE</strong><span>Restaurante & Pesque-Pague · Foz do Iguaçu</span></div>
+      <span>© <span data-year></span> Kipeixe</span>
     </footer>
 
-    <nav class="mobile-bar" aria-label="Ações rápidas">
-      <a href="#cardapio">Cardápio</a>
-      <a href="tel:+554535772363">Ligar</a>
-      <a
-        href="https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu"
-        target="_blank"
-        rel="noreferrer"
-      >Rotas</a>
+    <button class="floating-cart" type="button" data-cart-open aria-label="Abrir meu pedido">
+      <span>Pedido</span><b data-cart-count>0</b>
+    </button>
+
+    <aside class="cart-drawer" data-cart-drawer aria-hidden="true">
+      <div class="cart-backdrop" data-cart-close></div>
+      <section class="cart-panel" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+        <header>
+          <div><p class="eyebrow dark">Seu pedido</p><h2 id="cart-title">Quase pronto.</h2></div>
+          <button type="button" class="icon-button" data-cart-close aria-label="Fechar pedido">×</button>
+        </header>
+        <div class="cart-items" data-cart-items></div>
+        <div class="cart-empty" data-cart-empty>
+          <strong>Seu pedido está vazio.</strong>
+          <p>Abra o cardápio e adicione o que quiser.</p>
+          <button class="button button-dark tab-link" type="button" data-page-link="cardapio" data-open-menu data-cart-close>Ir para o cardápio</button>
+        </div>
+        <div class="cart-checkout" data-cart-checkout hidden>
+          <div class="cart-total"><span>Total estimado</span><strong data-cart-total>R$ 0,00</strong></div>
+          <form data-order-form>
+            <label>Seu nome<input type="text" name="name" autocomplete="name" required placeholder="Nome para identificar o pedido" /></label>
+            <label>Como será o pedido?
+              <select name="type" data-order-type>
+                <option value="Retirada no Kipeixe">Retirada no Kipeixe</option>
+                <option value="Consumir no local">Consumir no local</option>
+                <option value="Entrega">Entrega</option>
+              </select>
+            </label>
+            <label data-address-field hidden>Endereço para entrega<input type="text" name="address" autocomplete="street-address" placeholder="Rua, número e bairro" /></label>
+            <label>Observações<textarea name="notes" rows="3" placeholder="Ex.: sem cebola, ponto da carne, referência..."></textarea></label>
+            <button class="whatsapp-button" type="submit"><span>Enviar pedido pelo WhatsApp</span><b>→</b></button>
+            <small>O pedido será enviado ao WhatsApp do Kipeixe para confirmação.</small>
+          </form>
+        </div>
+      </section>
+    </aside>
+
+    <nav class="mobile-tabs" aria-label="Navegação principal">
+      <button type="button" class="tab-link is-active" data-page-link="inicio"><span>⌂</span>Início</button>
+      <button type="button" class="tab-link" data-page-link="cardapio"><span>≡</span>Cardápio</button>
+      <button type="button" data-cart-open><span>＋</span>Pedido<b data-cart-count>0</b></button>
+      <button type="button" class="tab-link" data-page-link="ambiente"><span>◫</span>Ambiente</button>
+      <button type="button" class="tab-link" data-page-link="contato"><span>⌖</span>Contato</button>
     </nav>
 
-    <script src="script.js" defer></script>
+    <script src="menu-data.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>

@@ -1,49 +1,382 @@
-const header = document.querySelector('[data-header]');
-const year = document.querySelector('[data-year]');
-const revealItems = document.querySelectorAll('.reveal-on-scroll');
-const experience = document.querySelector('.experience');
+(() => {
+  const MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
+  const WHATSAPP = '554535772363';
+  const VALID_PAGES = new Set(['inicio', 'cardapio', 'ambiente', 'pesque', 'contato']);
+  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-if (year) {
-  year.textContent = new Date().getFullYear();
-}
+  const qs = (selector, root = document) => root.querySelector(selector);
+  const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-const syncHeader = () => {
-  if (!header) return;
-  header.classList.toggle('is-scrolled', window.scrollY > 28);
-};
+  const year = qs('[data-year]');
+  if (year) year.textContent = new Date().getFullYear();
 
-syncHeader();
-window.addEventListener('scroll', syncHeader, { passive: true });
+  const normalize = (value = '') =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
 
-if ('IntersectionObserver' in window) {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-visible');
-        observer.unobserve(entry.target);
-      });
+  const safeStorage = {
+    get(key, fallback) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        return parsed ?? fallback;
+      } catch {
+        return fallback;
+      }
     },
-    { threshold: 0.16 }
-  );
-
-  revealItems.forEach((item) => observer.observe(item));
-} else {
-  revealItems.forEach((item) => item.classList.add('is-visible'));
-}
-
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-if (experience && !reducedMotion) {
-  const updateParallax = () => {
-    const rect = experience.getBoundingClientRect();
-    const viewport = window.innerHeight || 1;
-    if (rect.bottom < 0 || rect.top > viewport) return;
-    const progress = (viewport - rect.top) / (viewport + rect.height);
-    const offset = (progress - 0.5) * 54;
-    experience.style.setProperty('--parallax', `${offset.toFixed(1)}px`);
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    }
   };
 
-  updateParallax();
-  window.addEventListener('scroll', updateParallax, { passive: true });
-}
+  const pageNodes = qsa('[data-page]');
+  const tabLinks = qsa('[data-page-link]');
+
+  const hashPage = () => {
+    const candidate = location.hash.replace(/^#/, '').split('/')[0];
+    return VALID_PAGES.has(candidate) ? candidate : 'inicio';
+  };
+
+  const setPage = (page, updateHash = true) => {
+    if (!VALID_PAGES.has(page)) page = 'inicio';
+    pageNodes.forEach((node) => {
+      const active = node.dataset.page === page;
+      node.hidden = !active;
+      node.classList.toggle('is-active', active);
+    });
+    tabLinks.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.pageLink === page);
+      if (button.dataset.pageLink === page) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    if (updateHash && location.hash !== `#${page}`) history.pushState({}, '', `#${page}`);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  const cartDrawer = qs('[data-cart-drawer]');
+
+  function closeCart() {
+    cartDrawer?.classList.remove('is-open');
+    cartDrawer?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('cart-open');
+  }
+
+  const menuCover = qs('[data-menu-cover]');
+  const menuInside = qs('[data-menu-inside]');
+  const menuItems = qs('[data-menu-items]');
+  const categoryTabs = qs('[data-category-tabs]');
+  const categoryTitle = qs('[data-category-title]');
+  const categoryEyebrow = qs('[data-category-eyebrow]');
+  const categoryImage = qs('[data-category-image]');
+  const pageNumber = qs('[data-page-number]');
+  const categoryProgress = qs('[data-category-progress]');
+  const prevCategory = qs('[data-category-prev]');
+  const nextCategory = qs('[data-category-next]');
+  const bookPage = qs('.book-page');
+  let currentCategory = 0;
+
+  const categoryImages = {
+    peixes: 'assets/produtos/tilapia-vinagrete.webp',
+    carnes: 'assets/produtos/carne.webp',
+    frango: 'assets/produtos/frango.webp',
+    porcoes: 'assets/produtos/porcao-peixe.webp',
+    saladas: 'assets/produtos/salada.webp',
+    lanches: 'assets/produtos/burger.webp',
+    bebidas: 'assets/produtos/drink.webp',
+    sucos: 'assets/produtos/drink.webp',
+    vinhos: 'assets/produtos/drink.webp',
+    coqueteis: 'assets/produtos/drink.webp'
+  };
+
+  const itemImage = (name, categoryId) => {
+    const n = normalize(name);
+    if (n === 'tilapia a milanesa') return 'assets/produtos/tilapia-milanesa.webp';
+    if (n === 'tilapia a vinagrete') return 'assets/produtos/tilapia-vinagrete.webp';
+    if (n === 'tilapia grelhada') return 'assets/produtos/tilapia-inteira.webp';
+    if (n === 'batata frita') return 'assets/produtos/batata.webp';
+    if (n === 'pirao') return 'assets/produtos/pirao.webp';
+    if (n === 'vinagrete') return 'assets/produtos/vinagrete.webp';
+    if (n === 'x-burguer') return 'assets/produtos/burger.webp';
+    if (n === 'frango grelhado') return 'assets/produtos/frango.webp';
+    if (n.includes('bistecao') || n.includes('picanha completa')) return 'assets/produtos/carne.webp';
+    if (n.includes('gin tonica mediterraneo') || n === 'bergamo') return 'assets/produtos/drink.webp';
+    if (categoryId === 'saladas' && n.includes('salada mista grande')) return 'assets/produtos/salada.webp';
+    return '';
+  };
+
+  const escapeHtml = (text = '') =>
+    String(text)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+
+  const makeItemId = (name, variant = '') => `${normalize(name)}|${normalize(variant)}`;
+
+  const renderMenuTabs = () => {
+    if (!categoryTabs) return;
+    categoryTabs.innerHTML = MENU.map((category, index) => `
+      <button
+        type="button"
+        class="${index === currentCategory ? 'is-active' : ''}"
+        data-category-index="${index}"
+        aria-pressed="${index === currentCategory ? 'true' : 'false'}"
+      >${escapeHtml(category.title)}</button>
+    `).join('');
+  };
+
+  const renderMenuItem = (item, category) => {
+    const photo = itemImage(item.name, category.id);
+    const photoHtml = photo
+      ? `<img class="menu-entry-photo" src="${photo}" alt="" loading="lazy" />`
+      : '';
+    let actions = '';
+
+    if (Array.isArray(item.variants) && item.variants.length) {
+      actions = `
+        <div class="variant-list">
+          ${item.variants.map((variant) => `
+            <button
+              type="button"
+              class="variant-button"
+              data-add-item
+              data-name="${escapeHtml(item.name)}"
+              data-variant="${escapeHtml(variant.label || 'Opção')}"
+              data-price="${variant.price}"
+            >${escapeHtml(variant.label || 'Opção')} · ${currency.format(variant.price)}</button>
+          `).join('')}
+        </div>
+      `;
+    } else if (Number.isFinite(item.price)) {
+      actions = `
+        <div class="menu-entry-actions">
+          <span class="menu-entry-price">${currency.format(item.price)}</span>
+          <button
+            type="button"
+            class="add-button"
+            data-add-item
+            data-name="${escapeHtml(item.name)}"
+            data-variant=""
+            data-price="${item.price}"
+          >+ Adicionar</button>
+        </div>
+      `;
+    } else {
+      actions = '<span class="consult-price">Consulte</span>';
+    }
+
+    return `
+      <article class="menu-entry ${photo ? 'has-photo' : ''}">
+        ${photoHtml}
+        <div class="menu-entry-main">
+          <h4>${escapeHtml(item.name)}</h4>
+          ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
+        </div>
+        ${actions}
+      </article>
+    `;
+  };
+
+  const renderCategory = (index, animate = true) => {
+    if (!MENU.length || !menuItems) return;
+    currentCategory = Math.max(0, Math.min(MENU.length - 1, index));
+    const category = MENU[currentCategory];
+
+    categoryTitle.textContent = category.title;
+    categoryEyebrow.textContent = category.eyebrow || 'Cardápio Kipeixe';
+    pageNumber.textContent = String(currentCategory + 1).padStart(2, '0');
+    categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
+    categoryImage.src = categoryImages[category.id] || 'assets/produtos/tilapia-vinagrete.webp';
+    categoryImage.alt = `Categoria ${category.title}`;
+    menuItems.innerHTML = category.items.map((item) => renderMenuItem(item, category)).join('');
+
+    prevCategory.disabled = currentCategory === 0;
+    nextCategory.disabled = currentCategory === MENU.length - 1;
+    renderMenuTabs();
+
+    if (animate && bookPage && bookPage.animate) {
+      bookPage.animate(
+        [
+          { opacity: .35, transform: 'translateX(10px)' },
+          { opacity: 1, transform: 'translateX(0)' }
+        ],
+        { duration: 210, easing: 'ease-out' }
+      );
+    }
+
+    if (window.innerWidth < 761) {
+      const active = qs('[data-category-index].is-active', categoryTabs);
+      active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  };
+
+  categoryTabs?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-category-index]');
+    if (!button) return;
+    renderCategory(Number(button.dataset.categoryIndex));
+  });
+  prevCategory?.addEventListener('click', () => renderCategory(currentCategory - 1));
+  nextCategory?.addEventListener('click', () => renderCategory(currentCategory + 1));
+
+  function openMenu() {
+    if (!menuCover || !menuInside) return;
+    menuCover.hidden = true;
+    menuInside.hidden = false;
+    renderCategory(currentCategory, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const closeMenu = () => {
+    if (!menuCover || !menuInside) return;
+    menuInside.hidden = true;
+    menuCover.hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  qs('[data-menu-open]')?.addEventListener('click', openMenu);
+  qs('[data-menu-close]')?.addEventListener('click', closeMenu);
+
+  tabLinks.forEach((button) => {
+    button.addEventListener('click', () => {
+      closeCart();
+      setPage(button.dataset.pageLink);
+      if (button.hasAttribute('data-open-menu')) openMenu();
+    });
+  });
+
+  window.addEventListener('popstate', () => setPage(hashPage(), false));
+  setPage(hashPage(), false);
+
+  let cart = safeStorage.get('kipeixe_cart_v1', []);
+  if (!Array.isArray(cart)) cart = [];
+
+  const cartItems = qs('[data-cart-items]');
+  const cartEmpty = qs('[data-cart-empty]');
+  const cartCheckout = qs('[data-cart-checkout]');
+  const cartTotal = qs('[data-cart-total]');
+  const orderForm = qs('[data-order-form]');
+  const orderType = qs('[data-order-type]');
+  const addressField = qs('[data-address-field]');
+
+  function openCart() {
+    cartDrawer?.classList.add('is-open');
+    cartDrawer?.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('cart-open');
+  }
+
+  const cartCount = () => cart.reduce((sum, item) => sum + item.qty, 0);
+  const cartValue = () => cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  const renderCart = () => {
+    const count = cartCount();
+    qsa('[data-cart-count]').forEach((node) => { node.textContent = count; });
+    safeStorage.set('kipeixe_cart_v1', cart);
+
+    if (!cartItems || !cartEmpty || !cartCheckout) return;
+    cartEmpty.hidden = count > 0;
+    cartCheckout.hidden = count === 0;
+    if (cartTotal) cartTotal.textContent = currency.format(cartValue());
+
+    cartItems.innerHTML = cart.map((item) => `
+      <article class="cart-row" data-cart-id="${escapeHtml(item.id)}">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          ${item.variant ? `<small>${escapeHtml(item.variant)}</small>` : ''}
+          <div class="qty-controls">
+            <button type="button" data-qty-minus aria-label="Diminuir quantidade">−</button>
+            <span>${item.qty}</span>
+            <button type="button" data-qty-plus aria-label="Aumentar quantidade">+</button>
+          </div>
+        </div>
+        <div class="cart-row-price">${currency.format(item.price * item.qty)}</div>
+      </article>
+    `).join('');
+  };
+
+  const addItem = (name, variant, price) => {
+    const numericPrice = Number(price);
+    if (!Number.isFinite(numericPrice)) return;
+    const id = makeItemId(name, variant);
+    const existing = cart.find((entry) => entry.id === id);
+    if (existing) existing.qty += 1;
+    else cart.push({ id, name, variant, price: numericPrice, qty: 1 });
+    renderCart();
+  };
+
+  menuItems?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-add-item]');
+    if (!button) return;
+    addItem(button.dataset.name, button.dataset.variant, button.dataset.price);
+    const original = button.textContent;
+    button.textContent = 'Adicionado ✓';
+    setTimeout(() => { button.textContent = original; }, 850);
+  });
+
+  qsa('[data-cart-open]').forEach((button) => button.addEventListener('click', openCart));
+  qsa('[data-cart-close]').forEach((button) => button.addEventListener('click', closeCart));
+
+  cartItems?.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-cart-id]');
+    if (!row) return;
+    const item = cart.find((entry) => entry.id === row.dataset.cartId);
+    if (!item) return;
+    if (event.target.closest('[data-qty-plus]')) item.qty += 1;
+    if (event.target.closest('[data-qty-minus]')) item.qty -= 1;
+    cart = cart.filter((entry) => entry.qty > 0);
+    renderCart();
+  });
+
+  const syncAddressField = () => {
+    if (!orderType || !addressField) return;
+    const delivery = orderType.value === 'Entrega';
+    addressField.hidden = !delivery;
+    const input = qs('input', addressField);
+    if (input) input.required = delivery;
+  };
+
+  orderType?.addEventListener('change', syncAddressField);
+  syncAddressField();
+
+  orderForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!cart.length || !orderForm.reportValidity()) return;
+
+    const data = new FormData(orderForm);
+    const name = String(data.get('name') || '').trim();
+    const type = String(data.get('type') || '').trim();
+    const address = String(data.get('address') || '').trim();
+    const notes = String(data.get('notes') || '').trim();
+
+    const lines = [
+      'Olá! Quero fazer este pedido pelo site do Kipeixe:',
+      '',
+      '*PEDIDO*',
+      ...cart.map((item) => {
+        const label = item.variant ? `${item.name} (${item.variant})` : item.name;
+        return `• ${item.qty}x ${label} — ${currency.format(item.price * item.qty)}`;
+      }),
+      '',
+      `*Total estimado:* ${currency.format(cartValue())}`,
+      `*Nome:* ${name}`,
+      `*Tipo:* ${type}`
+    ];
+
+    if (type === 'Entrega' && address) lines.push(`*Endereço:* ${address}`);
+    if (notes) lines.push(`*Observações:* ${notes}`);
+    lines.push('', 'Aguardo a confirmação do pedido. Obrigado!');
+
+    const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(lines.join('\n'))}`;
+    window.location.href = url;
+  });
+
+  renderMenuTabs();
+  renderCategory(0, false);
+  renderCart();
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeCart();
+  });
+})();
