@@ -249,19 +249,81 @@
         </div>
         <div class="cart-checkout" data-cart-checkout hidden>
           <div class="cart-total"><span>Total estimado</span><strong data-cart-total>R$ 0,00</strong></div>
-          <form data-order-form>
-            <label>Seu nome<input type="text" name="name" autocomplete="name" required placeholder="Nome para identificar o pedido" /></label>
-            <label>Como será o pedido?
-              <select name="type" data-order-type>
-                <option value="Retirada no Kipeixe">Retirada no Kipeixe</option>
-                <option value="Consumir no local">Consumir no local</option>
-                <option value="Entrega">Entrega</option>
-              </select>
-            </label>
-            <label data-address-field hidden>Endereço para entrega<input type="text" name="address" autocomplete="street-address" placeholder="Rua, número e bairro" /></label>
-            <label>Observações<textarea name="notes" rows="3" placeholder="Ex.: sem cebola, ponto da carne, referência..."></textarea></label>
-            <button class="whatsapp-button" type="submit"><span>Enviar pedido pelo WhatsApp</span><b>→</b></button>
-            <small>O pedido será enviado ao WhatsApp do Kipeixe para confirmação.</small>
+          <form data-order-form novalidate>
+            <div class="checkout-section">
+              <div class="checkout-section-title">
+                <span>01</span>
+                <div><strong>Identificação</strong><small>Para sabermos de quem é o pedido</small></div>
+              </div>
+              <label class="modern-field">
+                <span>Seu nome</span>
+                <div class="field-control">
+                  <span class="field-icon" aria-hidden="true">P</span>
+                  <input type="text" name="name" autocomplete="name" aria-describedby="name-error" placeholder="Nome para identificar o pedido" />
+                </div>
+                <small class="field-error" id="name-error" data-name-error hidden>Informe seu nome para continuar.</small>
+              </label>
+            </div>
+
+            <div class="checkout-section">
+              <div class="checkout-section-title">
+                <span>02</span>
+                <div><strong>Como será o pedido?</strong><small>Escolha uma opção</small></div>
+              </div>
+              <input type="hidden" name="type" value="Retirada no Kipeixe" data-order-type />
+              <div class="order-type-grid" role="radiogroup" aria-label="Como será o pedido">
+                <button class="order-type-card is-selected" type="button" role="radio" aria-checked="true" data-order-choice="Retirada no Kipeixe">
+                  <span class="order-type-icon" aria-hidden="true">↗</span>
+                  <span><strong>Retirada</strong><small>Buscar no Kipeixe</small></span>
+                  <i aria-hidden="true">✓</i>
+                </button>
+                <button class="order-type-card" type="button" role="radio" aria-checked="false" data-order-choice="Consumir no local">
+                  <span class="order-type-icon" aria-hidden="true">⌂</span>
+                  <span><strong>No local</strong><small>Consumir aqui</small></span>
+                  <i aria-hidden="true">✓</i>
+                </button>
+                <button class="order-type-card" type="button" role="radio" aria-checked="false" data-order-choice="Entrega">
+                  <span class="order-type-icon" aria-hidden="true">→</span>
+                  <span><strong>Entrega</strong><small>Receber em casa</small></span>
+                  <i aria-hidden="true">✓</i>
+                </button>
+              </div>
+            </div>
+
+            <div class="checkout-section checkout-section-address" data-address-field hidden>
+              <div class="checkout-section-title">
+                <span>03</span>
+                <div><strong>Endereço</strong><small>Onde devemos entregar</small></div>
+              </div>
+              <label class="modern-field">
+                <span>Endereço para entrega</span>
+                <div class="field-control">
+                  <span class="field-icon" aria-hidden="true">⌖</span>
+                  <input type="text" name="address" autocomplete="street-address" aria-describedby="address-error" placeholder="Rua, número e bairro" />
+                </div>
+                <small class="field-error" id="address-error" data-address-error hidden>Informe o endereço para entrega.</small>
+              </label>
+            </div>
+
+            <div class="checkout-section">
+              <div class="checkout-section-title">
+                <span data-notes-step>03</span>
+                <div><strong>Detalhes</strong><small>Opcional</small></div>
+              </div>
+              <label class="modern-field">
+                <span>Observações</span>
+                <div class="field-control field-control-textarea">
+                  <span class="field-icon" aria-hidden="true">✎</span>
+                  <textarea name="notes" rows="3" placeholder="Ex.: sem cebola, ponto da carne, referência..."></textarea>
+                </div>
+              </label>
+            </div>
+
+            <button class="whatsapp-button" type="submit">
+              <span><strong>Enviar pelo WhatsApp</strong><small>Revisar e confirmar com o Kipeixe</small></span>
+              <b>→</b>
+            </button>
+            <small class="checkout-disclaimer">O pedido só é confirmado após a resposta do Kipeixe no WhatsApp.</small>
           </form>
         </div>
       </section>

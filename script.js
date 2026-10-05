@@ -259,7 +259,11 @@
   const cartTotal = qs('[data-cart-total]');
   const orderForm = qs('[data-order-form]');
   const orderType = qs('[data-order-type]');
+  const orderChoices = qsa('[data-order-choice]');
   const addressField = qs('[data-address-field]');
+  const notesStep = qs('[data-notes-step]');
+  const nameError = qs('[data-name-error]');
+  const addressError = qs('[data-address-error]');
 
   function openCart() {
     cartDrawer?.classList.add('is-open');
@@ -334,21 +338,64 @@
     const delivery = orderType.value === 'Entrega';
     addressField.hidden = !delivery;
     const input = qs('input', addressField);
-    if (input) input.required = delivery;
+    if (!delivery && input) {
+      input.removeAttribute('aria-invalid');
+      if (addressError) addressError.hidden = true;
+    }
+    if (notesStep) notesStep.textContent = delivery ? '04' : '03';
   };
 
-  orderType?.addEventListener('change', syncAddressField);
+  const setFieldError = (input, errorNode, messageVisible) => {
+    if (!input || !errorNode) return;
+    errorNode.hidden = !messageVisible;
+    if (messageVisible) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  };
+
+  orderChoices.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!orderType) return;
+      orderType.value = button.dataset.orderChoice || 'Retirada no Kipeixe';
+      orderChoices.forEach((choice) => {
+        const selected = choice === button;
+        choice.classList.toggle('is-selected', selected);
+        choice.setAttribute('aria-checked', selected ? 'true' : 'false');
+      });
+      syncAddressField();
+    });
+  });
   syncAddressField();
+
+  const nameInput = qs('input[name="name"]', orderForm);
+  const addressInput = qs('input[name="address"]', orderForm);
+
+  nameInput?.addEventListener('input', () => {
+    if (nameInput.value.trim()) setFieldError(nameInput, nameError, false);
+  });
+  addressInput?.addEventListener('input', () => {
+    if (addressInput.value.trim()) setFieldError(addressInput, addressError, false);
+  });
 
   orderForm?.addEventListener('submit', (event) => {
     event.preventDefault();
-    if (!cart.length || !orderForm.reportValidity()) return;
-
     const data = new FormData(orderForm);
     const name = String(data.get('name') || '').trim();
     const type = String(data.get('type') || '').trim();
     const address = String(data.get('address') || '').trim();
     const notes = String(data.get('notes') || '').trim();
+    const needsAddress = type === 'Entrega';
+    const nameInvalid = !name;
+    const addressInvalid = needsAddress && !address;
+
+    setFieldError(nameInput, nameError, nameInvalid);
+    setFieldError(addressInput, addressError, addressInvalid);
+
+    if (!cart.length || nameInvalid || addressInvalid) {
+      const target = nameInvalid ? nameInput : addressInvalid ? addressInput : null;
+      target?.focus({ preventScroll: true });
+      target?.closest('.checkout-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     const lines = [
       'Olá! Quero fazer este pedido pelo site do Kipeixe:',
