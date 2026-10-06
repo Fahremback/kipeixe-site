@@ -524,14 +524,64 @@ img { display: block; max-width: 100%; }
 .page-turner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 16px;
+  gap: 18px;
   align-items: center;
-  padding-top: 24px;
+  padding-top: 30px;
 }
-.page-turner button { border: 0; background: transparent; color: var(--forest-800); font-size: 12px; font-weight: 900; }
-.page-turner button:last-child { justify-self: end; }
-.page-turner button:disabled { opacity: .25; cursor: default; }
-.page-turner span { color: var(--muted); font-size: 11px; font-weight: 800; }
+.page-turner button {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(12,55,43,.18);
+  border-radius: 999px;
+  padding: 0 18px;
+  background: #fff;
+  color: var(--forest-900);
+  box-shadow: 0 8px 22px rgba(20,32,25,.08);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .01em;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, border-color .18s ease;
+}
+.page-turner button:first-child { justify-self: start; }
+.page-turner button:last-child {
+  justify-self: end;
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(243,106,18,.22);
+}
+.page-turner button:not(:disabled):hover {
+  transform: translateY(-2px);
+  border-color: var(--forest-800);
+  background: var(--forest-900);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(20,32,25,.14);
+}
+.page-turner button:last-child:not(:disabled):hover {
+  border-color: #d95808;
+  background: #d95808;
+  box-shadow: 0 13px 30px rgba(217,88,8,.28);
+}
+.page-turner button:disabled {
+  opacity: .38;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+.page-turner span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(20,82,63,.08);
+  color: var(--forest-800);
+  font-size: 11px;
+  font-weight: 900;
+}
 
 /* Ambient */
 .page-hero.compact {
@@ -1062,7 +1112,13 @@ body.photo-open { overflow: hidden; }
   .add-button { padding: 5px 8px; font-size: 10px; }
   .variant-list { max-width: 122px; }
   .variant-button { font-size: 9px; padding: 5px 6px; }
-  .page-turner { grid-template-columns: 1fr 1fr; }
+  .page-turner { grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 24px; }
+  .page-turner button {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
   .page-turner span { display: none; }
 
   .page-hero.compact { width: 100%; margin: 0; grid-template-columns: 1fr; border-radius: 0; }
