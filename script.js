@@ -75,6 +75,10 @@
   const prevCategory = qs('[data-category-prev]');
   const nextCategory = qs('[data-category-next]');
   const bookPage = qs('.book-page');
+  const categoryPhotoZoom = qs('[data-category-photo-zoom]');
+  const photoLightbox = qs('[data-photo-lightbox]');
+  const photoLightboxImage = qs('[data-photo-lightbox-image]');
+  const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
 
   const categoryImages = {
@@ -131,7 +135,19 @@
   const renderMenuItem = (item, category) => {
     const photo = itemImage(item.name, category.id);
     const photoHtml = photo
-      ? `<img class="menu-entry-photo" src="${photo}" alt="" loading="lazy" />`
+      ? `
+        <button
+          type="button"
+          class="menu-entry-photo-button"
+          data-photo-zoom
+          data-photo-src="${photo}"
+          data-photo-name="${escapeHtml(item.name)}"
+          aria-label="Ampliar foto de ${escapeHtml(item.name)}"
+        >
+          <img class="menu-entry-photo" src="${photo}" alt="${escapeHtml(item.name)}" loading="lazy" />
+          <span aria-hidden="true">⌕</span>
+        </button>
+      `
       : '';
     let actions = '';
 
@@ -191,6 +207,11 @@
     categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
     categoryImage.src = categoryImages[category.id] || 'assets/produtos/tilapia-vinagrete.webp';
     categoryImage.alt = `Categoria ${category.title}`;
+    if (categoryPhotoZoom) {
+      categoryPhotoZoom.dataset.photoSrc = categoryImage.src;
+      categoryPhotoZoom.dataset.photoName = category.title;
+      categoryPhotoZoom.setAttribute('aria-label', `Ampliar foto de ${category.title}`);
+    }
     menuItems.innerHTML = category.items.map((item) => renderMenuItem(item, category)).join('');
 
     prevCategory.disabled = currentCategory === 0;
@@ -235,6 +256,35 @@
     menuCover.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const openPhoto = (src, name = '') => {
+    if (!photoLightbox || !photoLightboxImage || !src) return;
+    photoLightboxImage.src = src;
+    photoLightboxImage.alt = name ? `Foto ampliada de ${name}` : 'Foto ampliada do prato';
+    if (photoTitle) photoTitle.textContent = name || 'Prato do Kipeixe';
+    photoLightbox.classList.add('is-open');
+    photoLightbox.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('photo-open');
+    qs('[data-photo-close]', photoLightbox)?.focus({ preventScroll: true });
+  };
+
+  const closePhoto = () => {
+    if (!photoLightbox) return;
+    photoLightbox.classList.remove('is-open');
+    photoLightbox.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('photo-open');
+  };
+
+  document.addEventListener('click', (event) => {
+    const zoomTrigger = event.target.closest('[data-photo-zoom]');
+    if (zoomTrigger) {
+      event.preventDefault();
+      openPhoto(zoomTrigger.dataset.photoSrc, zoomTrigger.dataset.photoName);
+      return;
+    }
+
+    if (event.target.closest('[data-photo-close]')) closePhoto();
+  });
 
   qs('[data-menu-open]')?.addEventListener('click', openMenu);
   qs('[data-menu-close]')?.addEventListener('click', closeMenu);
@@ -424,6 +474,9 @@
   renderCart();
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeCart();
+    if (event.key === 'Escape') {
+      closePhoto();
+      closeCart();
+    }
   });
 })();

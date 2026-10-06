@@ -140,6 +140,13 @@
                     <h3 data-category-title></h3>
                   </div>
                   <img data-category-image src="" alt="" />
+                  <button
+                    class="category-photo-zoom"
+                    type="button"
+                    data-photo-zoom
+                    data-category-photo-zoom
+                    aria-label="Ampliar foto da categoria"
+                  ><span aria-hidden="true">⌕</span> Ver foto</button>
                 </header>
                 <div class="menu-items" data-menu-items></div>
                 <footer class="page-turner">
@@ -321,6 +328,22 @@
             </button>
             <small class="checkout-disclaimer">O pedido só é confirmado após a resposta do Kipeixe no WhatsApp.</small>
           </form>
+        </div>
+      </section>
+    </aside>
+
+    <aside class="photo-lightbox" data-photo-lightbox aria-hidden="true">
+      <div class="photo-lightbox-backdrop" data-photo-close></div>
+      <section class="photo-lightbox-panel" role="dialog" aria-modal="true" aria-labelledby="photo-lightbox-title">
+        <header>
+          <div>
+            <p class="eyebrow light">Foto do prato</p>
+            <strong id="photo-lightbox-title" data-photo-title></strong>
+          </div>
+          <button type="button" class="photo-lightbox-close" data-photo-close aria-label="Fechar foto">×</button>
+        </header>
+        <div class="photo-lightbox-stage">
+          <img data-photo-lightbox-image src="" alt="" />
         </div>
       </section>
     </aside>
