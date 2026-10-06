@@ -80,6 +80,11 @@
   const photoLightboxImage = qs('[data-photo-lightbox-image]');
   const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
+  const MENU_ASSET_VERSION = '20261006-4';
+  const FALLBACK_DISH_IMAGE = 'assets/produtos/prato-completo.webp';
+  const versionAsset = (path) => path
+    ? `${path}${path.includes('?') ? '&' : '?'}v=${MENU_ASSET_VERSION}`
+    : '';
 
   const categoryImages = {
     peixes: 'assets/produtos/tilapia-vinagrete.webp',
@@ -134,17 +139,18 @@
 
   const renderMenuItem = (item, category) => {
     const photo = itemImage(item.name, category.id);
+    const photoUrl = versionAsset(photo);
     const photoHtml = photo
       ? `
         <button
           type="button"
           class="menu-entry-photo-button"
           data-photo-zoom
-          data-photo-src="${photo}"
+          data-photo-src="${photoUrl}"
           data-photo-name="${escapeHtml(item.name)}"
           aria-label="Ampliar foto de ${escapeHtml(item.name)}"
         >
-          <img class="menu-entry-photo" src="${photo}" alt="${escapeHtml(item.name)}" loading="lazy" />
+          <img class="menu-entry-photo" src="${photoUrl}" alt="${escapeHtml(item.name)}" loading="lazy" />
           <span aria-hidden="true">⌕</span>
         </button>
       `
@@ -205,7 +211,7 @@
     categoryEyebrow.textContent = category.eyebrow || 'Cardápio Kipeixe';
     pageNumber.textContent = String(currentCategory + 1).padStart(2, '0');
     categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
-    categoryImage.src = categoryImages[category.id] || 'assets/produtos/tilapia-vinagrete.webp';
+    categoryImage.src = versionAsset(categoryImages[category.id] || 'assets/produtos/tilapia-vinagrete.webp');
     categoryImage.alt = `Categoria ${category.title}`;
     if (categoryPhotoZoom) {
       categoryPhotoZoom.dataset.photoSrc = categoryImage.src;
@@ -233,6 +239,21 @@
       active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
   };
+
+  document.addEventListener('error', (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    if (!image.matches('.menu-entry-photo, [data-category-image]')) return;
+    if (image.dataset.fallbackApplied === 'true') return;
+
+    image.dataset.fallbackApplied = 'true';
+    const fallbackSrc = versionAsset(FALLBACK_DISH_IMAGE);
+    image.src = fallbackSrc;
+
+    const zoomTrigger = image.closest('[data-photo-zoom]')
+      || (image.matches('[data-category-image]') ? categoryPhotoZoom : null);
+    if (zoomTrigger) zoomTrigger.dataset.photoSrc = fallbackSrc;
+  }, true);
 
   categoryTabs?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-category-index]');
