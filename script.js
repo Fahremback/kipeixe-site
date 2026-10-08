@@ -104,6 +104,11 @@
     if (n === 'tilapia a milanesa') return 'assets/produtos/tilapia-milanesa.webp';
     if (n === 'tilapia a vinagrete') return 'assets/produtos/tilapia-vinagrete.webp';
     if (n === 'tilapia grelhada') return 'assets/produtos/tilapia-inteira.webp';
+    if (n.includes('tilapia a parmegiana') || n.includes('tilapia a dore')) return 'assets/produtos/tilapia-milanesa.webp';
+    if (n.includes('tilapia a brasileira')) return 'assets/produtos/prato-completo.webp';
+    if (n.includes('sinfonia')) return 'assets/produtos/prato-completo.webp';
+    if (n.includes('camarao')) return 'assets/produtos/porcao-peixe.webp';
+    if (n.includes('surubi') || n.includes('salmao') || n.includes('sashimi')) return 'assets/produtos/peixe.webp';
     if (n === 'batata frita') return 'assets/produtos/batata.webp';
     if (n === 'pirao') return 'assets/produtos/pirao.webp';
     if (n === 'vinagrete') return 'assets/produtos/vinagrete.webp';
@@ -112,7 +117,34 @@
     if (n.includes('bistecao') || n.includes('picanha completa')) return 'assets/produtos/carne.webp';
     if (n.includes('gin tonica mediterraneo') || n === 'bergamo') return 'assets/produtos/drink.webp';
     if (categoryId === 'saladas' && n.includes('salada mista grande')) return 'assets/produtos/salada.webp';
-    return '';
+
+    if (categoryId === 'peixes') return 'assets/produtos/peixe.webp';
+
+    if (categoryId === 'carnes') return 'assets/produtos/carne.webp';
+
+    if (categoryId === 'frango') {
+      if (n.includes('espaguete')) return 'assets/produtos/prato-completo.webp';
+      return 'assets/produtos/frango.webp';
+    }
+
+    if (categoryId === 'porcoes') {
+      if (n.includes('picanha') || n.includes('file mignon') || n.includes('calabresa')) return 'assets/produtos/carne.webp';
+      if (n.includes('frango')) return 'assets/produtos/frango.webp';
+      if (n.includes('batata') || n.includes('polenta') || n.includes('mandioca') || n.includes('banana')) return 'assets/produtos/batata.webp';
+      if (n.includes('pirao') || n.includes('feijao') || n.includes('creme') || n.includes('molho')) return 'assets/produtos/pirao.webp';
+      if (n.includes('vinagrete')) return 'assets/produtos/vinagrete.webp';
+      if (n.includes('arroz') || n.includes('farofa')) return 'assets/produtos/prato-completo.webp';
+      if (n.includes('tilapia')) return 'assets/produtos/porcao-tilapia.webp';
+      return 'assets/produtos/porcao-peixe.webp';
+    }
+
+    if (categoryId === 'saladas') return 'assets/produtos/salada.webp';
+    if (categoryId === 'lanches') return 'assets/produtos/burger.webp';
+    if (categoryId === 'bebidas' || categoryId === 'sucos' || categoryId === 'vinhos' || categoryId === 'coqueteis') {
+      return 'assets/produtos/drink.webp';
+    }
+
+    return 'assets/produtos/prato-completo.webp';
   };
 
   const escapeHtml = (text = '') =>
