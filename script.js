@@ -80,7 +80,7 @@
   const photoLightboxImage = qs('[data-photo-lightbox-image]');
   const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
-  const MENU_ASSET_VERSION = '20261008-5';
+  const MENU_ASSET_VERSION = '20261008-6';
   const FALLBACK_DISH_IMAGE = 'assets/produtos/prato-completo.webp';
   const versionAsset = (path) => path
     ? `${path}${path.includes('?') ? '&' : '?'}v=${MENU_ASSET_VERSION}`
