@@ -80,161 +80,146 @@
   const photoLightboxImage = qs('[data-photo-lightbox-image]');
   const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
-  const MENU_ASSET_VERSION = '20261008-6';
+  const MENU_ASSET_VERSION = '20261009-7';
   const FALLBACK_DISH_IMAGE = 'assets/produtos/prato-completo.webp';
   const versionAsset = (path) => path
     ? `${path}${path.includes('?') ? '&' : '?'}v=${MENU_ASSET_VERSION}`
     : '';
 
-  const categoryImages = {
-    peixes: 'assets/produtos/tilapia-vinagrete.webp',
-    carnes: 'assets/produtos/carne.webp',
-    frango: 'assets/produtos/frango.webp',
-    porcoes: 'assets/produtos/porcao-peixe.webp',
-    saladas: 'assets/produtos/salada.webp',
-    lanches: 'assets/produtos/burger.webp',
-    bebidas: 'assets/produtos/drink.webp',
-    sucos: 'assets/produtos/drink.webp',
-    vinhos: 'assets/produtos/drink.webp',
-    coqueteis: 'assets/produtos/drink.webp'
-  };
-
+  const localProductImage = (file) => `assets/produtos/${file}.webp`;
   const onlineProductImage = (file) => `assets/produtos/online/${file}.webp`;
+  const pexelsProductImage = (id) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=900`;
+  const commonsProductImage = (file) => `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(file)}?width=900`;
 
-  const itemImage = (name, categoryId) => {
-    const n = normalize(name);
-
-    if (categoryId === 'peixes') {
-      const photos = {
-        'tilapia a milanesa': 'fried-fish-fillets',
-        'tilapia grelhada': 'grilled-fish',
-        'tilapia a parmegiana': 'fish-sauce',
-        'tilapia a dore': 'fried-fish-fillets',
-        'tilapia a brasileira': 'fish-sauce',
-        'camarao a milanesa': 'fried-shrimp',
-        'surubi grelhado': 'grilled-fish',
-        'surubi a milanesa': 'fried-fish-fillets',
-        'salmao ao molho fino': 'salmon',
-        'sashimi completo': 'sashimi',
-        'tilapia a vinagrete': 'whole-fried-fish',
-        'sinfonia de kipeixe': 'brazilian-seafood'
-      };
-      return photos[n] ? onlineProductImage(photos[n]) : '';
-    }
-
-    if (categoryId === 'carnes') {
-      if (n.includes('bisteca de porco')) return onlineProductImage('pork-chop');
-      if (n === 'file mignon a milanesa' || n === 'file mignon a parana') return onlineProductImage('breaded-meat');
-      if (n === 'file mignon a parmegiana') return onlineProductImage('milanesa-cheese');
-      if (n.includes('bistecao') || n.includes('file mignon com fritas') || n.includes('picanha completa')) return onlineProductImage('steak');
-      return '';
-    }
-
-    if (categoryId === 'frango') {
-      const photos = {
-        'frango grelhado': 'grilled-chicken',
-        'frango a milanesa': 'breaded-chicken',
-        'frango a passarinho': 'fried-chicken',
-        'espaguete a bolonhesa': 'spaghetti-bolognese',
-        'espaguete alho e oleo': 'spaghetti-aglio-olio'
-      };
-      return photos[n] ? onlineProductImage(photos[n]) : '';
-    }
-
-    if (categoryId === 'porcoes') {
-      const photos = {
-        'tilapia': 'fried-fish-fillets',
-        'tilapia em postas': 'fried-fish-fillets',
-        'pacu em postas': 'whole-fried-fish',
-        'surubi': 'grilled-fish',
-        'camarao': 'fried-shrimp',
-        'picanha': 'steak',
-        'file mignon': 'steak',
-        'calabresa': 'grilled-sausage',
-        'frango a passarinho': 'fried-chicken',
-        'banana a milanesa': 'fried-banana',
-        'bolinho de bacalhau': 'croquettes',
-        'feijao': 'beans',
-        'lambari': 'small-fried-fish',
-        'batata frita': 'fries',
-        'polenta': 'polenta',
-        'mandioca': 'cassava-fries',
-        'arroz': 'rice',
-        'farofa': 'farofa',
-        'pirao': 'pirao',
-        'creme de alho': 'tartar-sauce',
-        'molho rose': 'pink-sauce',
-        'molho tartaro': 'tartar-sauce',
-        'vinagrete': 'vinagrete'
-      };
-      const file = photos[n];
-      if (!file) return '';
-      return onlineProductImage(file);
-    }
-
-    if (categoryId === 'saladas') {
-      if (n === 'palmito') return onlineProductImage('heart-palm-salad');
-      if (n.includes('maionese')) return onlineProductImage('potato-salad');
-      if (n.includes('salada mista')) return onlineProductImage('mixed-salad');
-      return '';
-    }
-
-    if (categoryId === 'lanches') {
-      if (n === 'x-frango') return onlineProductImage('chicken-burger');
-      if (n === 'x-calabresa') return onlineProductImage('sausage-sandwich');
-      if (n === 'x-egg' || n === 'x-bacon' || n === 'x-tudo') return onlineProductImage('bacon-egg-burger');
-      if (n === 'x-salada' || n === 'x-burguer') return onlineProductImage('cheeseburger');
-      return '';
-    }
-
-    if (categoryId === 'bebidas') {
-      if (n === 'refrigerantes') return onlineProductImage('soda-cans');
-      if (n === 'agua sem gas') return onlineProductImage('water');
-      if (n === 'agua com gas' || n === 'agua h2o') return onlineProductImage('sparkling-water');
-      if (n === 'agua tonica') return onlineProductImage('tonic-water');
-      return onlineProductImage('beer');
-    }
-
-    if (categoryId === 'sucos') {
-      const photos = {
-        'abacaxi': 'pineapple-juice',
-        'acerola': 'acerola-juice',
-        'laranja': 'orange-juice',
-        'limao': 'lime-juice',
-        'manga': 'mango-juice',
-        'maracuja': 'passionfruit-juice',
-        'morango': 'strawberry-juice',
-        'uva': 'grape-juice',
-        'suco no copo': 'fruit-cocktail',
-        'adicional de leite': 'milk',
-        'adicional de fruta': 'mixed-fruit'
-      };
-      return photos[n] ? onlineProductImage(photos[n]) : '';
-    }
-
-    if (categoryId === 'vinhos') {
-      if (n.includes('sauvignon blanc')) return onlineProductImage('white-wine');
-      if (n.includes('cabernet')) return onlineProductImage('cabernet-wine');
-      if (n.includes('carmenere') || n.includes('malbec') || n.includes('red blend') || n.includes('bordo') || n.includes('jarra') || n.includes('taca')) {
-        return onlineProductImage('red-wine');
-      }
-      return onlineProductImage('wine-assortment');
-    }
-
-    if (categoryId === 'coqueteis') {
-      if (n === 'bergamo' || n === 'freyr') return onlineProductImage('fruit-cocktail');
-      if (n === 'pina colada') return onlineProductImage('pina-colada');
-      if (n === 'daiquiri de morango') return onlineProductImage('strawberry-daiquiri');
-      if (n.includes('gin tonica')) return onlineProductImage('gin-tonic');
-      if (n === 'mojito') return onlineProductImage('mojito');
-      if (n === 'rubro mojito') return onlineProductImage('strawberry-daiquiri');
-      if (n.startsWith('caipirinha')) return onlineProductImage('caipirinha');
-      if (n === 'adicional de frutas') return onlineProductImage('mixed-fruit');
-      return '';
-    }
-
-    return '';
+  const categoryImages = {
+    peixes: localProductImage('tilapia-vinagrete'),
+    carnes: localProductImage('carne'),
+    frango: localProductImage('frango'),
+    porcoes: localProductImage('porcao-peixe'),
+    saladas: localProductImage('salada'),
+    lanches: onlineProductImage('cheeseburger'),
+    bebidas: pexelsProductImage('12946714'),
+    sucos: onlineProductImage('orange-juice'),
+    vinhos: pexelsProductImage('9149107'),
+    coqueteis: onlineProductImage('mojito')
   };
+
+  // Mapeamento auditado item por item. Se não há foto realmente compatível,
+  // o item fica sem miniatura em vez de exibir outro produto ou outra marca.
+  const ITEM_PHOTOS = {
+    "peixes|tilapia a milanesa": localProductImage('tilapia-milanesa'),
+    "peixes|tilapia grelhada": onlineProductImage('grilled-fish'),
+    "peixes|tilapia a parmegiana": '',
+    "peixes|tilapia a dore": onlineProductImage('fried-fish-fillets'),
+    "peixes|tilapia a brasileira": '',
+    "peixes|camarao a milanesa": onlineProductImage('fried-shrimp'),
+    "peixes|surubi grelhado": onlineProductImage('grilled-fish'),
+    "peixes|surubi a milanesa": onlineProductImage('fried-fish-fillets'),
+    "peixes|salmao ao molho fino": pexelsProductImage('31043029'),
+    "peixes|sashimi completo": '',
+    "peixes|tilapia a vinagrete": localProductImage('tilapia-vinagrete'),
+    "peixes|sinfonia de kipeixe": onlineProductImage('brazilian-seafood'),
+    "carnes|bisteca de porco": onlineProductImage('pork-chop'),
+    "carnes|bisteca de porco a tropeira": onlineProductImage('pork-chop'),
+    "carnes|bistecao a moda da casa": localProductImage('carne'),
+    "carnes|file mignon a milanesa": pexelsProductImage('37389030'),
+    "carnes|file mignon a parana": '',
+    "carnes|file mignon a parmegiana": commonsProductImage("Bife a parmegiana com arroz e batata frita.jpg"),
+    "carnes|file mignon com fritas": localProductImage('carne'),
+    "carnes|picanha completa": localProductImage('carne'),
+    "frango|frango grelhado": localProductImage('frango'),
+    "frango|frango a milanesa": pexelsProductImage('33755321'),
+    "frango|frango a passarinho": onlineProductImage('fried-chicken'),
+    "frango|espaguete a bolonhesa": onlineProductImage('spaghetti-bolognese'),
+    "frango|espaguete alho e oleo": onlineProductImage('spaghetti-aglio-olio'),
+    "porcoes|tilapia": localProductImage('porcao-peixe'),
+    "porcoes|tilapia em postas": localProductImage('porcao-peixe'),
+    "porcoes|pacu em postas": localProductImage('porcao-peixe'),
+    "porcoes|surubi": localProductImage('porcao-peixe'),
+    "porcoes|camarao": onlineProductImage('fried-shrimp'),
+    "porcoes|picanha": localProductImage('carne'),
+    "porcoes|file mignon": localProductImage('carne'),
+    "porcoes|calabresa": '',
+    "porcoes|frango a passarinho": onlineProductImage('fried-chicken'),
+    "porcoes|banana a milanesa": onlineProductImage('fried-banana'),
+    "porcoes|bolinho de bacalhau": commonsProductImage("Bolinho de Bacalhau.jpg"),
+    "porcoes|feijao": pexelsProductImage('8479384'),
+    "porcoes|lambari": onlineProductImage('small-fried-fish'),
+    "porcoes|batata frita": onlineProductImage('fries'),
+    "porcoes|polenta": commonsProductImage("Polenta fritta da sgranocchiare.jpg"),
+    "porcoes|mandioca": onlineProductImage('cassava-fries'),
+    "porcoes|arroz": pexelsProductImage('8923092'),
+    "porcoes|farofa": commonsProductImage("Farofa brazil.jpg"),
+    "porcoes|pirao": localProductImage('pirao'),
+    "porcoes|creme de alho": pexelsProductImage('6129134'),
+    "porcoes|molho rose": '',
+    "porcoes|molho tartaro": onlineProductImage('tartar-sauce'),
+    "porcoes|vinagrete": localProductImage('vinagrete'),
+    "saladas|palmito": '',
+    "saladas|maionese pequena": onlineProductImage('potato-salad'),
+    "saladas|maionese grande": onlineProductImage('potato-salad'),
+    "saladas|salada mista pequena": onlineProductImage('mixed-salad'),
+    "saladas|salada mista media": onlineProductImage('mixed-salad'),
+    "saladas|salada mista grande": onlineProductImage('mixed-salad'),
+    "lanches|x-salada": pexelsProductImage('6045440'),
+    "lanches|x-burguer": onlineProductImage('cheeseburger'),
+    "lanches|x-egg": pexelsProductImage('2293537'),
+    "lanches|x-bacon": pexelsProductImage('3826320'),
+    "lanches|x-tudo": onlineProductImage('bacon-egg-burger'),
+    "lanches|x-frango": onlineProductImage('chicken-burger'),
+    "lanches|x-calabresa": pexelsProductImage('18396045'),
+    "bebidas|antarctica original": pexelsProductImage('12946714'),
+    "bebidas|spaten": pexelsProductImage('12946714'),
+    "bebidas|amstel": pexelsProductImage('12946714'),
+    "bebidas|skol": pexelsProductImage('12946714'),
+    "bebidas|malzbier": pexelsProductImage('12946714'),
+    "bebidas|heineken": pexelsProductImage('12946714'),
+    "bebidas|heineken zero": pexelsProductImage('12946714'),
+    "bebidas|refrigerantes": pexelsProductImage('20045266'),
+    "bebidas|agua sem gas": onlineProductImage('water'),
+    "bebidas|agua com gas": onlineProductImage('sparkling-water'),
+    "bebidas|agua tonica": onlineProductImage('sparkling-water'),
+    "bebidas|agua h2o": onlineProductImage('sparkling-water'),
+    "sucos|abacaxi": onlineProductImage('pineapple-juice'),
+    "sucos|acerola": onlineProductImage('acerola-juice'),
+    "sucos|laranja": onlineProductImage('orange-juice'),
+    "sucos|limao": onlineProductImage('lime-juice'),
+    "sucos|manga": onlineProductImage('mango-juice'),
+    "sucos|maracuja": onlineProductImage('passionfruit-juice'),
+    "sucos|morango": onlineProductImage('strawberry-juice'),
+    "sucos|uva": pexelsProductImage('12987518'),
+    "sucos|suco no copo": pexelsProductImage('7656390'),
+    "sucos|adicional de leite": onlineProductImage('milk'),
+    "sucos|adicional de fruta": onlineProductImage('mixed-fruit'),
+    "vinhos|120 santa rita sauvignon blanc": pexelsProductImage('5732813'),
+    "vinhos|casa amada carmenere": pexelsProductImage('9149107'),
+    "vinhos|casillero del diablo red blend": pexelsProductImage('9149107'),
+    "vinhos|estacao 36 bordo demi-sec": pexelsProductImage('9149107'),
+    "vinhos|jarra de vinho": pexelsProductImage('9149107'),
+    "vinhos|reservado cabernet sauvignon": pexelsProductImage('9149107'),
+    "vinhos|reservado malbec": pexelsProductImage('9149107'),
+    "vinhos|santa veronica cabernet sauvignon": pexelsProductImage('9149107'),
+    "vinhos|santa veronica malbec alta reserve": pexelsProductImage('9149107'),
+    "vinhos|taca de vinho": pexelsProductImage('9149107'),
+    "coqueteis|bergamo": pexelsProductImage('8679432'),
+    "coqueteis|pina colada": onlineProductImage('pina-colada'),
+    "coqueteis|daiquiri de morango": onlineProductImage('strawberry-daiquiri'),
+    "coqueteis|freyr": '',
+    "coqueteis|gin tonica mediterraneo": onlineProductImage('gin-tonic'),
+    "coqueteis|gin tonica tradicional": onlineProductImage('gin-tonic'),
+    "coqueteis|mojito": onlineProductImage('mojito'),
+    "coqueteis|rubro mojito": pexelsProductImage('30412118'),
+    "coqueteis|caipirinha bacardi": pexelsProductImage('13059626'),
+    "coqueteis|caipirinha cachaca": pexelsProductImage('13059626'),
+    "coqueteis|caipirinha steinhager": pexelsProductImage('13059626'),
+    "coqueteis|caipirinha vodka": pexelsProductImage('13059626'),
+    "coqueteis|caipirinha vodka smirnoff": pexelsProductImage('13059626'),
+    "coqueteis|caipirinha vodka com fruta": pexelsProductImage('13059626'),
+    "coqueteis|adicional de frutas": onlineProductImage('mixed-fruit'),
+  };
+
+  const itemImage = (name, categoryId) =>
+    ITEM_PHOTOS[`${categoryId}|${normalize(name)}`] ?? '';
 
   const escapeHtml = (text = '') =>
     String(text)
