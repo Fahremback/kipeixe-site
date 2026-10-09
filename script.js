@@ -244,23 +244,6 @@
   };
 
   const renderMenuItem = (item, category) => {
-    const photo = itemImage(item.name, category.id);
-    const photoUrl = versionAsset(photo);
-    const photoHtml = photo
-      ? `
-        <button
-          type="button"
-          class="menu-entry-photo-button"
-          data-photo-zoom
-          data-photo-src="${photoUrl}"
-          data-photo-name="${escapeHtml(item.name)}"
-          aria-label="Ampliar foto de ${escapeHtml(item.name)}"
-        >
-          <img class="menu-entry-photo" src="${photoUrl}" alt="${escapeHtml(item.name)}" loading="lazy" />
-          <span aria-hidden="true">⌕</span>
-        </button>
-      `
-      : '';
     let actions = '';
 
     if (Array.isArray(item.variants) && item.variants.length) {
@@ -297,8 +280,7 @@
     }
 
     return `
-      <article class="menu-entry ${photo ? 'has-photo' : ''}">
-        ${photoHtml}
+      <article class="menu-entry">
         <div class="menu-entry-main">
           <h4>${escapeHtml(item.name)}</h4>
           ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
@@ -317,13 +299,6 @@
     categoryEyebrow.textContent = category.eyebrow || 'Cardápio Kipeixe';
     pageNumber.textContent = String(currentCategory + 1).padStart(2, '0');
     categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
-    categoryImage.src = versionAsset(categoryImages[category.id] || 'assets/produtos/tilapia-vinagrete.webp');
-    categoryImage.alt = `Categoria ${category.title}`;
-    if (categoryPhotoZoom) {
-      categoryPhotoZoom.dataset.photoSrc = categoryImage.src;
-      categoryPhotoZoom.dataset.photoName = category.title;
-      categoryPhotoZoom.setAttribute('aria-label', `Ampliar foto de ${category.title}`);
-    }
     menuItems.innerHTML = category.items.map((item) => renderMenuItem(item, category)).join('');
 
     prevCategory.disabled = currentCategory === 0;
