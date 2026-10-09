@@ -434,6 +434,9 @@
   const cartEmpty = qs('[data-cart-empty]');
   const cartCheckout = qs('[data-cart-checkout]');
   const cartTotal = qs('[data-cart-total]');
+  const quickCheckout = qs('[data-quick-checkout]');
+  const quickCount = qs('[data-quick-count]');
+  const quickTotal = qs('[data-quick-total]');
   const orderForm = qs('[data-order-form]');
   const orderType = qs('[data-order-type]');
   const orderChoices = qsa('[data-order-choice]');
@@ -454,6 +457,15 @@
   const renderCart = () => {
     const count = cartCount();
     qsa('[data-cart-count]').forEach((node) => { node.textContent = count; });
+    document.body.classList.toggle('has-cart-items', count > 0);
+    if (quickCheckout) {
+      quickCheckout.hidden = count === 0;
+      const itemLabel = `${count} ${count === 1 ? 'item' : 'itens'} no pedido`;
+      const totalLabel = currency.format(cartValue());
+      if (quickCount) quickCount.textContent = itemLabel;
+      if (quickTotal) quickTotal.textContent = totalLabel;
+      quickCheckout.setAttribute('aria-label', `Finalizar pedido. ${itemLabel}. Total ${totalLabel}`);
+    }
     safeStorage.set('kipeixe_cart_v1', cart);
 
     if (!cartItems || !cartEmpty || !cartCheckout) return;
@@ -485,6 +497,11 @@
     if (existing) existing.qty += 1;
     else cart.push({ id, name, variant, price: numericPrice, qty: 1 });
     renderCart();
+    if (quickCheckout && !quickCheckout.hidden) {
+      quickCheckout.classList.remove('is-pulsing');
+      void quickCheckout.offsetWidth;
+      quickCheckout.classList.add('is-pulsing');
+    }
   };
 
   menuItems?.addEventListener('click', (event) => {
@@ -497,6 +514,10 @@
   });
 
   qsa('[data-cart-open]').forEach((button) => button.addEventListener('click', openCart));
+  quickCheckout?.addEventListener('click', () => {
+    openCart();
+    qs('.cart-total', cartCheckout)?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  });
   qsa('[data-cart-close]').forEach((button) => button.addEventListener('click', closeCart));
 
   cartItems?.addEventListener('click', (event) => {

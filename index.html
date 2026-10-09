@@ -8,7 +8,7 @@
     <title>Kipeixe | Restaurante & Pesque-Pague em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
     <link rel="preload" as="image" href="assets/ambiente/hero.webp" fetchpriority="high" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261009-1" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -233,8 +233,12 @@
       <span>© <span data-year></span> Kipeixe</span>
     </footer>
 
-    <button class="floating-cart" type="button" data-cart-open aria-label="Abrir meu pedido">
-      <span>Pedido</span><b data-cart-count>0</b>
+    <button class="quick-checkout" type="button" data-quick-checkout hidden aria-label="Finalizar pedido">
+      <span class="quick-checkout-summary">
+        <span data-quick-count>1 item no pedido</span>
+        <strong data-quick-total>R$ 0,00</strong>
+      </span>
+      <span class="quick-checkout-action">Finalizar pedido <span aria-hidden="true">&rarr;</span></span>
     </button>
 
     <aside class="cart-drawer" data-cart-drawer aria-hidden="true">
@@ -357,6 +361,6 @@
     </nav>
 
     <script src="menu-data.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=20261009-1"></script>
   </body>
 </html>
