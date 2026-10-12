@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /kipeixe-site/
+Sitemap: https://fahremback.github.io/kipeixe-site/sitemap.xml

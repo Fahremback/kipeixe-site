@@ -1,0 +1,41 @@
+{
+  "name": "Pesque e Pague Kipeixe",
+  "short_name": "Kipeixe",
+  "description": "Restaurante e pesque-pague no bairro Três Lagoas, em Foz do Iguaçu, Paraná. Serve pratos com peixes, carnes, frango, massas, porções, lanches, saladas e bebidas.",
+  "website": "https://fahremback.github.io/kipeixe-site/",
+  "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
+  "address": {
+    "street": "Av. João Ricieri Maran, 1417",
+    "neighborhood": "Três Lagoas",
+    "city": "Foz do Iguaçu",
+    "state": "PR",
+    "postal_code": "85862-425",
+    "country": "BR"
+  },
+  "telephone": "+55 45 3577-2363",
+  "whatsapp": "https://wa.me/554535772363",
+  "instagram": "https://www.instagram.com/kipeixe.foz/",
+  "maps": "https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu",
+  "hours": {
+    "days": ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"],
+    "opens": "09:00",
+    "closes": "23:40",
+    "timezone": "America/Sao_Paulo"
+  },
+  "services": [
+    "Restaurante no local",
+    "Pesque-pague",
+    "Solicitação de pedido para retirada pelo site e WhatsApp",
+    "Solicitação de entrega pelo site e WhatsApp, sujeita a confirmação"
+  ],
+  "ordering": {
+    "how": "Escolha os produtos no cardápio do site, adicione ao carrinho, selecione entrega ou retirada e envie o pedido pelo WhatsApp. O pedido só é confirmado após resposta do Kipeixe.",
+    "confirmation_required": true,
+    "delivery_area": "Consulte a equipe pelo WhatsApp.",
+    "delivery_fee": "Consulte a equipe pelo WhatsApp.",
+    "availability": "Itens e preços podem ser confirmados com a equipe do Kipeixe."
+  },
+  "currency": "BRL",
+  "locale": "pt-BR",
+  "data_source": "Informações e cardápio publicados no próprio site do Kipeixe."
+}

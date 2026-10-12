@@ -1,0 +1,174 @@
+# Pesque e Pague Kipeixe — informações oficiais
+
+Restaurante e pesque-pague no bairro Três Lagoas, em Foz do Iguaçu, Paraná. Serve pratos com peixes, carnes, frango, massas, porções, lanches, saladas e bebidas.
+
+## Estabelecimento
+
+- Endereço: Av. João Ricieri Maran, 1417, Três Lagoas, Foz do Iguaçu/PR, CEP 85862-425, Brasil
+- Telefone: +55 45 3577-2363
+- WhatsApp: https://wa.me/554535772363
+- Instagram: https://www.instagram.com/kipeixe.foz/
+- Localização: https://www.google.com/maps/search/?api=1&query=Pesque+e+Pague+Kipeixe+Foz+do+Iguacu
+- Horário: diariamente das 09:00 às 23:40 (America/Sao_Paulo)
+
+## Serviços
+
+- Restaurante no local
+- Pesque-pague
+- Solicitação de pedido para retirada pelo site e WhatsApp
+- Solicitação de entrega pelo site e WhatsApp, sujeita a confirmação
+
+## Pedidos e confirmação
+
+Escolha os produtos no cardápio do site, adicione ao carrinho, selecione entrega ou retirada e envie o pedido pelo WhatsApp. O pedido só é confirmado após resposta do Kipeixe.
+- Área de entrega: Consulte a equipe pelo WhatsApp.
+- Taxa de entrega: Consulte a equipe pelo WhatsApp.
+- Disponibilidade: Itens e preços podem ser confirmados com a equipe do Kipeixe.
+- Não há confirmação automática de pedidos pelo site ou pela IA.
+
+# Cardápio do Kipeixe
+
+Fonte: https://fahremback.github.io/kipeixe-site/#cardapio
+
+Preços em BRL. Valores não informados: sob consulta.
+
+## Peixes
+
+- **Tilápia à milanesa** — R$ 112,00 — Filés de tilápia à milanesa, salada, batata frita, arroz e banana milanesa.
+- **Tilápia grelhada** — R$ 113,00 — Filés de tilápia grelhados, salada, legumes na manteiga e arroz.
+- **Tilápia à parmegiana** — R$ 117,00 — Filés de tilápia à milanesa cobertos com ervilha, queijo, molho, arroz e batata.
+- **Tilápia à dorê** — R$ 106,00 — Filés de tilápia à dorê, salada, batata frita e arroz.
+- **Tilápia à brasileira** — R$ 112,00 — Filés de tilápia ao molho, pirão e arroz.
+- **Camarão à milanesa** — R$ 154,00 — Camarão à milanesa, salada, batata frita e arroz.
+- **Surubi grelhado** — R$ 149,00 — Surubi grelhado, salada, batata sotê e arroz à grega.
+- **Surubi à milanesa** — R$ 152,00 — Surubi à milanesa, salada, batata frita e arroz.
+- **Salmão ao molho fino** — R$ 167,00 — Filé de salmão grelhado coberto com molho de alcaparras e champignon, salada, batata grizete e arroz.
+- **Sashimi completo** — R$ 115,00 — Sashimi de tilápia, porção de repolho, alho, gengibre, limão e wasabi.
+- **Tilápia à vinagrete** — R$ 126,00 — 2 tilápias fritas inteiras, arroz, salada e molho vinagrete.
+- **Sinfonia de Kipeixe** — R$ 548,00 — 4 filés de tilápia à milanesa, 1 posta de surubi à milanesa, 1 filé de salmão grelhado ao molho fino, 10 camarões à milanesa, 4 filés de tilápia grelhados, 6 bolinhos de bacalhau, arroz à grega, arroz branco, batata sotê, batata frita e salada mista.
+
+## Carnes
+
+- **Bisteca de porco** — R$ 102,00 — Bistecas de porco grelhadas, salada, batata frita e arroz.
+- **Bisteca de porco à tropeira** — R$ 120,00 — Bistecas de porco, arroz, polenta frita, couve com bacon, feijão tropeiro e ovo frito.
+- **Bistecão à moda da casa** — R$ 125,00 — Bistecas de boi grelhadas, maionese, batata frita, arroz e farofa.
+- **Filé mignon à milanesa** — R$ 135,00 — Filé mignon à milanesa, salada, batata frita e arroz.
+- **Filé mignon à Paraná** — R$ 148,00 — Filé mignon recheado com presunto e queijo à milanesa coberto com molho sugo, salada, batata frita, arroz à grega e banana milanesa.
+- **Filé mignon à parmegiana** — R$ 146,00 — Filé mignon à parmegiana coberto com ervilha, queijo e molho sugo, arroz e batata frita.
+- **Filé mignon com fritas** — R$ 127,00 — Filé mignon grelhado, salada, batata frita e arroz.
+- **Picanha completa** — sob consulta — 4 fatias de picanha grelhada, salada, batata frita e arroz.
+
+## Frango & massas
+
+- **Frango grelhado** — R$ 102,00 — Peito de frango grelhado, legumes na manteiga, salada e arroz.
+- **Frango à milanesa** — R$ 100,00 — Peito de frango à milanesa, salada, batata frita e arroz.
+- **Frango à passarinho** — R$ 95,00 — Frango à passarinho, salada, batata frita e arroz.
+- **Espaguete à bolonhesa** — R$ 65,00 — Espaguete coberto com molho, carne moída e queijo ralado.
+- **Espaguete alho e óleo** — R$ 60,00
+
+## Porções & acompanhamentos
+
+- **Tilápia** — R$ 45,00
+- **Tilápia em postas** — R$ 49,00
+- **Pacu em postas** — R$ 60,00
+- **Surubi** — R$ 78,00
+- **Camarão** — R$ 108,00
+- **Picanha** — R$ 90,00
+- **Filé mignon** — R$ 95,00
+- **Calabresa** — R$ 50,00
+- **Frango a passarinho** — R$ 52,00
+- **Banana à milanesa** — R$ 20,00
+- **Bolinho de bacalhau** — R$ 105,00
+- **Feijão** — R$ 13,00
+- **Lambari** — R$ 43,00
+- **Batata frita** — P: R$ 25,00; M: R$ 30,00; G: R$ 35,00
+- **Polenta** — P: R$ 22,00; M: R$ 24,00; G: R$ 28,00
+- **Mandioca** — P: R$ 22,00; M: R$ 24,00; G: R$ 28,00
+- **Arroz** — P: R$ 18,00; M: R$ 22,00; G: R$ 25,00
+- **Farofa** — P: R$ 13,00; G: R$ 18,00
+- **Pirão** — P: R$ 17,00; G: R$ 25,00
+- **Creme de alho** — R$ 10,00 — Molho
+- **Molho rosé** — R$ 9,00
+- **Molho tártaro** — R$ 9,00
+- **Vinagrete** — R$ 10,00
+
+## Saladas
+
+- **Palmito** — R$ 57,00
+- **Maionese pequena** — R$ 28,00
+- **Maionese grande** — R$ 35,00
+- **Salada mista pequena** — R$ 33,00
+- **Salada mista média** — R$ 38,00
+- **Salada mista grande** — R$ 53,00
+
+## Sanduíches
+
+- **X-Salada** — R$ 22,00
+- **X-Burguer** — R$ 18,00
+- **X-Egg** — R$ 24,00
+- **X-Bacon** — R$ 25,00
+- **X-Tudo** — R$ 32,00
+- **X-Frango** — R$ 22,00
+- **X-Calabresa** — R$ 22,00
+
+## Cervejas & refrigerantes
+
+- **Antarctica Original** — R$ 18,00 — 600 ml
+- **Spaten** — R$ 18,00 — 600 ml
+- **Amstel** — R$ 16,00 — 600 ml
+- **Skol** — R$ 16,00 — 600 ml
+- **Malzbier** — R$ 17,00 — 600 ml
+- **Heineken** — R$ 19,00 — 600 ml
+- **Skol** — R$ 9,00 — Lata
+- **Heineken** — R$ 10,00 — Lata
+- **Heineken Zero** — R$ 10,00 — Lata
+- **Refrigerantes** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Coca-Cola, Coca-Cola Zero, Guaraná Antarctica, Fanta Laranja, Fanta Uva, Schweppes Citrus, Pepsi, Pepsi Twist e Pepsi Black.
+- **Água sem gás** — R$ 6,00
+- **Água com gás** — R$ 7,00
+- **Água tônica** — R$ 8,00
+- **Água H2O** — R$ 8,00
+
+## Sucos
+
+- **Abacaxi** — R$ 25,00 — Jarra 700 ml
+- **Acerola** — R$ 25,00 — Jarra 700 ml
+- **Laranja** — R$ 34,00 — Jarra 700 ml
+- **Limão** — R$ 25,00 — Jarra 700 ml
+- **Manga** — R$ 25,00 — Jarra 700 ml
+- **Maracujá** — R$ 30,00 — Jarra 700 ml
+- **Morango** — R$ 28,00 — Jarra 700 ml
+- **Uva** — R$ 25,00 — Jarra 700 ml
+- **Suco no copo** — R$ 15,00 — 300 ml
+- **Adicional de leite** — R$ 3,00
+- **Adicional de fruta** — R$ 4,00
+
+## Vinhos
+
+- **120 Santa Rita Sauvignon Blanc** — R$ 128,00 — Chile
+- **Casa Amada Carmenere** — R$ 94,00 — Chile
+- **Casillero del Diablo Red Blend** — R$ 146,00 — Chile
+- **Estação 36 Bordô Demi-Sec** — R$ 84,00 — Serra Gaúcha
+- **Jarra de vinho** — R$ 50,00 — Colonial
+- **Reservado Cabernet Sauvignon** — R$ 73,00 — Argentino
+- **Reservado Malbec** — R$ 73,00 — Argentino
+- **Santa Veronica Cabernet Sauvignon** — R$ 97,00 — Argentino
+- **Santa Veronica Malbec Alta Reserve** — R$ 132,00 — Argentino
+- **Taça de vinho** — R$ 23,00
+
+## Coquetéis & caipirinhas
+
+- **Bérgamo** — R$ 21,00 — Água com gás, limão, tangerina e xarope.
+- **Piña Colada** — R$ 35,00 — Rum Bacardi, suco de abacaxi, leite de coco, leite condensado e gelo.
+- **Daiquiri de morango** — R$ 34,00 — Limão, rum e purê de morango.
+- **Freyr** — R$ 38,00 — Suco de abacaxi, purê de morango, vinho tinto suave e vodka.
+- **Gin tônica mediterrâneo** — R$ 33,00 — Água tônica, alecrim, canela em pau, gin e limão siciliano.
+- **Gin tônica tradicional** — R$ 29,00 — Água tônica, gin e limão.
+- **Mojito** — R$ 31,00 — Água com gás, hortelã, limão e rum.
+- **Rubro Mojito** — R$ 36,00 — Água com gás, amora, morango, hortelã, limão, rum e xarope grenadine.
+- **Caipirinha Bacardi** — R$ 31,00
+- **Caipirinha Cachaça** — R$ 23,00
+- **Caipirinha Steinhäger** — R$ 31,00
+- **Caipirinha Vodka** — R$ 28,00
+- **Caipirinha Vodka Smirnoff** — R$ 31,00
+- **Caipirinha Vodka com fruta** — R$ 33,00
+- **Adicional de frutas** — R$ 3,00

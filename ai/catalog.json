@@ -1,0 +1,1406 @@
+{
+  "schema_version": "1.0",
+  "source": "menu-data.js",
+  "website": "https://fahremback.github.io/kipeixe-site/",
+  "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
+  "currency": "BRL",
+  "total_items": 111,
+  "total_categories": 10,
+  "categories": [
+    {
+      "id": "peixes",
+      "name": "Peixes",
+      "description": "Especialidade da casa",
+      "items": [
+        {
+          "id": "peixes-tilapia-a-milanesa-files-de-tilapia-a-milanesa-salada-batata-frita-arroz-e-banana-milanesa",
+          "name": "Tilápia à milanesa",
+          "description": "Filés de tilápia à milanesa, salada, batata frita, arroz e banana milanesa.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 112.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-tilapia-grelhada-files-de-tilapia-grelhados-salada-legumes-na-manteiga-e-arroz",
+          "name": "Tilápia grelhada",
+          "description": "Filés de tilápia grelhados, salada, legumes na manteiga e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 113.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-tilapia-a-parmegiana-files-de-tilapia-a-milanesa-cobertos-com-ervilha-queijo-molho-arroz-e-batata",
+          "name": "Tilápia à parmegiana",
+          "description": "Filés de tilápia à milanesa cobertos com ervilha, queijo, molho, arroz e batata.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 117.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-tilapia-a-dore-files-de-tilapia-a-dore-salada-batata-frita-e-arroz",
+          "name": "Tilápia à dorê",
+          "description": "Filés de tilápia à dorê, salada, batata frita e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 106.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-tilapia-a-brasileira-files-de-tilapia-ao-molho-pirao-e-arroz",
+          "name": "Tilápia à brasileira",
+          "description": "Filés de tilápia ao molho, pirão e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 112.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-camarao-a-milanesa-camarao-a-milanesa-salada-batata-frita-e-arroz",
+          "name": "Camarão à milanesa",
+          "description": "Camarão à milanesa, salada, batata frita e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 154.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-surubi-grelhado-surubi-grelhado-salada-batata-sote-e-arroz-a-grega",
+          "name": "Surubi grelhado",
+          "description": "Surubi grelhado, salada, batata sotê e arroz à grega.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 149.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-surubi-a-milanesa-surubi-a-milanesa-salada-batata-frita-e-arroz",
+          "name": "Surubi à milanesa",
+          "description": "Surubi à milanesa, salada, batata frita e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 152.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-salmao-ao-molho-fino-file-de-salmao-grelhado-coberto-com-molho-de-alcaparras-e-champignon-salada-batata-grizete-e-arroz",
+          "name": "Salmão ao molho fino",
+          "description": "Filé de salmão grelhado coberto com molho de alcaparras e champignon, salada, batata grizete e arroz.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 167.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-sashimi-completo-sashimi-de-tilapia-porcao-de-repolho-alho-gengibre-limao-e-wasabi",
+          "name": "Sashimi completo",
+          "description": "Sashimi de tilápia, porção de repolho, alho, gengibre, limão e wasabi.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 115.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-tilapia-a-vinagrete-2-tilapias-fritas-inteiras-arroz-salada-e-molho-vinagrete",
+          "name": "Tilápia à vinagrete",
+          "description": "2 tilápias fritas inteiras, arroz, salada e molho vinagrete.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 126.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "peixes-sinfonia-de-kipeixe-4-files-de-tilapia-a-milanesa-1-posta-de-surubi-a-milanesa-1-file-de-salmao-grelhado-ao-molho-fino-10-camaroes-a-milanesa-4-files-de-tilapia-grelhados-6-bolinhos-de-bacalhau-arroz-a-grega-arroz-branco-batata-sote-batata-frita-e-salada-mista",
+          "name": "Sinfonia de Kipeixe",
+          "description": "4 filés de tilápia à milanesa, 1 posta de surubi à milanesa, 1 filé de salmão grelhado ao molho fino, 10 camarões à milanesa, 4 filés de tilápia grelhados, 6 bolinhos de bacalhau, arroz à grega, arroz branco, batata sotê, batata frita e salada mista.",
+          "category_id": "peixes",
+          "category": "Peixes",
+          "price": 548.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "carnes",
+      "name": "Carnes",
+      "description": "Pratos completos",
+      "items": [
+        {
+          "id": "carnes-bisteca-de-porco-bistecas-de-porco-grelhadas-salada-batata-frita-e-arroz",
+          "name": "Bisteca de porco",
+          "description": "Bistecas de porco grelhadas, salada, batata frita e arroz.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 102.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-bisteca-de-porco-a-tropeira-bistecas-de-porco-arroz-polenta-frita-couve-com-bacon-feijao-tropeiro-e-ovo-frito",
+          "name": "Bisteca de porco à tropeira",
+          "description": "Bistecas de porco, arroz, polenta frita, couve com bacon, feijão tropeiro e ovo frito.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 120.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-bistecao-a-moda-da-casa-bistecas-de-boi-grelhadas-maionese-batata-frita-arroz-e-farofa",
+          "name": "Bistecão à moda da casa",
+          "description": "Bistecas de boi grelhadas, maionese, batata frita, arroz e farofa.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 125.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-file-mignon-a-milanesa-file-mignon-a-milanesa-salada-batata-frita-e-arroz",
+          "name": "Filé mignon à milanesa",
+          "description": "Filé mignon à milanesa, salada, batata frita e arroz.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 135.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-file-mignon-a-parana-file-mignon-recheado-com-presunto-e-queijo-a-milanesa-coberto-com-molho-sugo-salada-batata-frita-arroz-a-grega-e-banana-milanesa",
+          "name": "Filé mignon à Paraná",
+          "description": "Filé mignon recheado com presunto e queijo à milanesa coberto com molho sugo, salada, batata frita, arroz à grega e banana milanesa.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 148.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-file-mignon-a-parmegiana-file-mignon-a-parmegiana-coberto-com-ervilha-queijo-e-molho-sugo-arroz-e-batata-frita",
+          "name": "Filé mignon à parmegiana",
+          "description": "Filé mignon à parmegiana coberto com ervilha, queijo e molho sugo, arroz e batata frita.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 146.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-file-mignon-com-fritas-file-mignon-grelhado-salada-batata-frita-e-arroz",
+          "name": "Filé mignon com fritas",
+          "description": "Filé mignon grelhado, salada, batata frita e arroz.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": 127.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "carnes-picanha-completa-4-fatias-de-picanha-grelhada-salada-batata-frita-e-arroz",
+          "name": "Picanha completa",
+          "description": "4 fatias de picanha grelhada, salada, batata frita e arroz.",
+          "category_id": "carnes",
+          "category": "Carnes",
+          "price": null,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": true
+        }
+      ]
+    },
+    {
+      "id": "frango",
+      "name": "Frango & massas",
+      "description": "Outros pratos",
+      "items": [
+        {
+          "id": "frango-frango-grelhado-peito-de-frango-grelhado-legumes-na-manteiga-salada-e-arroz",
+          "name": "Frango grelhado",
+          "description": "Peito de frango grelhado, legumes na manteiga, salada e arroz.",
+          "category_id": "frango",
+          "category": "Frango & massas",
+          "price": 102.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "frango-frango-a-milanesa-peito-de-frango-a-milanesa-salada-batata-frita-e-arroz",
+          "name": "Frango à milanesa",
+          "description": "Peito de frango à milanesa, salada, batata frita e arroz.",
+          "category_id": "frango",
+          "category": "Frango & massas",
+          "price": 100.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "frango-frango-a-passarinho-frango-a-passarinho-salada-batata-frita-e-arroz",
+          "name": "Frango à passarinho",
+          "description": "Frango à passarinho, salada, batata frita e arroz.",
+          "category_id": "frango",
+          "category": "Frango & massas",
+          "price": 95.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "frango-espaguete-a-bolonhesa-espaguete-coberto-com-molho-carne-moida-e-queijo-ralado",
+          "name": "Espaguete à bolonhesa",
+          "description": "Espaguete coberto com molho, carne moída e queijo ralado.",
+          "category_id": "frango",
+          "category": "Frango & massas",
+          "price": 65.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "frango-espaguete-alho-e-oleo",
+          "name": "Espaguete alho e óleo",
+          "description": "",
+          "category_id": "frango",
+          "category": "Frango & massas",
+          "price": 60.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "porcoes",
+      "name": "Porções & acompanhamentos",
+      "description": "Para compartilhar",
+      "items": [
+        {
+          "id": "porcoes-tilapia",
+          "name": "Tilápia",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 45.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-tilapia-em-postas",
+          "name": "Tilápia em postas",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 49.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-pacu-em-postas",
+          "name": "Pacu em postas",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 60.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-surubi",
+          "name": "Surubi",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 78.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-camarao",
+          "name": "Camarão",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 108.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-picanha",
+          "name": "Picanha",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 90.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-file-mignon",
+          "name": "Filé mignon",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 95.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-calabresa",
+          "name": "Calabresa",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 50.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-frango-a-passarinho",
+          "name": "Frango a passarinho",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 52.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-banana-a-milanesa",
+          "name": "Banana à milanesa",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 20.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-bolinho-de-bacalhau",
+          "name": "Bolinho de bacalhau",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 105.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-feijao",
+          "name": "Feijão",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 13.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-lambari",
+          "name": "Lambari",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 43.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-batata-frita",
+          "name": "Batata frita",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 25.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "M",
+              "price": 30.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 35.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-polenta",
+          "name": "Polenta",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 22.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "M",
+              "price": 24.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 28.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-mandioca",
+          "name": "Mandioca",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 22.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "M",
+              "price": 24.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 28.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-arroz",
+          "name": "Arroz",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 18.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "M",
+              "price": 22.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 25.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-farofa",
+          "name": "Farofa",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 13.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 18.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-pirao",
+          "name": "Pirão",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "P",
+              "price": 17.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "G",
+              "price": 25.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-creme-de-alho-molho",
+          "name": "Creme de alho",
+          "description": "Molho",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 10.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-molho-rose",
+          "name": "Molho rosé",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 9.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-molho-tartaro",
+          "name": "Molho tártaro",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 9.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "porcoes-vinagrete",
+          "name": "Vinagrete",
+          "description": "",
+          "category_id": "porcoes",
+          "category": "Porções & acompanhamentos",
+          "price": 10.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "saladas",
+      "name": "Saladas",
+      "description": "Acompanhamentos frios",
+      "items": [
+        {
+          "id": "saladas-palmito",
+          "name": "Palmito",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 57.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "saladas-maionese-pequena",
+          "name": "Maionese pequena",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 28.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "saladas-maionese-grande",
+          "name": "Maionese grande",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 35.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "saladas-salada-mista-pequena",
+          "name": "Salada mista pequena",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 33.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "saladas-salada-mista-media",
+          "name": "Salada mista média",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 38.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "saladas-salada-mista-grande",
+          "name": "Salada mista grande",
+          "description": "",
+          "category_id": "saladas",
+          "category": "Saladas",
+          "price": 53.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "lanches",
+      "name": "Sanduíches",
+      "description": "Lanches",
+      "items": [
+        {
+          "id": "lanches-x-salada",
+          "name": "X-Salada",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 22.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-burguer",
+          "name": "X-Burguer",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 18.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-egg",
+          "name": "X-Egg",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 24.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-bacon",
+          "name": "X-Bacon",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-tudo",
+          "name": "X-Tudo",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 32.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-frango",
+          "name": "X-Frango",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 22.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "lanches-x-calabresa",
+          "name": "X-Calabresa",
+          "description": "",
+          "category_id": "lanches",
+          "category": "Sanduíches",
+          "price": 22.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "bebidas",
+      "name": "Cervejas & refrigerantes",
+      "description": "Geladas",
+      "items": [
+        {
+          "id": "bebidas-antarctica-original-600-ml",
+          "name": "Antarctica Original",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 18.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-spaten-600-ml",
+          "name": "Spaten",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 18.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-amstel-600-ml",
+          "name": "Amstel",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 16.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-skol-600-ml",
+          "name": "Skol",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 16.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-malzbier-600-ml",
+          "name": "Malzbier",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 17.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-heineken-600-ml",
+          "name": "Heineken",
+          "description": "600 ml",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 19.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-skol-lata",
+          "name": "Skol",
+          "description": "Lata",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 9.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-heineken-lata",
+          "name": "Heineken",
+          "description": "Lata",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 10.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-heineken-zero-lata",
+          "name": "Heineken Zero",
+          "description": "Lata",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 10.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-refrigerantes-coca-cola-coca-cola-zero-guarana-antarctica-fanta-laranja-fanta-uva-schweppes-citrus-pepsi-pepsi-twist-e-pepsi-black",
+          "name": "Refrigerantes",
+          "description": "Coca-Cola, Coca-Cola Zero, Guaraná Antarctica, Fanta Laranja, Fanta Uva, Schweppes Citrus, Pepsi, Pepsi Twist e Pepsi Black.",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": null,
+          "currency": "BRL",
+          "variants": [
+            {
+              "name": "Garrafa 290 ml",
+              "price": 8.0,
+              "currency": "BRL"
+            },
+            {
+              "name": "Lata 350 ml",
+              "price": 8.0,
+              "currency": "BRL"
+            }
+          ],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-agua-sem-gas",
+          "name": "Água sem gás",
+          "description": "",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 6.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-agua-com-gas",
+          "name": "Água com gás",
+          "description": "",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 7.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-agua-tonica",
+          "name": "Água tônica",
+          "description": "",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 8.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "bebidas-agua-h2o",
+          "name": "Água H2O",
+          "description": "",
+          "category_id": "bebidas",
+          "category": "Cervejas & refrigerantes",
+          "price": 8.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "sucos",
+      "name": "Sucos",
+      "description": "Naturais",
+      "items": [
+        {
+          "id": "sucos-abacaxi-jarra-700-ml",
+          "name": "Abacaxi",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-acerola-jarra-700-ml",
+          "name": "Acerola",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-laranja-jarra-700-ml",
+          "name": "Laranja",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 34.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-limao-jarra-700-ml",
+          "name": "Limão",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-manga-jarra-700-ml",
+          "name": "Manga",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-maracuja-jarra-700-ml",
+          "name": "Maracujá",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 30.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-morango-jarra-700-ml",
+          "name": "Morango",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 28.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-uva-jarra-700-ml",
+          "name": "Uva",
+          "description": "Jarra 700 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 25.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-suco-no-copo-300-ml",
+          "name": "Suco no copo",
+          "description": "300 ml",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 15.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-adicional-de-leite",
+          "name": "Adicional de leite",
+          "description": "",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 3.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "sucos-adicional-de-fruta",
+          "name": "Adicional de fruta",
+          "description": "",
+          "category_id": "sucos",
+          "category": "Sucos",
+          "price": 4.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "vinhos",
+      "name": "Vinhos",
+      "description": "Carta da casa",
+      "items": [
+        {
+          "id": "vinhos-120-santa-rita-sauvignon-blanc-chile",
+          "name": "120 Santa Rita Sauvignon Blanc",
+          "description": "Chile",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 128.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-casa-amada-carmenere-chile",
+          "name": "Casa Amada Carmenere",
+          "description": "Chile",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 94.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-casillero-del-diablo-red-blend-chile",
+          "name": "Casillero del Diablo Red Blend",
+          "description": "Chile",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 146.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-estacao-36-bordo-demi-sec-serra-gaucha",
+          "name": "Estação 36 Bordô Demi-Sec",
+          "description": "Serra Gaúcha",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 84.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-jarra-de-vinho-colonial",
+          "name": "Jarra de vinho",
+          "description": "Colonial",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 50.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-reservado-cabernet-sauvignon-argentino",
+          "name": "Reservado Cabernet Sauvignon",
+          "description": "Argentino",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 73.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-reservado-malbec-argentino",
+          "name": "Reservado Malbec",
+          "description": "Argentino",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 73.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-santa-veronica-cabernet-sauvignon-argentino",
+          "name": "Santa Veronica Cabernet Sauvignon",
+          "description": "Argentino",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 97.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-santa-veronica-malbec-alta-reserve-argentino",
+          "name": "Santa Veronica Malbec Alta Reserve",
+          "description": "Argentino",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 132.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "vinhos-taca-de-vinho",
+          "name": "Taça de vinho",
+          "description": "",
+          "category_id": "vinhos",
+          "category": "Vinhos",
+          "price": 23.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    },
+    {
+      "id": "coqueteis",
+      "name": "Coquetéis & caipirinhas",
+      "description": "Drinks",
+      "items": [
+        {
+          "id": "coqueteis-bergamo-agua-com-gas-limao-tangerina-e-xarope",
+          "name": "Bérgamo",
+          "description": "Água com gás, limão, tangerina e xarope.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 21.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-pina-colada-rum-bacardi-suco-de-abacaxi-leite-de-coco-leite-condensado-e-gelo",
+          "name": "Piña Colada",
+          "description": "Rum Bacardi, suco de abacaxi, leite de coco, leite condensado e gelo.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 35.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-daiquiri-de-morango-limao-rum-e-pure-de-morango",
+          "name": "Daiquiri de morango",
+          "description": "Limão, rum e purê de morango.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 34.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-freyr-suco-de-abacaxi-pure-de-morango-vinho-tinto-suave-e-vodka",
+          "name": "Freyr",
+          "description": "Suco de abacaxi, purê de morango, vinho tinto suave e vodka.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 38.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-gin-tonica-mediterraneo-agua-tonica-alecrim-canela-em-pau-gin-e-limao-siciliano",
+          "name": "Gin tônica mediterrâneo",
+          "description": "Água tônica, alecrim, canela em pau, gin e limão siciliano.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 33.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-gin-tonica-tradicional-agua-tonica-gin-e-limao",
+          "name": "Gin tônica tradicional",
+          "description": "Água tônica, gin e limão.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 29.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-mojito-agua-com-gas-hortela-limao-e-rum",
+          "name": "Mojito",
+          "description": "Água com gás, hortelã, limão e rum.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 31.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-rubro-mojito-agua-com-gas-amora-morango-hortela-limao-rum-e-xarope-grenadine",
+          "name": "Rubro Mojito",
+          "description": "Água com gás, amora, morango, hortelã, limão, rum e xarope grenadine.",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 36.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-bacardi",
+          "name": "Caipirinha Bacardi",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 31.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-cachaca",
+          "name": "Caipirinha Cachaça",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 23.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-steinhager",
+          "name": "Caipirinha Steinhäger",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 31.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-vodka",
+          "name": "Caipirinha Vodka",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 28.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-vodka-smirnoff",
+          "name": "Caipirinha Vodka Smirnoff",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 31.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-caipirinha-vodka-com-fruta",
+          "name": "Caipirinha Vodka com fruta",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 33.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        },
+        {
+          "id": "coqueteis-adicional-de-frutas",
+          "name": "Adicional de frutas",
+          "description": "",
+          "category_id": "coqueteis",
+          "category": "Coquetéis & caipirinhas",
+          "price": 3.0,
+          "currency": "BRL",
+          "variants": [],
+          "price_on_request": false
+        }
+      ]
+    }
+  ],
+  "ordering": {
+    "how": "Escolha os produtos no cardápio do site, adicione ao carrinho, selecione entrega ou retirada e envie o pedido pelo WhatsApp. O pedido só é confirmado após resposta do Kipeixe.",
+    "confirmation_required": true,
+    "delivery_area": "Consulte a equipe pelo WhatsApp.",
+    "delivery_fee": "Consulte a equipe pelo WhatsApp.",
+    "availability": "Itens e preços podem ser confirmados com a equipe do Kipeixe."
+  }
+}
