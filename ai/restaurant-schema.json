@@ -966,36 +966,8 @@
         "hasMenuItem": [
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-skol-lata",
-            "name": "Skol",
-            "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Lata",
-            "offers": [
-              {
-                "@type": "Offer",
-                "price": 9.0,
-                "priceCurrency": "BRL"
-              }
-            ]
-          },
-          {
-            "@type": "MenuItem",
             "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-heineken-lata",
             "name": "Heineken",
-            "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Lata",
-            "offers": [
-              {
-                "@type": "Offer",
-                "price": 10.0,
-                "priceCurrency": "BRL"
-              }
-            ]
-          },
-          {
-            "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-heineken-zero-lata",
-            "name": "Heineken Zero",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
             "description": "Lata",
             "offers": [

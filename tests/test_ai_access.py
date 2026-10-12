@@ -23,9 +23,9 @@ def static_checks():
     original = [p for section in raw for p in section["items"]]
     items = [p for section in catalog["categories"] for p in section["items"]]
     schema_items = [p for section in schema["hasMenu"]["hasMenuSection"] for p in section["hasMenuItem"]]
-    assert catalog["total_items"] == len(items) == len(original) == len(schema_items) == 111
+    assert catalog["total_items"] == len(items) == len(original) == len(schema_items) == 109
     assert catalog["total_categories"] == len(raw) == 10
-    assert len({p["id"] for p in items}) == 111
+    assert len({p["id"] for p in items}) == 109
     for source, product in zip(original, items):
         assert source["name"] == product["name"]
         assert source["description"] == product["description"]
@@ -38,8 +38,10 @@ def static_checks():
     assert business["ordering"]["confirmation_required"] is True
     wines = [p for p in items if p["category_id"] == "vinhos"]
     assert len(wines) == 10
-    skol = [p for p in items if p["name"] == "Skol"]
-    assert [(p["description"], p["price"]) for p in skol] == [("Lata", 9.0)]
+    beer_names = {"Skol", "Heineken", "Heineken Zero", "Spaten",
+                  "Antarctica Original", "Amstel", "Malzbier"}
+    beers = [p for p in items if p["name"] in beer_names]
+    assert [(p["name"], p["description"], p["price"]) for p in beers] == [("Heineken", "Lata", 10.0)]
     picanha = next(p for p in items if p["name"] == "Picanha completa")
     assert picanha["price"] is None and picanha["price_on_request"]
     batata = next(p for p in items if p["name"] == "Batata frita")
@@ -52,7 +54,7 @@ def static_checks():
                  "ai/business.json", "ai/restaurant-schema.json", "sitemap.xml"):
         assert (ROOT / path).exists()
     assert "Sinfonia de Kipeixe" in (ROOT / "llms-full.txt").read_text(encoding="utf-8")
-    print("Static data: PASS - 111 products, 10 categories, 111 JSON-LD MenuItems, prices and variants match.")
+    print("Static data: PASS - 109 products, 10 categories, 109 JSON-LD MenuItems, prices and variants match.")
 
 
 def browser_checks():
@@ -89,22 +91,27 @@ def browser_checks():
           const shrimps = await call('kipeixe_search_menu', {query:'camarão'});
           const noAccent = await call('kipeixe_search_menu', {query:'tilapia'});
           const skol = await call('kipeixe_get_product', {id_or_name:'Skol'});
+          const heineken = await call('kipeixe_get_product', {id_or_name:'Heineken'});
+          const zero = await call('kipeixe_get_product', {id_or_name:'Heineken Zero'});
           const portion = await call('kipeixe_get_product', {id_or_name:'Batata frita'});
           const wines = await call('kipeixe_get_category', {category_id:'vinhos'});
           const menu = await call('kipeixe_get_full_menu', {});
           return {
             names: Object.keys(tools), readonly: Object.values(tools).every(t => t.annotations.readOnlyHint),
-            info, categories, shrimps, noAccent, skol, portion, wines,
+            info, categories, shrimps, noAccent, skol, heineken, zero, portion, wines,
             total: menu.total_items
           };
         }""")
         assert result["readonly"]
         assert result["info"]["telephone"] == "+55 45 3577-2363"
         assert len(result["categories"]["categories"]) == 10
-        assert result["categories"]["total_items"] == result["total"] == 111
+        assert result["categories"]["total_items"] == result["total"] == 109
         assert result["shrimps"]["total_matches"] >= 2
         assert result["noAccent"]["total_matches"] >= 2
-        assert result["skol"]["total"] == 1
+        assert result["skol"]["total"] == 0
+        assert result["zero"]["total"] == 0
+        assert result["heineken"]["total"] == 1
+        assert result["heineken"]["results"][0]["price"] == 10
         assert result["portion"]["results"][0]["variants"][0]["price"] == 25
         assert result["wines"]["total"] == 10
         assert not errors, errors

@@ -113,9 +113,7 @@ Preços em BRL. Valores não informados: sob consulta.
 
 ## Cervejas & refrigerantes
 
-- **Skol** — R$ 9,00 — Lata
 - **Heineken** — R$ 10,00 — Lata
-- **Heineken Zero** — R$ 10,00 — Lata
 - **Guaraná Antarctica** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
 - **Fanta Laranja** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
 - **Fanta Uva** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml

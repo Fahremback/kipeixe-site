@@ -28,13 +28,11 @@ def check_data():
         assert [(variant["label"], variant["price"]) for variant in item["variants"]] == [
             ("Lata 350 ml", 8.0)]
     assert len(categories) == 10
-    assert sum(len(c["items"]) for c in categories) == 111
+    assert sum(len(c["items"]) for c in categories) == 109
     beers = [item for item in drinks if item["name"] in
              ("Skol", "Heineken", "Heineken Zero", "Antarctica Original", "Spaten", "Amstel", "Malzbier")]
-    assert sorted((item["name"], item["description"], item["price"]) for item in beers) == [
+    assert [(item["name"], item["description"], item["price"]) for item in beers] == [
         ("Heineken", "Lata", 10.0),
-        ("Heineken Zero", "Lata", 10.0),
-        ("Skol", "Lata", 9.0),
     ]
     assert not any(item["description"] == "600 ml" for item in drinks)
     print("Cardápio: PASS - 7 refrigerantes, todos em lata 350 ml.")
@@ -58,8 +56,9 @@ def check_order():
             assert page.locator('[data-add-item][data-name="Coca-Cola Zero"]').count() == 0
             assert page.locator('[data-add-item][data-variant="Garrafa 290 ml"]').count() == 0
             assert page.locator('[data-menu-items]').get_by_text("600 ml").count() == 0
-            for canned in ("Skol", "Heineken", "Heineken Zero"):
-                assert page.locator(f'[data-add-item][data-name="{canned}"]').count() == 1
+            assert page.locator('[data-add-item][data-name="Heineken"]').count() == 1
+            assert page.locator('[data-add-item][data-name="Skol"]').count() == 0
+            assert page.locator('[data-add-item][data-name="Heineken Zero"]').count() == 0
             page.locator('[data-add-item][data-name="Guaraná Antarctica"][data-variant="Lata 350 ml"]').click()
             page.locator('[data-add-item][data-name="Fanta Uva"][data-variant="Lata 350 ml"]').click()
             page.locator('[data-quick-checkout]').click()
@@ -94,6 +93,7 @@ def check_order():
                     {id:'Amstel::',name:'Amstel',variant:'',price:16,qty:1},
                     {id:'Antarctica Original::',name:'Antarctica Original',variant:'',price:18,qty:1},
                     {id:'Malzbier::',name:'Malzbier',variant:'',price:17,qty:1},
+                    {id:'Heineken Zero::',name:'Heineken Zero',variant:'',price:10,qty:1},
                     {id:'Skol::',name:'Skol',variant:'',price:9,qty:1},
                     {id:'Heineken::',name:'Heineken',variant:'',price:10,qty:1}
                 ]));
@@ -108,8 +108,9 @@ def check_order():
             assert "Antarctica Original" not in saved
             assert "Amstel" not in saved
             assert "Malzbier" not in saved
-            assert "Skol" in saved and "Heineken" in saved
-            assert "43,00" in old.locator('[data-cart-total]').inner_text()
+            assert "Skol" not in saved and "Heineken Zero" not in saved
+            assert "Heineken" in saved
+            assert "34,00" in old.locator('[data-cart-total]').inner_text()
             old.close()
         browser.close()
 

@@ -4,7 +4,7 @@
   "website": "https://fahremback.github.io/kipeixe-site/",
   "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
   "currency": "BRL",
-  "total_items": 111,
+  "total_items": 109,
   "total_categories": 10,
   "categories": [
     {
@@ -812,30 +812,8 @@
       "description": "Geladas",
       "items": [
         {
-          "id": "bebidas-skol-lata",
-          "name": "Skol",
-          "description": "Lata",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 9.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
           "id": "bebidas-heineken-lata",
           "name": "Heineken",
-          "description": "Lata",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 10.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-heineken-zero-lata",
-          "name": "Heineken Zero",
           "description": "Lata",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
