@@ -4,7 +4,7 @@
   "website": "https://fahremback.github.io/kipeixe-site/",
   "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
   "currency": "BRL",
-  "total_items": 117,
+  "total_items": 111,
   "total_categories": 10,
   "categories": [
     {
@@ -811,72 +811,6 @@
       "name": "Cervejas & refrigerantes",
       "description": "Geladas",
       "items": [
-        {
-          "id": "bebidas-antarctica-original-600-ml",
-          "name": "Antarctica Original",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 18.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-spaten-600-ml",
-          "name": "Spaten",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 18.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-amstel-600-ml",
-          "name": "Amstel",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 16.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-skol-600-ml",
-          "name": "Skol",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 16.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-malzbier-600-ml",
-          "name": "Malzbier",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 17.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-heineken-600-ml",
-          "name": "Heineken",
-          "description": "600 ml",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": 19.0,
-          "currency": "BRL",
-          "variants": [],
-          "price_on_request": false
-        },
         {
           "id": "bebidas-skol-lata",
           "name": "Skol",

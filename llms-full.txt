@@ -113,12 +113,6 @@ Preços em BRL. Valores não informados: sob consulta.
 
 ## Cervejas & refrigerantes
 
-- **Antarctica Original** — R$ 18,00 — 600 ml
-- **Spaten** — R$ 18,00 — 600 ml
-- **Amstel** — R$ 16,00 — 600 ml
-- **Skol** — R$ 16,00 — 600 ml
-- **Malzbier** — R$ 17,00 — 600 ml
-- **Heineken** — R$ 19,00 — 600 ml
 - **Skol** — R$ 9,00 — Lata
 - **Heineken** — R$ 10,00 — Lata
 - **Heineken Zero** — R$ 10,00 — Lata

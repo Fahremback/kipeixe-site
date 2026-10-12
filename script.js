@@ -439,6 +439,13 @@
       .filter((item) => item.description?.startsWith('Refrigerante'))
       .map((item) => [normalize(item.name), item])
   );
+  // Only allow current menu SKUs. This also removes old 600 ml beers saved
+  // in a browser's localStorage, including Skol/Heineken bottle prices.
+  const activeSkus = new Set(MENU.flatMap((category) => category.items.flatMap((item) =>
+    item.variants.length
+      ? item.variants.map((variant) => `${normalize(item.name)}::${normalize(variant.label)}::${variant.price}`)
+      : item.price === null ? [] : [`${normalize(item.name)}::::${item.price}`]
+  )));
   const retiredSodas = new Set(['coca-cola', 'coca-cola zero', 'refrigerantes']);
   const reconciled = new Map();
   cart.forEach((saved) => {
@@ -451,6 +458,7 @@
       : saved;
     const qty = Number(sku.qty);
     if (!Number.isInteger(qty) || qty <= 0 || !Number.isFinite(Number(sku.price))) return;
+    if (!activeSkus.has(`${normalize(sku.name)}::${normalize(sku.variant || '')}::${Number(sku.price)}`)) return;
     sku.id = makeItemId(sku.name, sku.variant);
     const previous = reconciled.get(sku.id);
     if (previous) previous.qty += qty;
