@@ -6,7 +6,7 @@ Dados oficiais da casa, publicados com preços em BRL. Para confirmar entrega, d
 
 ## Informações e cardápio
 - [Estabelecimento](https://fahremback.github.io/kipeixe-site/ai/business.json): endereço, horário, contatos e serviços.
-- [Cardápio em JSON](https://fahremback.github.io/kipeixe-site/ai/catalog.json): os 119 produtos com preços, variações e descrições.
+- [Cardápio em JSON](https://fahremback.github.io/kipeixe-site/ai/catalog.json): os 117 produtos com preços, variações e descrições.
 - [Cardápio em Markdown](https://fahremback.github.io/kipeixe-site/ai/cardapio.md): menu legível integral.
 - [Informações completas](https://fahremback.github.io/kipeixe-site/llms-full.txt): empresa e todos os pratos.
 - [Schema.org](https://fahremback.github.io/kipeixe-site/ai/restaurant-schema.json): restaurante, menu, categorias e ofertas.

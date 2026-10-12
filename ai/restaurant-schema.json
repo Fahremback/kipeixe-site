@@ -1092,59 +1092,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-coca-cola-refrigerante",
-            "name": "Coca-Cola",
-            "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
-            "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
-              {
-                "@type": "Offer",
-                "name": "Lata 350 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              }
-            ]
-          },
-          {
-            "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-coca-cola-zero-refrigerante",
-            "name": "Coca-Cola Zero",
-            "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
-            "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
-              {
-                "@type": "Offer",
-                "name": "Lata 350 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              }
-            ]
-          },
-          {
-            "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-guarana-antarctica-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-guarana-antarctica-refrigerante-lata-350-ml",
             "name": "Guaraná Antarctica",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1155,17 +1107,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-fanta-laranja-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-fanta-laranja-refrigerante-lata-350-ml",
             "name": "Fanta Laranja",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1176,17 +1122,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-fanta-uva-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-fanta-uva-refrigerante-lata-350-ml",
             "name": "Fanta Uva",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1197,17 +1137,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-schweppes-citrus-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-schweppes-citrus-refrigerante-lata-350-ml",
             "name": "Schweppes Citrus",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1218,17 +1152,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-refrigerante-lata-350-ml",
             "name": "Pepsi",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1239,17 +1167,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-twist-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-twist-refrigerante-lata-350-ml",
             "name": "Pepsi Twist",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",
@@ -1260,17 +1182,11 @@
           },
           {
             "@type": "MenuItem",
-            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-black-refrigerante",
+            "@id": "https://fahremback.github.io/kipeixe-site/ai/catalog.json#bebidas-pepsi-black-refrigerante-lata-350-ml",
             "name": "Pepsi Black",
             "url": "https://fahremback.github.io/kipeixe-site/#cardapio",
-            "description": "Refrigerante",
+            "description": "Refrigerante · lata 350 ml",
             "offers": [
-              {
-                "@type": "Offer",
-                "name": "Garrafa 290 ml",
-                "price": 8.0,
-                "priceCurrency": "BRL"
-              },
               {
                 "@type": "Offer",
                 "name": "Lata 350 ml",

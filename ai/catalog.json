@@ -4,7 +4,7 @@
   "website": "https://fahremback.github.io/kipeixe-site/",
   "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
   "currency": "BRL",
-  "total_items": 119,
+  "total_items": 117,
   "total_categories": 10,
   "categories": [
     {
@@ -911,63 +911,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-coca-cola-refrigerante",
-          "name": "Coca-Cola",
-          "description": "Refrigerante",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": null,
-          "currency": "BRL",
-          "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
-            {
-              "name": "Lata 350 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            }
-          ],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-coca-cola-zero-refrigerante",
-          "name": "Coca-Cola Zero",
-          "description": "Refrigerante",
-          "category_id": "bebidas",
-          "category": "Cervejas & refrigerantes",
-          "price": null,
-          "currency": "BRL",
-          "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
-            {
-              "name": "Lata 350 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            }
-          ],
-          "price_on_request": false
-        },
-        {
-          "id": "bebidas-guarana-antarctica-refrigerante",
+          "id": "bebidas-guarana-antarctica-refrigerante-lata-350-ml",
           "name": "Guaraná Antarctica",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -977,19 +928,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-fanta-laranja-refrigerante",
+          "id": "bebidas-fanta-laranja-refrigerante-lata-350-ml",
           "name": "Fanta Laranja",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -999,19 +945,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-fanta-uva-refrigerante",
+          "id": "bebidas-fanta-uva-refrigerante-lata-350-ml",
           "name": "Fanta Uva",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -1021,19 +962,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-schweppes-citrus-refrigerante",
+          "id": "bebidas-schweppes-citrus-refrigerante-lata-350-ml",
           "name": "Schweppes Citrus",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -1043,19 +979,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-pepsi-refrigerante",
+          "id": "bebidas-pepsi-refrigerante-lata-350-ml",
           "name": "Pepsi",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -1065,19 +996,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-pepsi-twist-refrigerante",
+          "id": "bebidas-pepsi-twist-refrigerante-lata-350-ml",
           "name": "Pepsi Twist",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,
@@ -1087,19 +1013,14 @@
           "price_on_request": false
         },
         {
-          "id": "bebidas-pepsi-black-refrigerante",
+          "id": "bebidas-pepsi-black-refrigerante-lata-350-ml",
           "name": "Pepsi Black",
-          "description": "Refrigerante",
+          "description": "Refrigerante · lata 350 ml",
           "category_id": "bebidas",
           "category": "Cervejas & refrigerantes",
           "price": null,
           "currency": "BRL",
           "variants": [
-            {
-              "name": "Garrafa 290 ml",
-              "price": 8.0,
-              "currency": "BRL"
-            },
             {
               "name": "Lata 350 ml",
               "price": 8.0,

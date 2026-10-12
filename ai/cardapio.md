@@ -94,15 +94,13 @@ Preços em BRL. Valores não informados: sob consulta.
 - **Skol** — R$ 9,00 — Lata
 - **Heineken** — R$ 10,00 — Lata
 - **Heineken Zero** — R$ 10,00 — Lata
-- **Coca-Cola** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Coca-Cola Zero** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Guaraná Antarctica** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Fanta Laranja** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Fanta Uva** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Schweppes Citrus** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Pepsi** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Pepsi Twist** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
-- **Pepsi Black** — Garrafa 290 ml: R$ 8,00; Lata 350 ml: R$ 8,00 — Refrigerante
+- **Guaraná Antarctica** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Fanta Laranja** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Fanta Uva** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Schweppes Citrus** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Pepsi** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Pepsi Twist** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
+- **Pepsi Black** — Lata 350 ml: R$ 8,00 — Refrigerante · lata 350 ml
 - **Água sem gás** — R$ 6,00
 - **Água com gás** — R$ 7,00
 - **Água tônica** — R$ 8,00

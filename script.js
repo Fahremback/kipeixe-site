@@ -431,6 +431,32 @@
 
   let cart = safeStorage.get('kipeixe_cart_v1', []);
   if (!Array.isArray(cart)) cart = [];
+  // Reconcile baskets saved before the 350 ml-only soda update.
+  // Discontinued Coca-Cola products cannot be ordered, and remaining sodas
+  // now have one available presentation. Merge old bottle/can quantities.
+  const currentSodas = new Map(
+    (MENU.find((category) => category.id === 'bebidas')?.items || [])
+      .filter((item) => item.description?.startsWith('Refrigerante'))
+      .map((item) => [normalize(item.name), item])
+  );
+  const retiredSodas = new Set(['coca-cola', 'coca-cola zero', 'refrigerantes']);
+  const reconciled = new Map();
+  cart.forEach((saved) => {
+    if (!saved || typeof saved.name !== 'string') return;
+    const nameKey = normalize(saved.name);
+    if (retiredSodas.has(nameKey)) return;
+    const current = currentSodas.get(nameKey);
+    const sku = current
+      ? { ...saved, name: current.name, variant: current.variants[0].label, price: current.variants[0].price }
+      : saved;
+    const qty = Number(sku.qty);
+    if (!Number.isInteger(qty) || qty <= 0 || !Number.isFinite(Number(sku.price))) return;
+    sku.id = makeItemId(sku.name, sku.variant);
+    const previous = reconciled.get(sku.id);
+    if (previous) previous.qty += qty;
+    else reconciled.set(sku.id, { ...sku, qty });
+  });
+  cart = [...reconciled.values()];
 
   const cartItems = qs('[data-cart-items]');
   const cartEmpty = qs('[data-cart-empty]');

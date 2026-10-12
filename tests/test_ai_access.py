@@ -23,9 +23,9 @@ def static_checks():
     original = [p for section in raw for p in section["items"]]
     items = [p for section in catalog["categories"] for p in section["items"]]
     schema_items = [p for section in schema["hasMenu"]["hasMenuSection"] for p in section["hasMenuItem"]]
-    assert catalog["total_items"] == len(items) == len(original) == len(schema_items) == 119
+    assert catalog["total_items"] == len(items) == len(original) == len(schema_items) == 117
     assert catalog["total_categories"] == len(raw) == 10
-    assert len({p["id"] for p in items}) == 119
+    assert len({p["id"] for p in items}) == 117
     for source, product in zip(original, items):
         assert source["name"] == product["name"]
         assert source["description"] == product["description"]
@@ -52,7 +52,7 @@ def static_checks():
                  "ai/business.json", "ai/restaurant-schema.json", "sitemap.xml"):
         assert (ROOT / path).exists()
     assert "Sinfonia de Kipeixe" in (ROOT / "llms-full.txt").read_text(encoding="utf-8")
-    print("Static data: PASS - 119 products, 10 categories, 119 JSON-LD MenuItems, prices and variants match.")
+    print("Static data: PASS - 117 products, 10 categories, 117 JSON-LD MenuItems, prices and variants match.")
 
 
 def browser_checks():
@@ -101,7 +101,7 @@ def browser_checks():
         assert result["readonly"]
         assert result["info"]["telephone"] == "+55 45 3577-2363"
         assert len(result["categories"]["categories"]) == 10
-        assert result["categories"]["total_items"] == result["total"] == 119
+        assert result["categories"]["total_items"] == result["total"] == 117
         assert result["shrimps"]["total_matches"] >= 2
         assert result["noAccent"]["total_matches"] >= 2
         assert result["skol"]["total"] == 2
