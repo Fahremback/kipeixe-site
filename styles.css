@@ -349,6 +349,46 @@ img { display: block; max-width: 100%; }
   padding-inline: 6px;
 }
 .menu-inside-head h2 { margin: 5px 0 0; font-family: var(--serif); font-size: clamp(38px,4vw,58px); font-weight: 500; line-height: 1; }
+.menu-inside-head h1 { margin: 6px 0 0; font-family: var(--serif); font-size: clamp(34px,4.5vw,56px); font-weight: 500; line-height: 1.06; letter-spacing: -.035em; }
+.menu-sales-copy { margin: 9px 0 0; max-width: 640px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.menu-search {
+  margin-bottom: 18px;
+  padding: 17px 20px 12px;
+  border: 1px solid rgba(67,54,33,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.85);
+}
+.menu-search > label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 850; color: var(--forest-950); }
+.menu-search-controls { display: flex; gap: 10px; align-items: center; }
+.menu-search-controls input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid rgba(67,54,33,.22);
+  border-radius: 9px;
+  padding: 12px 14px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.menu-search-controls input:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+.menu-search-controls button {
+  align-self: stretch;
+  border: 0;
+  border-radius: 9px;
+  padding-inline: 15px;
+  background: var(--forest-950);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+}
+.menu-search-controls button[hidden] { display: none; }
+.menu-search-status { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.menu-search-status:empty { display: none; }
+.menu-entry-category { display: block; margin-bottom: 5px; font-size: 10px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; color: var(--red, #a52a39); }
+.menu-no-results { grid-column: 1 / -1; padding: 34px 20px; text-align: center; color: var(--muted); line-height: 1.5; }
+.page-turner[hidden] { display: none; }
 .menu-head-actions { display: flex; align-items: center; gap: 10px; }
 .text-button { border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
 .mini-cart { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; padding: 8px 9px 8px 14px; background: var(--forest-950); color: #fff; font-weight: 850; }
@@ -416,12 +456,12 @@ img { display: block; max-width: 100%; }
 
 .page-heading {
   position: relative;
-  min-height: 176px;
+  min-height: 122px;
   display: grid;
   align-items: end;
   overflow: hidden;
   margin-bottom: 2px;
-  padding: 30px 32px;
+  padding: 19px 26px;
   border: 0;
   border-radius: 16px;
   background: var(--forest-950);
@@ -438,9 +478,9 @@ img { display: block; max-width: 100%; }
   pointer-events: none;
 }
 .page-heading > div { position: relative; z-index: 2; max-width: 760px; }
-.page-number { display: block; margin-bottom: 12px; color: #f07d89; font-size: 12px; font-weight: 950; letter-spacing: .15em; }
+.page-number { display: block; margin-bottom: 6px; color: #f07d89; font-size: 12px; font-weight: 950; letter-spacing: .15em; }
 .page-heading .eyebrow { color: rgba(255,255,255,.74); }
-.page-heading h3 { margin: 4px 0 0; font-family: var(--serif); font-size: clamp(42px,5vw,68px); font-weight: 500; line-height: .92; letter-spacing: -.04em; }
+.page-heading h3 { margin: 4px 0 0; font-family: var(--serif); font-size: clamp(38px,4.5vw,58px); font-weight: 500; line-height: 1; letter-spacing: -.04em; }
 .page-heading img {
   position: absolute;
   inset: 0;
@@ -1055,7 +1095,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .home-content { padding-right: 0; }
   .menu-items { grid-template-columns: 1fr; }
   .book { grid-template-columns: 210px minmax(0,1fr); }
-  .page-heading { min-height: 164px; }
+  .page-heading { min-height: 122px; }
   .page-hero.compact { grid-template-columns: .95fr 1.05fr; }
 }
 
@@ -1107,7 +1147,11 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .cover-body > p:not(.eyebrow) { font-size: 14px; }
 
   .menu-inside-head { align-items: center; margin-bottom: 14px; }
-  .menu-inside-head h2 { font-size: 32px; }
+  .menu-inside-head h1 { font-size: clamp(32px, 9vw, 42px); }
+  .menu-sales-copy { font-size: 13px; }
+  .menu-head-actions { display: none; }
+  .menu-search { padding: 13px 12px 9px; margin-bottom: 12px; }
+  .menu-search-controls input { min-height: 44px; font-size: 14px; }
   .text-button { display: none; }
   .book { display: block; min-height: 0; overflow: visible; border-radius: 9px; }
   .book-index {
@@ -1126,9 +1170,9 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .book-page { padding: 22px 16px 20px; }
   .book-spine { display: none; }
   .page-heading {
-    min-height: 150px;
+    min-height: 110px;
     margin: 0 -2px;
-    padding: 22px 20px;
+    padding: 15px 18px;
     border-radius: 12px;
   }
   .page-heading::after {

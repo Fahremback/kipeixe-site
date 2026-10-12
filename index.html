@@ -3,12 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Kipeixe — restaurante e pesque-pague em Três Lagoas, Foz do Iguaçu. Consulte o cardápio, monte seu pedido e envie direto pelo WhatsApp." />
+    <meta name="description" content="Confira o cardápio do Kipeixe em Foz do Iguaçu. Escolha peixes, porções, carnes, lanches e bebidas, monte seu pedido e envie pelo WhatsApp para confirmação." />
     <meta name="theme-color" content="#16070a" />
-    <title>Kipeixe | Restaurante & Pesque-Pague em Foz do Iguaçu</title>
+    <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="preload" as="image" href="assets/ambiente/hero.webp" fetchpriority="high" />
-    <link rel="stylesheet" href="styles.css?v=20261009-3" />
+    <link rel="stylesheet" href="styles.css?v=20261012-sales-1" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -37,14 +36,14 @@
   </head>
   <body>
     <header class="site-header">
-      <button class="brand tab-link" type="button" data-page-link="inicio" aria-label="Ir para o início">
+      <button class="brand tab-link" type="button" data-page-link="cardapio" aria-label="Ir para o cardápio">
         <img src="assets/logo.webp" alt="" width="44" height="44" />
         <span><strong>KIPEIXE</strong><small>restaurante & pesca</small></span>
       </button>
 
       <nav class="desktop-tabs" aria-label="Seções do site">
-        <button type="button" class="tab-link is-active" data-page-link="inicio">Início</button>
-        <button type="button" class="tab-link" data-page-link="cardapio">Cardápio</button>
+        <button type="button" class="tab-link is-active" data-page-link="cardapio">Cardápio</button>
+        <button type="button" class="tab-link" data-page-link="inicio">O Kipeixe</button>
         <button type="button" class="tab-link" data-page-link="ambiente">Ambiente</button>
         <button type="button" class="tab-link" data-page-link="pesque">Pesque-pague</button>
         <button type="button" class="tab-link" data-page-link="contato">Contato</button>
@@ -57,7 +56,7 @@
     </header>
 
     <main class="site-main">
-      <section class="site-page home-page is-active" data-page="inicio">
+      <section class="site-page home-page" data-page="inicio" hidden>
         <div class="home-hero">
           <div class="home-photo" aria-hidden="true"></div>
           <div class="home-shade" aria-hidden="true"></div>
@@ -67,7 +66,7 @@
             <p class="home-copy">Restaurante, pesque-pague e espaço ao ar livre. Todos os dias, das 09h às 23h40.</p>
             <div class="hero-actions">
               <button class="button button-orange tab-link" type="button" data-page-link="cardapio">Abrir cardápio</button>
-              <button class="button button-glass tab-link" type="button" data-page-link="cardapio" data-open-menu>Fazer pedido</button>
+              <button class="button button-glass tab-link" type="button" data-page-link="cardapio">Fazer pedido</button>
             </div>
           </div>
         </div>
@@ -84,7 +83,7 @@
             <h2>Não é só sentar para comer.</h2>
           </div>
           <div class="choice-grid">
-            <button class="choice-card tab-link" type="button" data-page-link="cardapio" data-open-menu>
+            <button class="choice-card tab-link" type="button" data-page-link="cardapio">
               <img src="assets/produtos/tilapia-milanesa.webp" alt="" />
               <span><small>Restaurante</small><strong>Ver o cardápio e pedir</strong><b>→</b></span>
             </button>
@@ -100,26 +99,26 @@
         </div>
       </section>
 
-      <section class="site-page menu-page" data-page="cardapio" hidden>
+      <section class="site-page menu-page is-active" data-page="cardapio">
         <div class="menu-experience" data-menu-experience>
-          <div class="menu-cover menu-cover-no-photo" data-menu-cover>
-            <div class="cover-body">
-              <img src="assets/logo.webp" alt="" class="cover-logo" />
-              <p class="eyebrow light">Pesque e Pague Kipeixe</p>
-              <h2>Cardápio</h2>
-              <p>Peixes, pratos, porções, lanches e bebidas. Abra, escolha sua página e monte seu pedido.</p>
-              <button class="button button-orange" type="button" data-menu-open><span>Abrir cardápio</span><b>→</b></button>
-            </div>
-            <div class="cover-binding" aria-hidden="true"></div>
-          </div>
-
-          <div class="menu-inside" data-menu-inside hidden>
+          <div class="menu-inside" data-menu-inside>
             <div class="menu-inside-head">
-              <div><p class="eyebrow dark">Cardápio Kipeixe</p><h2>Escolha uma página.</h2></div>
-              <div class="menu-head-actions">
-                <button type="button" class="text-button" data-menu-close>Fechar cardápio</button>
-                <button type="button" class="mini-cart" data-cart-open>Pedido <b data-cart-count>0</b></button>
+              <div>
+                <p class="eyebrow dark">Restaurante Kipeixe · Peça diretamente</p>
+                <h1>Escolha o que vai pedir.</h1>
+                <p class="menu-sales-copy">Encontre seus pratos e bebidas, adicione ao pedido e envie para confirmação pelo WhatsApp.</p>
               </div>
+              <div class="menu-head-actions">
+                <button type="button" class="mini-cart" data-cart-open>Ver meu pedido <b data-cart-count>0</b></button>
+              </div>
+            </div>
+            <div class="menu-search" role="search">
+              <label for="menu-search-input">O que você procura?</label>
+              <div class="menu-search-controls">
+                <input id="menu-search-input" type="search" data-menu-search placeholder="Buscar tilápia, picanha, sucos..." autocomplete="off" />
+                <button type="button" data-menu-search-clear hidden>Limpar</button>
+              </div>
+              <p class="menu-search-status" data-menu-search-status role="status" aria-live="polite"></p>
             </div>
 
             <div class="book">
@@ -138,7 +137,7 @@
                   </div>
                 </header>
                 <div class="menu-items" data-menu-items></div>
-                <footer class="page-turner">
+                <footer class="page-turner" data-page-turner>
                   <button type="button" data-category-prev>← Página anterior</button>
                   <span data-category-progress></span>
                   <button type="button" data-category-next>Próxima página →</button>
@@ -342,14 +341,14 @@
     </aside>
 
     <nav class="mobile-tabs" aria-label="Navegação principal">
-      <button type="button" class="tab-link is-active" data-page-link="inicio"><span>⌂</span>Início</button>
-      <button type="button" class="tab-link" data-page-link="cardapio"><span>≡</span>Cardápio</button>
+      <button type="button" class="tab-link is-active" data-page-link="cardapio"><span>≡</span>Cardápio</button>
       <button type="button" data-cart-open><span>＋</span>Pedido<b data-cart-count>0</b></button>
+      <button type="button" class="tab-link" data-page-link="inicio"><span>⌂</span>Kipeixe</button>
       <button type="button" class="tab-link" data-page-link="ambiente"><span>◫</span>Ambiente</button>
       <button type="button" class="tab-link" data-page-link="contato"><span>⌖</span>Contato</button>
     </nav>
 
     <script src="menu-data.js"></script>
-    <script src="script.js?v=20261009-2"></script>
+    <script src="script.js?v=20261012-sales-1"></script>
   </body>
 </html>

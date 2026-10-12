@@ -36,11 +36,11 @@
 
   const hashPage = () => {
     const candidate = location.hash.replace(/^#/, '').split('/')[0];
-    return VALID_PAGES.has(candidate) ? candidate : 'inicio';
+    return VALID_PAGES.has(candidate) ? candidate : 'cardapio';
   };
 
   const setPage = (page, updateHash = true) => {
-    if (!VALID_PAGES.has(page)) page = 'inicio';
+    if (!VALID_PAGES.has(page)) page = 'cardapio';
     pageNodes.forEach((node) => {
       const active = node.dataset.page === page;
       node.hidden = !active;
@@ -63,12 +63,14 @@
     document.body.classList.remove('cart-open');
   }
 
-  const menuCover = qs('[data-menu-cover]');
-  const menuInside = qs('[data-menu-inside]');
   const menuItems = qs('[data-menu-items]');
   const categoryTabs = qs('[data-category-tabs]');
   const categoryTitle = qs('[data-category-title]');
   const categoryEyebrow = qs('[data-category-eyebrow]');
+  const menuSearch = qs('[data-menu-search]');
+  const menuSearchClear = qs('[data-menu-search-clear]');
+  const menuSearchStatus = qs('[data-menu-search-status]');
+  const pageTurner = qs('[data-page-turner]');
   const categoryImage = qs('[data-category-image]');
   const pageNumber = qs('[data-page-number]');
   const categoryProgress = qs('[data-category-progress]');
@@ -233,17 +235,18 @@
 
   const renderMenuTabs = () => {
     if (!categoryTabs) return;
+    const searching = Boolean(menuSearch?.value.trim());
     categoryTabs.innerHTML = MENU.map((category, index) => `
       <button
         type="button"
-        class="${index === currentCategory ? 'is-active' : ''}"
+        class="${!searching && index === currentCategory ? 'is-active' : ''}"
         data-category-index="${index}"
-        aria-pressed="${index === currentCategory ? 'true' : 'false'}"
+        aria-pressed="${!searching && index === currentCategory ? 'true' : 'false'}"
       >${escapeHtml(category.title)}</button>
     `).join('');
   };
 
-  const renderMenuItem = (item, category) => {
+  const renderMenuItem = (item, category, showCategory = false) => {
     let actions = '';
 
     if (Array.isArray(item.variants) && item.variants.length) {
@@ -282,6 +285,7 @@
     return `
       <article class="menu-entry">
         <div class="menu-entry-main">
+          ${showCategory ? `<span class="menu-entry-category">${escapeHtml(category.title)}</span>` : ''}
           <h4>${escapeHtml(item.name)}</h4>
           ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
         </div>
@@ -292,6 +296,10 @@
 
   const renderCategory = (index, animate = true) => {
     if (!MENU.length || !menuItems) return;
+    if (menuSearch) menuSearch.value = '';
+    if (menuSearchClear) menuSearchClear.hidden = true;
+    if (menuSearchStatus) menuSearchStatus.textContent = '';
+    if (pageTurner) pageTurner.hidden = false;
     currentCategory = Math.max(0, Math.min(MENU.length - 1, index));
     const category = MENU[currentCategory];
 
@@ -321,6 +329,40 @@
     }
   };
 
+  const renderSearch = () => {
+    if (!menuSearch || !menuItems) return;
+    const query = normalize(menuSearch.value);
+    if (!query) {
+      renderCategory(currentCategory, false);
+      return;
+    }
+
+    const results = MENU.flatMap((category) =>
+      category.items
+        .filter((item) => normalize(`${item.name} ${item.description || ''}`).includes(query))
+        .map((item) => ({ item, category }))
+    );
+    const label = `${results.length} ${results.length === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
+    categoryTitle.textContent = 'Resultados da busca';
+    categoryEyebrow.textContent = 'Em todo o cardápio';
+    pageNumber.textContent = 'BUSCA';
+    categoryProgress.textContent = label;
+    menuSearchStatus.textContent = label;
+    menuSearchClear.hidden = false;
+    if (pageTurner) pageTurner.hidden = true;
+    menuItems.innerHTML = results.length
+      ? results.map(({ item, category }) => renderMenuItem(item, category, true)).join('')
+      : '<div class="menu-no-results" data-menu-no-results>Nenhum produto encontrado. Tente outro nome ou escolha uma categoria.</div>';
+    renderMenuTabs();
+  };
+
+  menuSearch?.addEventListener('input', renderSearch);
+  menuSearchClear?.addEventListener('click', () => {
+    menuSearch.value = '';
+    renderCategory(currentCategory, false);
+    menuSearch.focus();
+  });
+
   document.addEventListener('error', (event) => {
     const image = event.target;
     if (!(image instanceof HTMLImageElement)) return;
@@ -343,21 +385,6 @@
   });
   prevCategory?.addEventListener('click', () => renderCategory(currentCategory - 1));
   nextCategory?.addEventListener('click', () => renderCategory(currentCategory + 1));
-
-  function openMenu() {
-    if (!menuCover || !menuInside) return;
-    menuCover.hidden = true;
-    menuInside.hidden = false;
-    renderCategory(currentCategory, false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  const closeMenu = () => {
-    if (!menuCover || !menuInside) return;
-    menuInside.hidden = true;
-    menuCover.hidden = false;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   const openPhoto = (src, name = '') => {
     if (!photoLightbox || !photoLightboxImage || !src) return;
@@ -388,19 +415,19 @@
     if (event.target.closest('[data-photo-close]')) closePhoto();
   });
 
-  qs('[data-menu-open]')?.addEventListener('click', openMenu);
-  qs('[data-menu-close]')?.addEventListener('click', closeMenu);
-
   tabLinks.forEach((button) => {
     button.addEventListener('click', () => {
       closeCart();
       setPage(button.dataset.pageLink);
-      if (button.hasAttribute('data-open-menu')) openMenu();
     });
   });
 
   window.addEventListener('popstate', () => setPage(hashPage(), false));
+  window.addEventListener('hashchange', () => setPage(hashPage(), false));
   setPage(hashPage(), false);
+  if (!VALID_PAGES.has(location.hash.slice(1).split('/')[0])) {
+    history.replaceState({}, '', '#cardapio');
+  }
 
   let cart = safeStorage.get('kipeixe_cart_v1', []);
   if (!Array.isArray(cart)) cart = [];
