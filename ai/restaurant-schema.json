@@ -419,7 +419,7 @@
             "offers": [
               {
                 "@type": "Offer",
-                "price": 45.0,
+                "price": 55.0,
                 "priceCurrency": "BRL"
               }
             ]

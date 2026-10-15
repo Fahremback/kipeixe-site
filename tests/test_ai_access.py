@@ -42,6 +42,11 @@ def static_checks():
                   "Antarctica Original", "Amstel", "Malzbier"}
     beers = [p for p in items if p["name"] in beer_names]
     assert [(p["name"], p["description"], p["price"]) for p in beers] == [("Heineken", "Lata", 10.0)]
+    tilapia_portion = next(p for p in items if p["category_id"] == "porcoes" and p["name"] == "Tilápia")
+    assert tilapia_portion["price"] == 55.0
+    tilapia_structured = next(p for p in schema_items if p["@id"].endswith("#porcoes-tilapia"))
+    assert tilapia_structured["offers"][0]["price"] == 55.0
+    assert "**Tilápia** — R$ 55,00" in (ROOT / "ai/cardapio.md").read_text(encoding="utf-8")
     picanha = next(p for p in items if p["name"] == "Picanha completa")
     assert picanha["price"] is None and picanha["price_on_request"]
     batata = next(p for p in items if p["name"] == "Batata frita")
