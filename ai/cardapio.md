@@ -1,6 +1,6 @@
 # Cardápio do Kipeixe
 
-Fonte: https://fahremback.github.io/kipeixe-site/#cardapio
+Fonte: https://restaurantekipeixe.com.br/#cardapio
 
 Preços em BRL. Valores não informados: sob consulta.
 

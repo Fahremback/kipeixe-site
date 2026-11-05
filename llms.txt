@@ -5,12 +5,12 @@
 Dados oficiais da casa, publicados com preços em BRL. Para confirmar entrega, disponibilidade e pedido, contate o WhatsApp.
 
 ## Informações e cardápio
-- [Estabelecimento](https://fahremback.github.io/kipeixe-site/ai/business.json): endereço, horário, contatos e serviços.
-- [Cardápio em JSON](https://fahremback.github.io/kipeixe-site/ai/catalog.json): os 109 produtos com preços, variações e descrições.
-- [Cardápio em Markdown](https://fahremback.github.io/kipeixe-site/ai/cardapio.md): menu legível integral.
-- [Informações completas](https://fahremback.github.io/kipeixe-site/llms-full.txt): empresa e todos os pratos.
-- [Schema.org](https://fahremback.github.io/kipeixe-site/ai/restaurant-schema.json): restaurante, menu, categorias e ofertas.
-- [Pedidos no site](https://fahremback.github.io/kipeixe-site/#cardapio): pedidos iniciados pelo usuário e confirmados via WhatsApp.
+- [Estabelecimento](https://restaurantekipeixe.com.br/ai/business.json): endereço, horário, contatos e serviços.
+- [Cardápio em JSON](https://restaurantekipeixe.com.br/ai/catalog.json): os 109 produtos com preços, variações e descrições.
+- [Cardápio em Markdown](https://restaurantekipeixe.com.br/ai/cardapio.md): menu legível integral.
+- [Informações completas](https://restaurantekipeixe.com.br/llms-full.txt): empresa e todos os pratos.
+- [Schema.org](https://restaurantekipeixe.com.br/ai/restaurant-schema.json): restaurante, menu, categorias e ofertas.
+- [Pedidos no site](https://restaurantekipeixe.com.br/#cardapio): pedidos iniciados pelo usuário e confirmados via WhatsApp.
 
 ## Agentes
 Ferramentas WebMCP disponíveis quando a página está aberta em navegador compatível. Não é um servidor MCP HTTP.

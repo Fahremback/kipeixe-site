@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AI = ROOT / "ai"
-BASE = "https://fahremback.github.io/kipeixe-site/"
+BASE = "https://restaurantekipeixe.com.br/"
 
 
 def slug(text):
@@ -141,8 +141,7 @@ def main():
     (ROOT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         f"  <url><loc>{BASE}</loc></url>\n</urlset>\n", encoding="utf-8")
-    # On a GitHub Pages project path, robots.txt is not the origin-wide robots.txt.
-    (ROOT / "robots.txt").write_text("User-agent: *\nAllow: /kipeixe-site/\n"
+    (ROOT / "robots.txt").write_text("User-agent: *\nAllow: /\n"
         f"Sitemap: {BASE}sitemap.xml\n", encoding="utf-8")
     print(f"Generated {total} products / {len(sections)} categories, structured data and agent guides.")
 

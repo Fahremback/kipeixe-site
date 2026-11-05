@@ -36,6 +36,13 @@ def static_checks():
     assert business["hours"]["opens"] == "09:00"
     assert business["hours"]["closes"] == "23:40"
     assert business["ordering"]["confirmation_required"] is True
+    base = "https://restaurantekipeixe.com.br/"
+    assert (ROOT / "CNAME").read_text(encoding="utf-8").strip() == "restaurantekipeixe.com.br"
+    assert business["website"] == base
+    assert business["menu_url"] == base + "#cardapio"
+    assert catalog["website"] == base
+    assert schema["url"] == base
+    assert (ROOT / "robots.txt").read_text(encoding="utf-8") == f"User-agent: *\nAllow: /\nSitemap: {base}sitemap.xml\n"
     wines = [p for p in items if p["category_id"] == "vinhos"]
     assert len(wines) == 10
     beer_names = {"Skol", "Heineken", "Heineken Zero", "Spaten",
@@ -55,6 +62,8 @@ def static_checks():
     scripts = re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, flags=re.S)
     assert len(scripts) == 1
     assert json.loads(scripts[0]) == schema
+    assert '<link rel="canonical" href="https://restaurantekipeixe.com.br/" />' in html
+    assert '<meta property="og:url" content="https://restaurantekipeixe.com.br/" />' in html
     for path in ("llms.txt", "llms-full.txt", "ai/catalog.json", "ai/cardapio.md",
                  "ai/business.json", "ai/restaurant-schema.json", "sitemap.xml"):
         assert (ROOT / path).exists()

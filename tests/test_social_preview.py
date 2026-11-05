@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "https://fahremback.github.io/kipeixe-site/"
+BASE = "https://restaurantekipeixe.com.br/"
 IMAGE_NAME = "kipeixe-compartilhar-20261012.jpg"
 IMAGE_URL = BASE + "assets/" + IMAGE_NAME
 

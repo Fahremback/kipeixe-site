@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "source": "menu-data.js",
-  "website": "https://fahremback.github.io/kipeixe-site/",
-  "menu_url": "https://fahremback.github.io/kipeixe-site/#cardapio",
+  "website": "https://restaurantekipeixe.com.br/",
+  "menu_url": "https://restaurantekipeixe.com.br/#cardapio",
   "currency": "BRL",
   "total_items": 109,
   "total_categories": 10,
