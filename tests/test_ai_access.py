@@ -83,6 +83,10 @@ def browser_checks():
         page.goto(LOCAL, wait_until="networkidle")
         assert page.locator('[data-page="cardapio"]').is_visible()
         assert not any("/webmcp.js" in url for url in requests), "No WebMCP API: do not request WebMCP JS"
+        page.goto(LOCAL + "?utm_source=chatgpt.com&ref=cardapio#cardapio", wait_until="networkidle")
+        assert page.url == LOCAL + "?ref=cardapio#cardapio", page.url
+        page.goto(LOCAL + "?utm_source=instagram&ref=cardapio#cardapio", wait_until="networkidle")
+        assert page.url == LOCAL + "?utm_source=instagram&ref=cardapio#cardapio", page.url
         page.close()
 
         browser_context = browser.new_context()

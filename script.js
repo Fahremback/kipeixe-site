@@ -1,4 +1,12 @@
 (() => {
+  // ChatGPT adds this attribution parameter to outbound links. Keep the
+  // visible site URL clean without affecting campaign tracking from ads.
+  const inboundUrl = new URL(window.location.href);
+  if (inboundUrl.searchParams.get('utm_source')?.toLowerCase() === 'chatgpt.com') {
+    inboundUrl.searchParams.delete('utm_source');
+    history.replaceState(history.state, '', `${inboundUrl.pathname}${inboundUrl.search}${inboundUrl.hash}`);
+  }
+
   const MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
   const WHATSAPP = '554535772363';
   const VALID_PAGES = new Set(['inicio', 'cardapio', 'ambiente', 'pesque', 'contato']);
