@@ -74,6 +74,11 @@
     cartDrawer?.classList.remove('is-open');
     cartDrawer?.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('cart-open');
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.get('kipeixe_etapa') === 'checkout') {
+      currentUrl.searchParams.delete('kipeixe_etapa');
+      history.replaceState(history.state, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+    }
   }
 
   const menuItems = qs('[data-menu-items]');
@@ -521,6 +526,20 @@
         contents: cart.map((item) => ({ id: item.id, quantity: item.qty, item_price: item.price })),
         content_type: 'product'
       });
+      // A real checkout step also gets its own URL-based Pixel page view.
+      // This supports Meta's custom checkout conversion while the standard
+      // InitiateCheckout event is not yet eligible for ad optimization.
+      // Do not send personally identifying information or record a purchase.
+      if (typeof window.fbq === 'function') {
+        try {
+          const checkoutUrl = new URL(window.location.href);
+          checkoutUrl.searchParams.set('kipeixe_etapa', 'checkout');
+          history.replaceState(history.state, '', `${checkoutUrl.pathname}${checkoutUrl.search}${checkoutUrl.hash}`);
+          window.fbq('track', 'PageView');
+        } catch (error) {
+          console.warn('Checkout Pixel page-view tracking unavailable:', error);
+        }
+      }
     }
   }
 
@@ -785,7 +804,8 @@
       syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
       if (onlineButton) onlineButton.hidden = !storeConfig.onlinePaymentEnabled;
-      if (whatsappButton) whatsappButton.hidden = Boolean(storeConfig.onlinePaymentEnabled);
+      // Sandbox é apenas demonstração; pedidos reais por WhatsApp continuam disponíveis.
+      if (whatsappButton) whatsappButton.hidden = Boolean(storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
       const deliveryChoice = qs('[data-order-choice="Entrega"]');
       if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
       if (!storeConfig.deliveryEnabled && orderType?.value === 'Entrega') {
@@ -925,13 +945,12 @@
     }
   }
 
-  onlineButton?.addEventListener('click', () => orderForm?.requestSubmit());
   onlineStatusRefresh?.addEventListener('click', checkOrderStatus);
 
   orderForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!validateScheduleChoice()) return;
-    if (storeConfig?.onlinePaymentEnabled) {
+    if (storeConfig?.onlinePaymentEnabled && (event.submitter === onlineButton || !storeConfig.sandbox)) {
       await startOnlineCheckout();
       return;
     }
