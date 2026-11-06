@@ -11,6 +11,7 @@
   const WHATSAPP = '554535772363';
   const VALID_PAGES = new Set(['inicio', 'cardapio', 'ambiente', 'pesque', 'contato']);
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const track = (name, fields) => window.kipeixeTrack?.(name, fields);
 
   const qs = (selector, root = document) => root.querySelector(selector);
   const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -396,6 +397,18 @@
 
   const openPhoto = (src, name = '') => {
     if (!photoLightbox || !photoLightboxImage || !src) return;
+    const product = MENU.flatMap((category) => category.items)
+      .find((item) => normalize(item.name) === normalize(name));
+    if (product) {
+      const value = Number.isFinite(product.price) ? product.price :
+        product.variants?.[0]?.price;
+      track('ViewContent', {
+        content_name: product.name,
+        content_ids: [makeItemId(product.name)],
+        content_type: 'product',
+        ...(Number.isFinite(value) ? { value, currency: 'BRL' } : {})
+      });
+    }
     photoLightboxImage.src = src;
     photoLightboxImage.alt = name ? `Foto ampliada de ${name}` : 'Foto ampliada do prato';
     if (photoTitle) photoTitle.textContent = name || 'Prato do Kipeixe';
@@ -488,11 +501,20 @@
   const notesStep = qs('[data-notes-step]');
   const nameError = qs('[data-name-error]');
   const addressError = qs('[data-address-error]');
+  let checkoutTracked = false;
 
   function openCart() {
     cartDrawer?.classList.add('is-open');
     cartDrawer?.setAttribute('aria-hidden', 'false');
     document.body.classList.add('cart-open');
+    if (cart.length && !checkoutTracked) {
+      checkoutTracked = true;
+      track('InitiateCheckout', {
+        value: cartValue(), currency: 'BRL', num_items: cartCount(),
+        contents: cart.map((item) => ({ id: item.id, quantity: item.qty, item_price: item.price })),
+        content_type: 'product'
+      });
+    }
   }
 
   const cartCount = () => cart.reduce((sum, item) => sum + item.qty, 0);
@@ -540,6 +562,15 @@
     const existing = cart.find((entry) => entry.id === id);
     if (existing) existing.qty += 1;
     else cart.push({ id, name, variant, price: numericPrice, qty: 1 });
+    checkoutTracked = false;
+    track('AddToCart', {
+      content_name: name,
+      content_ids: [id],
+      content_type: 'product',
+      contents: [{ id, quantity: 1, item_price: numericPrice }],
+      value: numericPrice,
+      currency: 'BRL'
+    });
     renderCart();
     if (quickCheckout && !quickCheckout.hidden) {
       quickCheckout.classList.remove('is-pulsing');
@@ -658,7 +689,13 @@
     lines.push('', 'Aguardo a confirmação do pedido. Obrigado!');
 
     const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(lines.join('\n'))}`;
-    window.location.href = url;
+    track('Contact', {
+      value: cartValue(), currency: 'BRL', num_items: cartCount(),
+      content_type: 'product',
+      contents: cart.map((item) => ({ id: item.id, quantity: item.qty, item_price: item.price }))
+    });
+    // Leave a short interval for the browser Pixel event before WhatsApp navigation.
+    window.setTimeout(() => { window.location.href = url; }, 200);
   });
 
   renderMenuTabs();
