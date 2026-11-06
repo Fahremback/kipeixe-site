@@ -15,7 +15,7 @@
     ]
   },
   "vars": {
-    "PAYMENTS_ENABLED": "false",
+    "PAYMENTS_ENABLED": "true",
     "DELIVERY_ENABLED": "false",
     "DELIVERY_FEE_CENTS": "0"
   },
