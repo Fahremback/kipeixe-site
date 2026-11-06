@@ -513,6 +513,7 @@
     cartDrawer?.classList.add('is-open');
     cartDrawer?.setAttribute('aria-hidden', 'false');
     document.body.classList.add('cart-open');
+    syncSchedule();
     if (cart.length && !checkoutTracked) {
       checkoutTracked = true;
       track('InitiateCheckout', {
@@ -657,9 +658,15 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const whatsappButton = qs('.whatsapp-button', orderForm);
+  const hoursService = window.KIPEIXE_HOURS;
+  const immediateInput = qs('input[name="mode"][value="immediate"]', orderForm);
+  const scheduledInput = qs('input[name="mode"][value="scheduled"]', orderForm);
+  const immediateOption = qs('[data-immediate-option]', orderForm);
+  const fulfillmentSwitch = qs('[data-fulfillment-switch]', orderForm);
   const scheduleField = qs('[data-schedule-field]');
   const scheduleInput = qs('input[name="scheduledAt"]', orderForm);
   const hoursHint = qs('[data-hours-hint]');
+  const scheduleError = qs('[data-schedule-error]');
   const onlineStatus = qs('[data-online-status]');
   const onlineStatusTitle = qs('[data-online-status-title]');
   const onlineStatusMessage = qs('[data-online-status-message]');
@@ -671,21 +678,72 @@
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
   let statusInterval = null;
 
-  const storeDateTime = (date) => new Intl.DateTimeFormat('sv-SE', {
-    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).format(date).replace(' ', 'T');
+  const activeOpeningHours = () => storeConfig?.openingHours ||
+    (window.KIPEIXE_API_ENABLED !== true ? hoursService?.DEFAULT_HOURS : null);
+
+  function clearScheduleError() {
+    if (scheduleError) {
+      scheduleError.textContent = '';
+      scheduleError.hidden = true;
+    }
+    scheduleInput?.removeAttribute('aria-invalid');
+  }
+
+  function invalidSchedule(message) {
+    if (scheduleError) {
+      scheduleError.textContent = message;
+      scheduleError.hidden = false;
+    }
+    scheduleInput?.setAttribute('aria-invalid', 'true');
+    scheduleInput?.focus({ preventScroll: true });
+    scheduleField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
 
   function syncSchedule() {
-    const mode = qs('input[name="mode"]:checked', orderForm)?.value || 'immediate';
+    const hours = activeOpeningHours();
+    const canOrderNow = Boolean(hours && hoursService?.isOpenAt(hours, new Date()));
+    if (immediateOption) immediateOption.hidden = !canOrderNow;
+    if (immediateInput) immediateInput.disabled = !canOrderNow;
+    fulfillmentSwitch?.classList.toggle('is-schedule-only', !canOrderNow);
+    if (!canOrderNow && scheduledInput && !scheduledInput.checked) {
+      scheduledInput.checked = true;
+      clearScheduleError();
+    }
+    const mode = qs('input[name="mode"]:checked', orderForm)?.value || 'scheduled';
     if (scheduleField) scheduleField.hidden = mode !== 'scheduled';
     if (scheduleInput) {
-      scheduleInput.min = storeDateTime(new Date(Date.now() + 15 * 60000));
-      scheduleInput.max = storeDateTime(new Date(Date.now() + 7 * 24 * 3600000));
+      const firstSlot = Math.ceil((Date.now() + 15 * 60_000) / (15 * 60_000)) * (15 * 60_000);
+      scheduleInput.min = hoursService.toInputValue(new Date(firstSlot));
+      scheduleInput.max = hoursService.toInputValue(new Date(Date.now() + 7 * 24 * 60 * 60_000));
       scheduleInput.required = mode === 'scheduled';
+      scheduleInput.disabled = mode !== 'scheduled';
     }
+    if (hoursHint) hoursHint.textContent = !hours
+      ? 'Horários indisponíveis para consulta. Você pode agendar; confirme com o restaurante.'
+      : canOrderNow
+        ? 'Estamos abertos agora. Você também pode agendar seu pedido.'
+        : 'Fora do horário de funcionamento. Agende para quando o restaurante estiver aberto.';
+    return canOrderNow;
   }
-  qsa('input[name="mode"]', orderForm).forEach(radio => radio.addEventListener('change', syncSchedule));
+
+  function validateScheduleChoice() {
+    const canOrderNow = syncSchedule();
+    const mode = qs('input[name="mode"]:checked', orderForm)?.value;
+    const hours = activeOpeningHours();
+    if (mode === 'immediate') {
+      return canOrderNow || invalidSchedule('O restaurante está fechado. Escolha Agendar.');
+    }
+    if (mode !== 'scheduled') return invalidSchedule('Escolha Agora ou Agendar.');
+    if (!hours) return invalidSchedule('Não foi possível consultar os horários. Tente novamente.');
+    const validation = hoursService.validateSchedule(hours, scheduleInput?.value);
+    return validation.valid || invalidSchedule(validation.message);
+  }
+  qsa('input[name="mode"]', orderForm).forEach(radio => radio.addEventListener('change', () => {
+    clearScheduleError();
+    syncSchedule();
+  }));
+  scheduleInput?.addEventListener('input', clearScheduleError);
   syncSchedule();
 
   function updateMenuFromApi(categories) {
@@ -708,7 +766,8 @@
     if (location.hostname !== '127.0.0.1' && window.KIPEIXE_API_ENABLED !== true) {
       if (onlineButton) onlineButton.hidden = true;
       if (whatsappButton) whatsappButton.hidden = false;
-      if (hoursHint) hoursHint.textContent = 'Pedidos encaminhados ao restaurante pelo WhatsApp.';
+      storeConfig = null;
+      syncSchedule();
       return;
     }
     try {
@@ -718,6 +777,7 @@
       ]);
       if (!configResponse.ok || !catalogResponse.ok) throw Error('Serviço não disponível.');
       storeConfig = await configResponse.json();
+      syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
       if (onlineButton) onlineButton.hidden = !storeConfig.onlinePaymentEnabled;
       if (whatsappButton) whatsappButton.hidden = Boolean(storeConfig.onlinePaymentEnabled);
@@ -737,22 +797,13 @@
           storeConfig.sandbox
             ? 'AMBIENTE DE TESTES: pagamentos fictícios. Após simular, acompanhe o aceite do pedido.'
             : 'Após o pagamento, aguarde a aceitação do Kipeixe. Pedido imediato sem resposta em 30 minutos será recusado e o estorno solicitado.';
-        if (hoursHint) hoursHint.textContent = storeConfig.openNow
-          ? 'O restaurante está aberto. Também é possível agendar um horário.'
-          : 'O restaurante está fechado agora. Escolha um horário agendado.';
-        const immediate = qs('input[name="mode"][value="immediate"]');
-        if (immediate) {
-          immediate.disabled = !storeConfig.openNow;
-          if (!storeConfig.openNow) {
-            const scheduled = qs('input[name="mode"][value="scheduled"]');
-            if (scheduled) scheduled.checked = true;
-          }
-        }
-        syncSchedule();
       }
     } catch {
-      // Keep the existing WhatsApp journey if the payment API is not deployed.
-      if (hoursHint) hoursHint.textContent = 'Pedidos pelo WhatsApp disponíveis.';
+      // Falha fechada: nunca exibir Agora com horários administrativos indisponíveis.
+      storeConfig = null;
+      if (onlineButton) onlineButton.hidden = true;
+      if (whatsappButton) whatsappButton.hidden = false;
+      syncSchedule();
     }
   }
 
@@ -810,6 +861,7 @@
 
   async function startOnlineCheckout() {
     if (!storeConfig?.onlinePaymentEnabled) return;
+    if (!validateScheduleChoice()) return;
     const data = new FormData(orderForm);
     const name = String(data.get('name') || '').trim();
     const phone = String(data.get('phone') || '').replace(/\D/g, '');
@@ -873,6 +925,7 @@
 
   orderForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!validateScheduleChoice()) return;
     if (storeConfig?.onlinePaymentEnabled) {
       await startOnlineCheckout();
       return;
@@ -924,7 +977,7 @@
       });
       lines.push(`*Horário solicitado:* ${display}`);
     } else {
-      lines.push('*Horário solicitado:* Assim que possível');
+      lines.push('*Horário solicitado:* Agora');
     }
     if (notes) lines.push(`*Observações:* ${notes}`);
     lines.push('', 'Aguardo a confirmação do pedido. Obrigado!');
@@ -942,6 +995,16 @@
   renderMenuTabs();
   renderCategory(0, false);
   renderCart();
+  window.setInterval(syncSchedule, 30_000);
+  window.setInterval(() => {
+    if (window.KIPEIXE_API_ENABLED === true) refreshStore();
+  }, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncSchedule();
+      if (window.KIPEIXE_API_ENABLED === true) refreshStore();
+    }
+  });
   refreshStore().then(() => {
     const returned = new URLSearchParams(location.search);
     if (currentOrder?.orderId && (returned.has('retorno') || returned.has('pedido'))) {

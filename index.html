@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Confira o cardápio do Kipeixe em Foz do Iguaçu. Escolha peixes, porções, carnes, lanches e bebidas, monte seu pedido e envie pelo WhatsApp para confirmação." />
-    <meta name="theme-color" content="#173527" />
+    <meta name="theme-color" content="#2b2019" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:site_name" content="Kipeixe Restaurante & Pesque-Pague" />
@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="stylesheet" href="styles.css?v=20261106-green-kitchen" />
+    <link rel="stylesheet" href="styles.css?v=20261106-espresso-paprika" />
     <script>window.KIPEIXE_API_ENABLED = false;</script>
     <script src="meta-pixel.js?v=20261106-1"></script>
     <!-- GENERATED_RESTAURANT_JSON_LD_START -->
@@ -320,17 +320,18 @@
             <div class="checkout-section">
               <div class="checkout-section-title">
                 <span>04</span>
-                <div><strong>Quando receber?</strong><small>Na hora ou agendar para outro horário</small></div>
+                <div><strong>Quando receber?</strong><small>Agora ou no horário que você escolher</small></div>
               </div>
               <div class="fulfillment-switch" data-fulfillment-switch>
-                <label><input type="radio" name="mode" value="immediate" checked /> Assim que possível</label>
+                <label data-immediate-option><input type="radio" name="mode" value="immediate" checked /> Agora</label>
                 <label><input type="radio" name="mode" value="scheduled" /> Agendar</label>
               </div>
               <label class="modern-field" data-schedule-field hidden>
-                <span>Escolha a data e hora dentro do funcionamento</span>
+                <span>Data e horário desejados</span>
                 <input type="datetime-local" name="scheduledAt" step="900" />
               </label>
-              <small class="checkout-online-hint" data-hours-hint>Horários disponíveis conforme funcionamento do restaurante.</small>
+              <small class="checkout-online-hint" data-hours-hint role="status">Consultando horário de funcionamento...</small>
+              <small class="checkout-schedule-error" data-schedule-error role="alert" hidden></small>
             </div>
 
             <div class="checkout-section">
@@ -387,7 +388,8 @@
     </nav>
 
     <script src="menu-data.js?v=20261015-tilapia55"></script>
-    <script src="script.js?v=20261106-managed-orders"></script>
+    <script src="store-hours.js?v=20261106-1"></script>
+    <script src="script.js?v=20261106-schedule-aware"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {
