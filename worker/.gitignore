@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+*.sqlite*
+.dev.vars
+.local-admin-credentials.txt
+.wrangler/
+node_modules/

@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "kipeixe-orders",
+  "main": "src/app.mjs",
+  "compatibility_date": "2026-11-05",
+  "routes": [
+    { "pattern": "api.restaurantekipeixe.com.br", "custom_domain": true }
+  ],
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "ASAAS_ENV": "sandbox",
+    "PAYMENTS_ENABLED": "false",
+    "ALLOW_SANDBOX_CHECKOUT": "false",
+    "DELIVERY_ENABLED": "false",
+    "DELIVERY_FEE_CENTS": "0"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kipeixe-orders",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

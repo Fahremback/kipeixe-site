@@ -1,0 +1,241 @@
+import {
+  ALLOWED_ORIGINS, reply, fail, safeEqual, hash, isPaymentsReady, storeSettings,
+  clientConfig, getCatalog, priceCart, handleAdmin, sweepExpired, refundOrder,
+} from './management.mjs';
+import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
+
+const SITE = 'https://restaurantekipeixe.com.br/';
+const CHECKOUT_EVENTS = new Set(['CHECKOUT_CREATED', 'CHECKOUT_PAID', 'CHECKOUT_CANCELED', 'CHECKOUT_EXPIRED']);
+const digits = value => String(value ?? '').replace(/\D/g, '');
+
+async function throttle(request, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const windowStart = Math.floor(Date.now() / 600_000);
+  await env.DB.prepare(`INSERT INTO order_limits(ip,window_start,hits) VALUES (?,?,1)
+    ON CONFLICT(ip,window_start) DO UPDATE SET hits=hits+1`).bind(ip, windowStart).run();
+  const row = await env.DB.prepare('SELECT hits FROM order_limits WHERE ip=? AND window_start=?')
+    .bind(ip, windowStart).first();
+  return row.hits <= 8;
+}
+
+function checkoutLink(id) {
+  return `https://asaas.com/checkoutSession/show?id=${encodeURIComponent(id)}`;
+}
+
+async function createAsaasCheckout(order, env) {
+  const base = env.ASAAS_ENV === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3';
+  const callback = {
+    successUrl: `${SITE}?pedido=${order.id}&retorno=pagamento#cardapio`,
+    cancelUrl: `${SITE}?pedido=${order.id}&retorno=cancelado#cardapio`,
+    expiredUrl: `${SITE}?pedido=${order.id}&retorno=expirado#cardapio`,
+  };
+  const items = order.items.map(item => ({
+    name: (item.variant ? `${item.name} (${item.variant})` : item.name).slice(0, 100),
+    quantity: item.qty, value: item.unitCents / 100,
+  }));
+  if (order.deliveryCents > 0) items.push({ name: 'Entrega', quantity: 1, value: order.deliveryCents / 100 });
+  const response = await fetch(`${base}/checkouts`, {
+    method: 'POST', signal: AbortSignal.timeout(15000),
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json',
+      'User-Agent': 'Kipeixe-Orders/2.0', access_token: env.ASAAS_API_KEY },
+    body: JSON.stringify({
+      billingTypes: ['PIX', 'CREDIT_CARD'], chargeTypes: ['DETACHED'], minutesToExpire: 60,
+      externalReference: order.id, callback, items,
+    }),
+  });
+  if (!response.ok) throw new Error(`Asaas HTTP ${response.status}`);
+  const result = await response.json();
+  if (!result?.id || !/^[a-z0-9-]{15,100}$/i.test(result.id)) throw new Error('Checkout inválido.');
+  return { checkoutId: result.id, checkoutUrl: checkoutLink(result.id) };
+}
+
+function validateBuyer(data, settings) {
+  const customer = data.customer;
+  if (!customer || typeof customer !== 'object') throw new Error('Dados do cliente inválidos.');
+  const name = String(customer.name || '').trim();
+  const phone = digits(customer.phone);
+  const type = String(customer.type || '');
+  const address = String(customer.address || '').trim();
+  const notes = String(customer.notes || '').trim();
+  if (name.length < 2 || name.length > 90) throw new Error('Informe seu nome.');
+  if (!/^\d{10,13}$/.test(phone)) throw new Error('Informe telefone com DDD.');
+  if (!ORDER_TYPES.has(type)) throw new Error('Forma de recebimento inválida.');
+  if (address.length > 250 || notes.length > 500) throw new Error('Texto muito longo.');
+  if (type === 'Entrega' && (!settings.deliveryEnabled || !address)) {
+    throw new Error('Entrega indisponível ou endereço incompleto.');
+  }
+  return { name, phone, type, address, notes };
+}
+
+async function createOrder(request, env, origin) {
+  const settings = await storeSettings(env);
+  if (!isPaymentsReady(env) || !settings.ordersEnabled) return fail('Pedidos online indisponíveis.', 503, origin);
+  let body, buyer, schedule, priced;
+  try {
+    if ((Number(request.headers.get('content-length')) || 0) > 25000) return fail('Pedido muito grande.', 413, origin);
+    const text = await request.text();
+    if (text.length > 25000) return fail('Pedido muito grande.', 413, origin);
+    body = JSON.parse(text);
+    buyer = validateBuyer(body, settings);
+    schedule = validateFulfillment(body.mode, body.scheduledAt, settings.hours);
+    priced = await priceCart(env, body.items);
+  } catch (error) {
+    return fail(error instanceof SyntaxError ? 'JSON inválido.' : error.message, 422, origin);
+  }
+  const requestId = String(body.requestId || ''), accessToken = String(body.accessToken || '');
+  if (!/^[0-9a-f-]{36}$/i.test(requestId) || !/^[0-9a-f-]{36}$/i.test(accessToken)) {
+    return fail('Identificador do pedido inválido.', 422, origin);
+  }
+  const tokenHash = await hash(accessToken);
+  const previous = await env.DB.prepare('SELECT id, access_hash, checkout_url, payment_status FROM orders WHERE request_id = ?')
+    .bind(requestId).first();
+  if (previous) {
+    if (!safeEqual(previous.access_hash, tokenHash)) return fail('Identificador já utilizado.', 409, origin);
+    if (previous.checkout_url && previous.payment_status === 'PENDING') {
+      return reply({ orderId: previous.id, checkoutUrl: previous.checkout_url }, 200, origin);
+    }
+    return fail('Pedido já registrado. Consulte seu status.', 409, origin);
+  }
+  if (!await throttle(request, env)) return fail('Muitos pedidos. Tente novamente depois.', 429, origin);
+  const deliveryCents = buyer.type === 'Entrega' ? settings.deliveryFeeCents : 0;
+  if (Number.isInteger(body.expectedTotalCents) &&
+      body.expectedTotalCents !== priced.subtotalCents + deliveryCents) {
+    return fail('Os preços do cardápio mudaram. Atualize a página antes de pagar.', 409, origin);
+  }
+  const order = {
+    ...buyer, ...priced, deliveryCents, totalCents: priced.subtotalCents + deliveryCents,
+    id: crypto.randomUUID(), requestId, accessToken, scheduledFor: schedule,
+  };
+  try {
+    await env.DB.prepare(`INSERT INTO orders
+      (id,request_id,access_hash,name,phone,order_type,address,notes,items_json,
+       subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?)`)
+      .bind(order.id, requestId, tokenHash, buyer.name, buyer.phone, buyer.type, buyer.address,
+        buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents, schedule).run();
+  } catch { return fail('Pedido já registrado.', 409, origin); }
+  try {
+    const checkout = await createAsaasCheckout(order, env);
+    await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
+      updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
+    return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, totalCents: order.totalCents,
+      scheduledFor: schedule }, 201, origin);
+  } catch (error) {
+    // The provider may have created a payment even if the HTTP response was lost.
+    await env.DB.prepare(`UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      .bind(order.id).run();
+    return fail('Pagamento não confirmado. Não faça outro pedido antes de consultar o restaurante.', 502, origin);
+  }
+}
+
+async function readOrder(request, env, origin, id) {
+  if (!env.DB) return fail('Serviço indisponível.', 503, origin);
+  const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || '';
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return fail('Acesso negado.', 401, origin);
+  const row = await env.DB.prepare(`SELECT id, access_hash, payment_status, fulfillment_status, total_cents,
+    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason
+    FROM orders WHERE id=?`).bind(id).first();
+  if (!row || !safeEqual(row.access_hash, await hash(token))) return fail('Pedido não encontrado.', 404, origin);
+  const { access_hash, ...data } = row;
+  return reply({ orderId: data.id, paymentStatus: data.payment_status, orderStatus: data.fulfillment_status,
+    totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
+    scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,
+    closedReason: data.closed_reason, createdAt: data.created_at }, 200, origin);
+}
+
+async function webhook(request, env, ctx) {
+  if (!env.DB || !env.ASAAS_WEBHOOK_TOKEN ||
+      !safeEqual(request.headers.get('asaas-access-token') || '', env.ASAAS_WEBHOOK_TOKEN)) {
+    return fail('Webhook não autorizado.', 401);
+  }
+  let payload;
+  try {
+    if ((Number(request.headers.get('content-length')) || 0) > 50000) return fail('Payload excessivo.', 413);
+    const text = await request.text();
+    if (text.length > 50000) return fail('Payload excessivo.', 413);
+    payload = JSON.parse(text);
+  } catch { return fail('JSON inválido.', 400); }
+  if (!payload?.id || typeof payload.id !== 'string' || payload.id.length > 200) return fail('Evento inválido.', 400);
+  const event = payload.event, checkout = payload.checkout;
+  if (!CHECKOUT_EVENTS.has(event)) {
+    if (event === 'PAYMENT_REFUNDED' && payload.payment?.id) {
+      await env.DB.prepare(`UPDATE orders SET refund_status='REFUNDED', updated_at=CURRENT_TIMESTAMP
+        WHERE payment_id=? AND refund_status IN ('REQUESTED','PROCESSING','REVIEW')`)
+        .bind(payload.payment.id).run();
+    }
+    return reply({ received: true });
+  }
+  if (!checkout?.id || typeof checkout.id !== 'string') return fail('Checkout inválido.', 400);
+  const row = await env.DB.prepare('SELECT id, checkout_id, payment_status, fulfillment_status, scheduled_for FROM orders WHERE checkout_id=? OR id=?')
+    .bind(checkout.id, checkout.externalReference || '').first();
+  if (!row) return fail('Pedido ainda não sincronizado.', 503);
+  if (row.checkout_id && row.checkout_id !== checkout.id) return fail('Checkout divergente.', 409);
+  if (checkout.externalReference && checkout.externalReference !== row.id) return fail('Referência divergente.', 409);
+  // Store event ID for observability; state updates below remain idempotent.
+  // A retry must still apply the state change if a prior attempt failed after this INSERT.
+  await env.DB.prepare(`INSERT OR IGNORE INTO webhook_events(id,checkout_id,event) VALUES (?,?,?)`)
+    .bind(payload.id, checkout.id, event).run();
+  if (event === 'CHECKOUT_PAID') {
+    const paidAt = new Date().toISOString();
+    const deadline = acceptanceDeadline(paidAt, row.scheduled_for);
+    const late = deadline <= paidAt;
+    const status = late ? 'AUTO_REJECTED' : row.scheduled_for ? 'SCHEDULED' : 'AWAITING_ACCEPTANCE';
+    const result = await env.DB.prepare(`UPDATE orders SET checkout_id=?, payment_status='PAID',
+      fulfillment_status=?, paid_at=?, acceptance_deadline=?,
+      refund_status=CASE WHEN ? THEN 'PENDING' ELSE refund_status END,
+      closed_reason=CASE WHEN ? THEN 'Pagamento após horário agendado' ELSE closed_reason END,
+      updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND payment_status IN ('CREATING','PENDING','REVIEW','EXPIRED','CANCELED')
+        AND fulfillment_status='AWAITING_PAYMENT'`)
+      .bind(checkout.id, status, paidAt, deadline, late ? 1 : 0, late ? 1 : 0, row.id).run();
+    if (late && result.meta.changes) ctx.waitUntil(refundOrder(env, row.id));
+  } else if (event === 'CHECKOUT_CANCELED' || event === 'CHECKOUT_EXPIRED') {
+    const state = event === 'CHECKOUT_CANCELED' ? 'CANCELED' : 'EXPIRED';
+    await env.DB.prepare(`UPDATE orders SET payment_status=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND payment_status IN ('CREATING','PENDING','REVIEW') AND fulfillment_status='AWAITING_PAYMENT'`)
+      .bind(state, row.id).run();
+  }
+  return reply({ received: true });
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url), origin = request.headers.get('Origin') || '';
+    const pathname = url.pathname;
+    if (env.LOCAL_DEVELOPMENT === 'true' && origin === 'http://127.0.0.1:8080') {
+      ALLOWED_ORIGINS.add(origin);
+    }
+    if (pathname === '/health' && request.method === 'GET') return reply({ ok: true });
+    if (origin && !ALLOWED_ORIGINS.has(origin) && !origin.startsWith('http://127.0.0.1:')) {
+      return fail('Origem não permitida.', 403);
+    }
+    if (request.method === 'OPTIONS') {
+      if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem não permitida.', 403);
+      return reply(null, 204, origin);
+    }
+    try {
+      if (pathname === '/api/webhook/asaas' && request.method === 'POST') return webhook(request, env, ctx);
+      if (pathname === '/api/config' && request.method === 'GET') return reply(await clientConfig(env), 200, origin);
+      if (pathname === '/api/catalog' && request.method === 'GET') {
+        return reply(await getCatalog(env), 200, origin);
+      }
+      if (pathname.startsWith('/api/admin/') || pathname.startsWith('/api/auth/')) {
+        if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem administrativa não autorizada.', 403, origin);
+        return handleAdmin(request, env, origin, url);
+      }
+      if (pathname === '/api/orders' && request.method === 'POST') {
+        if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem não autorizada.', 403, origin);
+        return createOrder(request, env, origin);
+      }
+      const match = /^\/api\/orders\/([0-9a-f-]{36})$/i.exec(pathname);
+      if (match && request.method === 'GET') return readOrder(request, env, origin, match[1]);
+      return fail('Rota não encontrada.', 404, origin);
+    } catch (error) {
+      console.error('Kipeixe Worker', error.message);
+      return fail('Falha temporária no serviço.', 500, origin);
+    }
+  },
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(sweepExpired(env));
+  },
+};

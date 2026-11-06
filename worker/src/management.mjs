@@ -1,0 +1,412 @@
+import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
+
+export const ALLOWED_ORIGINS = new Set([
+  'https://restaurantekipeixe.com.br', 'https://www.restaurantekipeixe.com.br',
+]);
+const encoder = new TextEncoder();
+const json = (value) => JSON.stringify(value);
+export const isPaymentsReady = env => Boolean(env.DB && env.ASAAS_API_KEY && env.ASAAS_WEBHOOK_TOKEN &&
+  env.PAYMENTS_ENABLED === 'true' && ['sandbox', 'production'].includes(env.ASAAS_ENV) &&
+  (env.ASAAS_ENV !== 'sandbox' || env.ALLOW_SANDBOX_CHECKOUT === 'true'));
+
+export function reply(data, status = 200, origin = '', extra = {}) {
+  const headers = new Headers({
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    ...extra,
+  });
+  if (ALLOWED_ORIGINS.has(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    headers.set('Vary', 'Origin');
+  }
+  return new Response(status === 204 ? null : json(data), { status, headers });
+}
+export const fail = (message, status = 400, origin = '') => reply({ error: message }, status, origin);
+
+export function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const aa = encoder.encode(a), bb = encoder.encode(b);
+  let difference = aa.length ^ bb.length;
+  for (let i = 0; i < Math.max(aa.length, bb.length); i++) difference |= (aa[i] || 0) ^ (bb[i] || 0);
+  return difference === 0;
+}
+
+export async function hash(value) {
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)));
+  return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
+const randomToken = () => [...crypto.getRandomValues(new Uint8Array(32))].map(b => b.toString(16).padStart(2, '0')).join('');
+const cookieValue = request => (request.headers.get('Cookie') || '').split(';')
+  .map(x => x.trim()).find(x => x.startsWith('kipeixe_session='))?.slice('kipeixe_session='.length) || '';
+const adminCookie = (token, maxAge) => `kipeixe_session=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+const limitedJson = async (request, limit = 20000) => {
+  if ((Number(request.headers.get('content-length')) || 0) > limit) throw new Error('Requisição muito grande.');
+  const text = await request.text();
+  if (text.length > limit) throw new Error('Requisição muito grande.');
+  return JSON.parse(text);
+};
+const normalize = text => String(text ?? '').trim();
+const cents = value => value === null ? null : Number(value);
+const canPrice = value => value === null || (Number.isInteger(value) && value >= 100 && value <= 500000);
+
+export async function storeSettings(env) {
+  if (!env.DB) return { ordersEnabled: false, deliveryEnabled: false, deliveryFeeCents: 0, hours: DEFAULT_HOURS };
+  const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
+  const values = Object.fromEntries(rows.map(row => [row.key, row.value]));
+  let hours = DEFAULT_HOURS;
+  try { hours = validateHours(JSON.parse(values.opening_hours)); } catch {}
+  return {
+    ordersEnabled: values.orders_enabled === 'true',
+    deliveryEnabled: values.delivery_enabled === 'true',
+    deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
+    hours,
+  };
+}
+
+export async function clientConfig(env) {
+  const settings = await storeSettings(env);
+  const now = new Date();
+  return {
+    onlinePaymentEnabled: isPaymentsReady(env) && settings.ordersEnabled,
+    paymentsConfigured: isPaymentsReady(env),
+    deliveryEnabled: settings.deliveryEnabled,
+    deliveryFeeCents: settings.deliveryFeeCents,
+    openingHours: settings.hours,
+    openNow: openAt(now, settings.hours),
+    localNow: localSlot(now),
+    sandbox: env.ASAAS_ENV === 'sandbox',
+    acceptsOrders: settings.ordersEnabled,
+  };
+}
+
+export async function getCatalog(env, all = false) {
+  if (!env.DB) throw new Error('Banco de dados indisponível.');
+  const [cats, products] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM categories ${all ? '' : 'WHERE active = 1'} ORDER BY sort_order, title`).all(),
+    env.DB.prepare(`SELECT * FROM products ${all ? '' : 'WHERE active = 1 AND archived = 0'} ORDER BY sort_order, name`).all(),
+  ]);
+  if (all) return { categories: cats.results, products: products.results.map(p => ({
+    ...p, variants: JSON.parse(p.variants_json), variants_json: undefined,
+  })) };
+  return { categories: cats.results.map(cat => ({
+    id: cat.id, title: cat.title, eyebrow: cat.eyebrow,
+    items: products.results.filter(p => p.category_id === cat.id).map(p => ({
+      id: p.id, name: p.name, description: p.description,
+      price: p.price_cents === null ? null : p.price_cents / 100,
+      variants: JSON.parse(p.variants_json).map(v => ({ label: v.label, price: v.priceCents / 100 })),
+    })),
+  })).filter(cat => cat.items.length > 0) };
+}
+
+export async function priceCart(env, raw) {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 30) throw new Error('Carrinho inválido.');
+  const products = (await env.DB.prepare(`SELECT p.* FROM products p
+    JOIN categories c ON c.id = p.category_id
+    WHERE p.active = 1 AND p.archived = 0 AND c.active = 1`).all()).results;
+  const byId = new Map(products.map(p => [p.id, p]));
+  const byName = new Map(products.map(p => [p.name, p]));
+  const merged = new Map();
+  for (const input of raw) {
+    if (!input || !Number.isInteger(input.qty) || input.qty < 1 || input.qty > 20) throw new Error('Quantidade inválida.');
+    const product = byId.get(input.productId) || byName.get(input.name);
+    if (!product) throw new Error('Produto indisponível.');
+    const variant = normalize(input.variant);
+    const variants = JSON.parse(product.variants_json);
+    const found = variants.find(v => v.label === variant);
+    const price = variants.length ? found?.priceCents : variant === '' ? product.price_cents : null;
+    if (!Number.isInteger(price) || price <= 0) throw new Error('Preço do produto indisponível.');
+    const key = `${product.id}::${variant}`;
+    const quantity = (merged.get(key)?.qty || 0) + input.qty;
+    if (quantity > 20) throw new Error('Quantidade máxima excedida.');
+    merged.set(key, { productId: product.id, name: product.name, variant, qty: quantity, unitCents: price });
+  }
+  const items = [...merged.values()];
+  if (items.reduce((sum, item) => sum + item.qty, 0) > 50) throw new Error('Máximo de 50 unidades por pedido.');
+  const subtotalCents = items.reduce((sum, item) => sum + item.qty * item.unitCents, 0);
+  if (subtotalCents > 500000) throw new Error('Valor máximo excedido.');
+  return { items, subtotalCents };
+}
+
+async function verifyPassword(password, salt, expected) {
+  if (!password || !salt || !expected) return false;
+  const base = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({
+    name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 210000,
+  }, base, 256);
+  return safeEqual(hex(bits), expected);
+}
+
+async function currentAdmin(request, env) {
+  const token = cookieValue(request);
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  const session = await env.DB.prepare('SELECT username FROM admin_sessions WHERE token_hash = ? AND expires_at > ?')
+    .bind(await hash(token), Date.now()).first();
+  return session?.username || null;
+}
+
+async function login(request, env, origin) {
+  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD_HASH || !env.ADMIN_PASSWORD_SALT || !env.DB) {
+    return fail('Painel administrativo não configurado.', 503, origin);
+  }
+  let data;
+  try { data = await limitedJson(request, 3000); } catch { return fail('Dados inválidos.', 400, origin); }
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const windowStart = Math.floor(Date.now() / (15 * 60_000));
+  await env.DB.prepare(`INSERT INTO login_limits (ip, window_start, hits) VALUES (?, ?, 1)
+    ON CONFLICT(ip, window_start) DO UPDATE SET hits = hits + 1`).bind(ip, windowStart).run();
+  const limit = await env.DB.prepare('SELECT hits FROM login_limits WHERE ip = ? AND window_start = ?')
+    .bind(ip, windowStart).first();
+  if (limit.hits > 8) return fail('Muitas tentativas. Aguarde 15 minutos.', 429, origin);
+  const username = normalize(data.username);
+  const password = String(data.password || '');
+  const passwordValid = password.length <= 300 && await verifyPassword(password, env.ADMIN_PASSWORD_SALT, env.ADMIN_PASSWORD_HASH);
+  if (!safeEqual(username, env.ADMIN_USERNAME) || !passwordValid) {
+    return fail('Credenciais inválidas.', 401, origin);
+  }
+  const token = randomToken();
+  const expires = Date.now() + 8 * 60 * 60_000;
+  await env.DB.prepare('INSERT INTO admin_sessions (token_hash, username, expires_at, created_at) VALUES (?, ?, ?, ?)')
+    .bind(await hash(token), username, expires, Date.now()).run();
+  return reply({ ok: true, username }, 200, origin, { 'Set-Cookie': adminCookie(token, 8 * 3600) });
+}
+
+async function audit(env, actor, action, subject, details = '') {
+  await env.DB.prepare('INSERT INTO audit_log (actor, action, subject, details) VALUES (?, ?, ?, ?)')
+    .bind(actor, action, subject, details).run();
+}
+
+const asaasBase = env => env.ASAAS_ENV === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3';
+async function asaas(env, path, method = 'GET') {
+  if (!env.ASAAS_API_KEY) throw new Error('Credencial Asaas não configurada.');
+  const response = await fetch(asaasBase(env) + path, {
+    method, signal: AbortSignal.timeout(15000),
+    headers: { 'access_token': env.ASAAS_API_KEY, 'Accept': 'application/json',
+      'Content-Type': 'application/json', 'User-Agent': 'Kipeixe-Orders/2.0' },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Asaas HTTP ${response.status}`);
+  return body;
+}
+
+export async function refundOrder(env, id) {
+  const order = await env.DB.prepare('SELECT id, checkout_id, refund_status FROM orders WHERE id = ?').bind(id).first();
+  if (!order || !order.checkout_id || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
+  const claim = await env.DB.prepare(`UPDATE orders SET refund_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND refund_status IN ('PENDING', 'REVIEW')`).bind(id).run();
+  if (!claim.meta.changes) return false;
+  try {
+    const listing = await asaas(env, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
+    const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
+    if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
+    await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(eligible[0].id, id).run();
+    await asaas(env, `/payments/${encodeURIComponent(eligible[0].id)}/refund`, 'POST');
+    await env.DB.prepare(`UPDATE orders SET refund_status = 'REQUESTED', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(id).run();
+    await audit(env, 'system', 'REFUND_REQUESTED', id, eligible[0].id);
+    return true;
+  } catch {
+    await env.DB.prepare(`UPDATE orders SET refund_status = 'REVIEW', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(id).run();
+    return false;
+  }
+}
+
+export async function sweepExpired(env, now = new Date()) {
+  if (!env.DB) return 0;
+  const deadline = now.toISOString();
+  const rows = (await env.DB.prepare(`SELECT id FROM orders
+    WHERE payment_status = 'PAID' AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED')
+    AND acceptance_deadline IS NOT NULL AND acceptance_deadline <= ? LIMIT 100`)
+    .bind(deadline).all()).results;
+  let closed = 0;
+  for (const row of rows) {
+    const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status = 'AUTO_REJECTED',
+      refund_status = 'PENDING', closed_reason = 'Prazo de aceitação esgotado', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND payment_status = 'PAID'
+      AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED') AND acceptance_deadline <= ?`)
+      .bind(row.id, deadline).run();
+    if (result.meta.changes) {
+      closed++;
+      await audit(env, 'system', 'AUTO_REJECTED', row.id);
+      await refundOrder(env, row.id);
+    }
+  }
+  await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at < ?').bind(Date.now()).run();
+  await env.DB.prepare('DELETE FROM login_limits WHERE window_start < ?')
+    .bind(Math.floor(Date.now() / 900000) - 2).run();
+  return closed;
+}
+
+function validateProduct(data) {
+  const name = normalize(data.name), description = normalize(data.description);
+  const categoryId = normalize(data.categoryId);
+  const priceCents = cents(data.priceCents);
+  const variants = Array.isArray(data.variants) ? data.variants : [];
+  if (name.length < 2 || name.length > 120 || description.length > 1000 ||
+      !/^[\w-]{2,90}$/.test(categoryId) || !canPrice(priceCents) || variants.length > 12) {
+    throw new Error('Dados do produto inválidos.');
+  }
+  const seen = new Set();
+  const validVariants = variants.map(v => {
+    const label = normalize(v.label);
+    if (!label || label.length > 70 || seen.has(label) || !canPrice(v.priceCents) || v.priceCents === null) {
+      throw new Error('Variação inválida.');
+    }
+    seen.add(label);
+    return { label, priceCents: v.priceCents };
+  });
+  if (!validVariants.length && priceCents === null) {
+    // Price on request is allowed, but cannot be ordered through checkout.
+  }
+  return { name, description, categoryId, priceCents, variants: validVariants,
+    active: data.active === false ? 0 : 1, sortOrder: Number.isInteger(data.sortOrder) ? data.sortOrder : 0 };
+}
+
+async function productRoute(request, env, origin, url, actor) {
+  const match = /^\/api\/admin\/products(?:\/([\w-]+))?$/.exec(url.pathname);
+  if (!match) return null;
+  if (request.method === 'DELETE' && match[1]) {
+    await env.DB.prepare('UPDATE products SET archived = 1, active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(match[1]).run();
+    await audit(env, actor, 'PRODUCT_ARCHIVED', match[1]);
+    return reply({ ok: true }, 200, origin);
+  }
+  if (!['POST', 'PUT'].includes(request.method)) return fail('Método não permitido.', 405, origin);
+  if (request.method === 'POST' && match[1] || request.method === 'PUT' && !match[1]) return fail('Rota inválida.', 404, origin);
+  let product;
+  try { product = validateProduct(await limitedJson(request)); } catch (e) { return fail(e.message, 422, origin); }
+  const category = await env.DB.prepare('SELECT id FROM categories WHERE id = ?').bind(product.categoryId).first();
+  if (!category) return fail('Categoria não encontrada.', 422, origin);
+  const id = match[1] || `manual-${crypto.randomUUID()}`;
+  const duplicate = await env.DB.prepare('SELECT id FROM products WHERE lower(name) = lower(?) AND id != ? AND archived = 0 LIMIT 1')
+    .bind(product.name, id).first();
+  if (duplicate) return fail('Já existe outro produto com este nome.', 409, origin);
+  if (request.method === 'PUT') {
+    const result = await env.DB.prepare(`UPDATE products SET name = ?, description = ?, category_id = ?,
+      price_cents = ?, variants_json = ?, active = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+      .bind(product.name, product.description, product.categoryId, product.priceCents,
+        json(product.variants), product.active, product.sortOrder, id).run();
+    if (!result.meta.changes) return fail('Produto não encontrado.', 404, origin);
+  } else {
+    await env.DB.prepare(`INSERT INTO products
+      (id, category_id, name, description, price_cents, variants_json, active, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id, product.categoryId, product.name, product.description, product.priceCents,
+        json(product.variants), product.active, product.sortOrder).run();
+  }
+  await audit(env, actor, request.method === 'POST' ? 'PRODUCT_CREATED' : 'PRODUCT_EDITED', id);
+  return reply({ ok: true, id }, 200, origin);
+}
+
+async function categoryRoute(request, env, origin, url, actor) {
+  const match = /^\/api\/admin\/categories(?:\/([\w-]+))?$/.exec(url.pathname);
+  if (!match) return null;
+  let data;
+  try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
+  const id = match[1] || `categoria-${crypto.randomUUID().slice(0, 8)}`;
+  const title = normalize(data.title), eyebrow = normalize(data.eyebrow);
+  const active = data.active === false ? 0 : 1;
+  const sortOrder = Number.isInteger(data.sortOrder) ? data.sortOrder : 0;
+  if (!title || title.length > 80 || eyebrow.length > 120) return fail('Categoria inválida.', 422, origin);
+  if (request.method === 'POST' && !match[1]) {
+    await env.DB.prepare('INSERT INTO categories(id,title,eyebrow,sort_order,active) VALUES (?,?,?,?,?)')
+      .bind(id, title, eyebrow, sortOrder, active).run();
+  } else if (request.method === 'PUT' && match[1]) {
+    await env.DB.prepare('UPDATE categories SET title=?, eyebrow=?, sort_order=?, active=? WHERE id=?')
+      .bind(title, eyebrow, sortOrder, active, id).run();
+  } else return fail('Método não permitido.', 405, origin);
+  await audit(env, actor, 'CATEGORY_SAVED', id);
+  return reply({ ok: true, id }, 200, origin);
+}
+
+export async function handleAdmin(request, env, origin, url) {
+  if (!env.DB) return fail('Banco de dados indisponível.', 503, origin);
+  if (url.pathname === '/api/auth/login' && request.method === 'POST') return login(request, env, origin);
+  const actor = await currentAdmin(request, env);
+  if (!actor) return fail('Sessão inválida. Entre novamente.', 401, origin);
+  if (url.pathname === '/api/auth/session' && request.method === 'GET') return reply({ username: actor }, 200, origin);
+  if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
+    await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').bind(await hash(cookieValue(request))).run();
+    return reply({ ok: true }, 200, origin, { 'Set-Cookie': adminCookie('', 0) });
+  }
+  if (url.pathname === '/api/admin/catalog' && request.method === 'GET') {
+    return reply(await getCatalog(env, true), 200, origin);
+  }
+  if (url.pathname === '/api/admin/settings') {
+    if (request.method === 'GET') return reply(await storeSettings(env), 200, origin);
+    if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
+    let data, hours;
+    try {
+      data = await limitedJson(request);
+      hours = validateHours(data.hours);
+      if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
+      if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
+    } catch (e) { return fail(e.message, 422, origin); }
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('orders_enabled',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.ordersEnabled)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('delivery_enabled',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.deliveryEnabled)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('delivery_fee_cents',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.deliveryFeeCents)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('opening_hours',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(json(hours)),
+    ]);
+    await audit(env, actor, 'SETTINGS_CHANGED', 'store');
+    return reply({ ok: true }, 200, origin);
+  }
+  if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
+    await sweepExpired(env);
+    const rows = (await env.DB.prepare(`SELECT id, name, phone, order_type, address, notes, items_json,
+      subtotal_cents, delivery_cents, total_cents, payment_status, fulfillment_status, created_at,
+      paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id
+      FROM orders ORDER BY created_at DESC LIMIT 250`).all()).results;
+    return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })) }, 200, origin);
+  }
+  const action = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/action$/i.exec(url.pathname);
+  if (action && request.method === 'POST') {
+    let data;
+    try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
+    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline FROM orders WHERE id = ?')
+      .bind(action[1]).first();
+    if (!row || row.payment_status !== 'PAID') return fail('Pedido não pago ou inexistente.', 409, origin);
+    let target;
+    try { target = nextStatus(row.fulfillment_status, data.action); } catch (e) { return fail(e.message, 409, origin); }
+    if (PENDING_DECISION.has(row.fulfillment_status) && row.acceptance_deadline <= new Date().toISOString()) {
+      await sweepExpired(env);
+      return fail('Prazo encerrado.', 409, origin);
+    }
+    const rejecting = target === 'REJECTED';
+    const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status = ?,
+      refund_status = CASE WHEN ? THEN 'PENDING' ELSE refund_status END,
+      closed_reason = CASE WHEN ? THEN 'Recusado pelo restaurante' ELSE closed_reason END,
+      updated_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status = 'PAID'
+      AND fulfillment_status = ?
+      AND (fulfillment_status NOT IN ('AWAITING_ACCEPTANCE','SCHEDULED') OR acceptance_deadline > ?)`)
+      .bind(target, rejecting ? 1 : 0, rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
+    if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
+    await audit(env, actor, data.action, action[1]);
+    if (rejecting) await refundOrder(env, action[1]);
+    return reply({ ok: true, status: target }, 200, origin);
+  }
+  const retry = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/retry-refund$/i.exec(url.pathname);
+  if (retry && request.method === 'POST') {
+    const row = await env.DB.prepare('SELECT fulfillment_status, refund_status FROM orders WHERE id = ?').bind(retry[1]).first();
+    if (!row || !['AUTO_REJECTED', 'REJECTED'].includes(row.fulfillment_status) || row.refund_status !== 'REVIEW')
+      return fail('Revisão de estorno indisponível.', 409, origin);
+    const success = await refundOrder(env, retry[1]);
+    await audit(env, actor, 'REFUND_RETRY', retry[1], String(success));
+    return reply({ ok: success, needsReview: !success }, 200, origin);
+  }
+  const product = await productRoute(request, env, origin, url, actor);
+  if (product) return product;
+  const category = await categoryRoute(request, env, origin, url, actor);
+  if (category) return category;
+  return fail('Rota não encontrada.', 404, origin);
+}

@@ -7,7 +7,11 @@
     history.replaceState(history.state, '', `${inboundUrl.pathname}${inboundUrl.search}${inboundUrl.hash}`);
   }
 
-  const MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
+  let MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
+  const API = location.hostname === '127.0.0.1'
+    ? 'http://127.0.0.1:8787'
+    : 'https://api.restaurantekipeixe.com.br';
+  let storeConfig = null;
   const WHATSAPP = '554535772363';
   const VALID_PAGES = new Set(['inicio', 'cardapio', 'ambiente', 'pesque', 'contato']);
   const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -266,6 +270,7 @@
               type="button"
               class="variant-button"
               data-add-item
+              data-product-id="${escapeHtml(item.id || '')}"
               data-name="${escapeHtml(item.name)}"
               data-variant="${escapeHtml(variant.label || 'Opção')}"
               data-price="${variant.price}"
@@ -281,6 +286,7 @@
             type="button"
             class="add-button"
             data-add-item
+            data-product-id="${escapeHtml(item.id || '')}"
             data-name="${escapeHtml(item.name)}"
             data-variant=""
             data-price="${item.price}"
@@ -555,13 +561,13 @@
     `).join('');
   };
 
-  const addItem = (name, variant, price) => {
+  const addItem = (name, variant, price, productId = '') => {
     const numericPrice = Number(price);
     if (!Number.isFinite(numericPrice)) return;
     const id = makeItemId(name, variant);
     const existing = cart.find((entry) => entry.id === id);
     if (existing) existing.qty += 1;
-    else cart.push({ id, name, variant, price: numericPrice, qty: 1 });
+    else cart.push({ id, name, variant, productId, price: numericPrice, qty: 1 });
     checkoutTracked = false;
     track('AddToCart', {
       content_name: name,
@@ -582,7 +588,7 @@
   menuItems?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-add-item]');
     if (!button) return;
-    addItem(button.dataset.name, button.dataset.variant, button.dataset.price);
+    addItem(button.dataset.name, button.dataset.variant, button.dataset.price, button.dataset.productId);
     const original = button.textContent;
     button.textContent = 'Adicionado ✓';
     setTimeout(() => { button.textContent = original; }, 850);
@@ -615,7 +621,7 @@
       input.removeAttribute('aria-invalid');
       if (addressError) addressError.hidden = true;
     }
-    if (notesStep) notesStep.textContent = delivery ? '04' : '03';
+    if (notesStep) notesStep.textContent = '05';
   };
 
   const setFieldError = (input, errorNode, messageVisible) => {
@@ -649,13 +655,226 @@
     if (addressInput.value.trim()) setFieldError(addressInput, addressError, false);
   });
 
-  orderForm?.addEventListener('submit', (event) => {
+  const onlineButton = qs('[data-online-checkout]');
+  const whatsappButton = qs('.whatsapp-button', orderForm);
+  const scheduleField = qs('[data-schedule-field]');
+  const scheduleInput = qs('input[name="scheduledAt"]', orderForm);
+  const hoursHint = qs('[data-hours-hint]');
+  const onlineStatus = qs('[data-online-status]');
+  const onlineStatusTitle = qs('[data-online-status-title]');
+  const onlineStatusMessage = qs('[data-online-status-message]');
+  const onlineStatusRefresh = qs('[data-online-status-refresh]');
+  const onlineStatusLink = qs('[data-online-status-link]');
+  const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
+  const phoneError = qs('[data-phone-error]');
+  const phoneInput = qs('input[name="phone"]', orderForm);
+  let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
+  let statusInterval = null;
+
+  const storeDateTime = (date) => new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).format(date).replace(' ', 'T');
+
+  function syncSchedule() {
+    const mode = qs('input[name="mode"]:checked', orderForm)?.value || 'immediate';
+    if (scheduleField) scheduleField.hidden = mode !== 'scheduled';
+    if (scheduleInput) {
+      scheduleInput.min = storeDateTime(new Date(Date.now() + 15 * 60000));
+      scheduleInput.max = storeDateTime(new Date(Date.now() + 7 * 24 * 3600000));
+      scheduleInput.required = mode === 'scheduled';
+    }
+  }
+  qsa('input[name="mode"]', orderForm).forEach(radio => radio.addEventListener('change', syncSchedule));
+  syncSchedule();
+
+  function updateMenuFromApi(categories) {
+    if (!Array.isArray(categories) || categories.length === 0) return;
+    MENU = categories;
+    const prices = new Map(MENU.flatMap(category => category.items.flatMap(item =>
+      item.variants?.length
+        ? item.variants.map(v => [makeItemId(item.name, v.label), { price: v.price, productId: item.id }])
+        : item.price === null ? [] : [[makeItemId(item.name, ''), { price: item.price, productId: item.id }]]
+    )));
+    cart = cart.filter(entry => prices.has(entry.id)).map(entry => ({
+      ...entry, ...prices.get(entry.id)
+    }));
+    currentCategory = Math.min(currentCategory, MENU.length - 1);
+    renderCategory(currentCategory, false);
+    renderCart();
+  }
+
+  async function refreshStore() {
+    if (location.hostname !== '127.0.0.1' && window.KIPEIXE_API_ENABLED !== true) {
+      if (onlineButton) onlineButton.hidden = true;
+      if (whatsappButton) whatsappButton.hidden = false;
+      if (hoursHint) hoursHint.textContent = 'Pedidos encaminhados ao restaurante pelo WhatsApp.';
+      return;
+    }
+    try {
+      const [configResponse, catalogResponse] = await Promise.all([
+        fetch(`${API}/api/config`, { cache: 'no-store' }),
+        fetch(`${API}/api/catalog`, { cache: 'no-store' })
+      ]);
+      if (!configResponse.ok || !catalogResponse.ok) throw Error('Serviço não disponível.');
+      storeConfig = await configResponse.json();
+      updateMenuFromApi((await catalogResponse.json()).categories);
+      if (onlineButton) onlineButton.hidden = !storeConfig.onlinePaymentEnabled;
+      if (whatsappButton) whatsappButton.hidden = Boolean(storeConfig.onlinePaymentEnabled);
+      const deliveryChoice = qs('[data-order-choice="Entrega"]');
+      if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
+      if (!storeConfig.deliveryEnabled && orderType?.value === 'Entrega') {
+        qs('[data-order-choice="Retirada no Kipeixe"]')?.click();
+      }
+      if (storeConfig.onlinePaymentEnabled) {
+        if (checkoutDisclaimer) checkoutDisclaimer.textContent =
+          'Após o pagamento, aguarde a aceitação do Kipeixe. Pedido imediato sem resposta em 30 minutos será recusado e o estorno solicitado.';
+        if (hoursHint) hoursHint.textContent = storeConfig.openNow
+          ? 'O restaurante está aberto. Também é possível agendar um horário.'
+          : 'O restaurante está fechado agora. Escolha um horário agendado.';
+        const immediate = qs('input[name="mode"][value="immediate"]');
+        if (immediate) {
+          immediate.disabled = !storeConfig.openNow;
+          if (!storeConfig.openNow) {
+            const scheduled = qs('input[name="mode"][value="scheduled"]');
+            if (scheduled) scheduled.checked = true;
+          }
+        }
+        syncSchedule();
+      }
+    } catch {
+      // Keep the existing WhatsApp journey if the payment API is not deployed.
+      if (hoursHint) hoursHint.textContent = 'Pedidos pelo WhatsApp disponíveis.';
+    }
+  }
+
+  const orderMessages = {
+    AWAITING_PAYMENT: ['Aguardando pagamento', 'Finalize o pagamento no Asaas. O restaurante só recebe o pedido depois disso.'],
+    AWAITING_ACCEPTANCE: ['Pagamento recebido', 'Seu pedido aguarda a confirmação do restaurante por até 30 minutos.'],
+    SCHEDULED: ['Pedido agendado', 'Pagamento recebido. O restaurante ainda precisa aceitar o horário solicitado.'],
+    PREPARING: ['Pedido aceito', 'A cozinha está preparando seu pedido.'],
+    READY: ['Pedido pronto', 'Seu pedido está pronto para retirada, consumo ou entrega combinada.'],
+    COMPLETED: ['Pedido concluído', 'Obrigado por pedir no Kipeixe.'],
+    REJECTED: ['Pedido recusado', 'O restaurante recusou o pedido. O estorno será solicitado ao Asaas.'],
+    AUTO_REJECTED: ['Prazo esgotado', 'O pedido foi recusado automaticamente. O estorno será solicitado ao Asaas.']
+  };
+
+  function showOrderStatus(title, message, link = '') {
+    if (!onlineStatus) return;
+    onlineStatus.hidden = false;
+    onlineStatusTitle.textContent = title;
+    onlineStatusMessage.textContent = message;
+    if (onlineStatusLink) {
+      onlineStatusLink.hidden = !link;
+      if (link && /^https:\/\/asaas\.com\//.test(link)) onlineStatusLink.href = link;
+    }
+    if (onlineStatusRefresh) onlineStatusRefresh.hidden = !currentOrder;
+  }
+
+  async function checkOrderStatus() {
+    if (!currentOrder?.orderId || !currentOrder?.accessToken) return;
+    try {
+      const response = await fetch(`${API}/api/orders/${encodeURIComponent(currentOrder.orderId)}`, {
+        headers: { Authorization: `Bearer ${currentOrder.accessToken}` },
+        cache: 'no-store'
+      });
+      if (!response.ok) throw Error('Não foi possível consultar o pedido.');
+      const data = await response.json();
+      const [title, description] = orderMessages[data.orderStatus] ||
+        ['Acompanhando pedido', 'O restaurante está atualizando a situação.'];
+      const paymentText = data.paymentStatus === 'PAID' ? '' :
+        data.paymentStatus === 'PENDING' ? ' Pagamento ainda não confirmado.' :
+        data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' : '';
+      const refundText = data.refundStatus === 'REVIEW' ? ' Estorno precisa de conferência do restaurante.' :
+        data.refundStatus === 'REQUESTED' ? ' Estorno solicitado.' :
+        data.refundStatus === 'REFUNDED' ? ' Estorno confirmado.' : '';
+      showOrderStatus(title, description + paymentText + refundText,
+        data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
+      if (['COMPLETED', 'REJECTED', 'AUTO_REJECTED'].includes(data.orderStatus) &&
+          !['PENDING', 'REVIEW', 'PROCESSING'].includes(data.refundStatus)) {
+        clearInterval(statusInterval);
+        statusInterval = null;
+      }
+    } catch {
+      showOrderStatus('Pedido registrado', 'Atualização temporariamente indisponível. Tente novamente.');
+    }
+  }
+
+  async function startOnlineCheckout() {
+    if (!storeConfig?.onlinePaymentEnabled) return;
+    const data = new FormData(orderForm);
+    const name = String(data.get('name') || '').trim();
+    const phone = String(data.get('phone') || '').replace(/\D/g, '');
+    const type = String(data.get('type') || '');
+    const address = String(data.get('address') || '').trim();
+    const mode = String(data.get('mode') || 'immediate');
+    const dateInput = String(data.get('scheduledAt') || '');
+    setFieldError(nameInput, nameError, name.length < 2);
+    setFieldError(phoneInput, phoneError, phone.length < 10);
+    setFieldError(addressInput, addressError, type === 'Entrega' && !address);
+    if (!cart.length || name.length < 2 || phone.length < 10 || type === 'Entrega' && !address) return;
+    if (mode === 'scheduled' && !dateInput) {
+      scheduleInput?.focus();
+      showOrderStatus('Escolha a data', 'Selecione o horário desejado antes de pagar.');
+      return;
+    }
+    const scheduleDate = mode === 'scheduled' ? new Date(dateInput + ':00-03:00') : null;
+    if (mode === 'scheduled' && !Number.isFinite(scheduleDate.getTime())) {
+      showOrderStatus('Horário inválido', 'Informe uma data e hora válidas.');
+      return;
+    }
+    const scheduledAt = scheduleDate?.toISOString() || null;
+    const attempt = {
+      requestId: crypto.randomUUID(), accessToken: crypto.randomUUID(),
+      customer: { name, phone, type, address, notes: String(data.get('notes') || '') },
+      mode, scheduledAt,
+      items: cart.map(item => ({ productId: item.productId || undefined,
+        name: item.name, variant: item.variant || '', qty: item.qty })),
+      expectedTotalCents: Math.round(cartValue() * 100) +
+        (type === 'Entrega' ? Number(storeConfig.deliveryFeeCents || 0) : 0)
+    };
+    onlineButton.disabled = true;
+    showOrderStatus('Preparando pagamento', 'Validando os preços e criando o checkout seguro.');
+    try {
+      const response = await fetch(`${API}/api/orders`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attempt)
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || 'Falha ao iniciar pagamento.');
+      currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
+      safeStorage.set('kipeixe_current_order_v2', currentOrder);
+      track('InitiateCheckout', {
+        value: cartValue(), currency: 'BRL', num_items: cartCount(),
+        content_type: 'product', contents: cart.map(item => ({
+          id: item.id, quantity: item.qty, item_price: item.price
+        }))
+      });
+      if (!/^https:\/\/asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
+      window.location.assign(result.checkoutUrl);
+    } catch (error) {
+      showOrderStatus('Pagamento indisponível', error.message);
+      onlineButton.disabled = false;
+      await refreshStore();
+    }
+  }
+
+  onlineButton?.addEventListener('click', () => orderForm?.requestSubmit());
+  onlineStatusRefresh?.addEventListener('click', checkOrderStatus);
+
+  orderForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (storeConfig?.onlinePaymentEnabled) {
+      await startOnlineCheckout();
+      return;
+    }
     const data = new FormData(orderForm);
     const name = String(data.get('name') || '').trim();
     const type = String(data.get('type') || '').trim();
     const address = String(data.get('address') || '').trim();
     const notes = String(data.get('notes') || '').trim();
+    const mode = String(data.get('mode') || 'immediate');
+    const scheduledAt = String(data.get('scheduledAt') || '').trim();
     const needsAddress = type === 'Entrega';
     const nameInvalid = !name;
     const addressInvalid = needsAddress && !address;
@@ -667,6 +886,11 @@
       const target = nameInvalid ? nameInput : addressInvalid ? addressInput : null;
       target?.focus({ preventScroll: true });
       target?.closest('.checkout-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (mode === 'scheduled' && !scheduledAt) {
+      scheduleInput?.focus();
+      showOrderStatus('Escolha a data', 'Informe o horário desejado para o pedido.');
       return;
     }
 
@@ -685,6 +909,14 @@
     ];
 
     if (type === 'Entrega' && address) lines.push(`*Endereço:* ${address}`);
+    if (mode === 'scheduled' && scheduledAt) {
+      const display = new Date(scheduledAt + ':00-03:00').toLocaleString('pt-BR', {
+        dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo'
+      });
+      lines.push(`*Horário solicitado:* ${display}`);
+    } else {
+      lines.push('*Horário solicitado:* Assim que possível');
+    }
     if (notes) lines.push(`*Observações:* ${notes}`);
     lines.push('', 'Aguardo a confirmação do pedido. Obrigado!');
 
@@ -701,6 +933,14 @@
   renderMenuTabs();
   renderCategory(0, false);
   renderCart();
+  refreshStore().then(() => {
+    const returned = new URLSearchParams(location.search);
+    if (currentOrder?.orderId && (returned.has('retorno') || returned.has('pedido'))) {
+      openCart();
+      checkOrderStatus();
+      if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
+    }
+  });
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {

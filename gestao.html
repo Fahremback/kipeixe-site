@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#173527">
+  <title>Central Kipeixe | Gestão de pedidos</title>
+  <link rel="icon" href="assets/logo.webp" type="image/webp">
+  <link rel="stylesheet" href="gestao.css?v=20261106-1">
+  <script src="gestao.js?v=20261106-1" defer></script>
+</head>
+<body>
+  <main id="login-view" class="login-layout">
+    <section class="login-brand">
+      <div class="brand-lockup"><img src="assets/logo.webp" alt=""><span>KIPEIXE <small>GESTÃO DA CASA</small></span></div>
+      <div>
+        <span class="eyebrow light">CENTRAL DE OPERAÇÕES</span>
+        <h1>Uma cozinha organizada começa por aqui.</h1>
+        <p>Pedidos, tempo de aceite, cardápio, valores e funcionamento em um só lugar.</p>
+      </div>
+      <span class="login-footer">Acesso reservado à equipe do restaurante.</span>
+    </section>
+    <section class="login-form-area">
+      <form id="login-form" class="login-card">
+        <span class="eyebrow">ACESSO RESTRITO</span>
+        <h2>Entrar na central</h2>
+        <p>Use suas credenciais exclusivas do Kipeixe.</p>
+        <label>Identificação <input name="username" type="text" autocomplete="username" required minlength="3" autofocus></label>
+        <label>Senha <input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary-btn" type="submit">Acessar painel</button>
+        <p id="login-error" class="feedback error" role="alert" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <div id="dashboard-view" class="dashboard" hidden>
+    <aside class="sidebar">
+      <div class="brand-lockup"><img src="assets/logo.webp" alt=""><span>KIPEIXE <small>CENTRAL DE GESTÃO</small></span></div>
+      <p class="sidebar-label">OPERAÇÃO</p>
+      <nav class="main-nav" aria-label="Painel">
+        <button type="button" data-tab="orders" class="active"><span>◫</span> Pedidos <b id="pending-count">0</b></button>
+        <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
+        <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
+      </nav>
+      <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Ver site público ↗</a><button type="button" id="logout">Sair da central</button></div>
+    </aside>
+    <main class="main-panel">
+      <header class="topbar"><div><span class="eyebrow">RESTAURANTE KIPEIXE</span><h1 id="view-title">Pedidos recebidos</h1></div>
+        <div class="topbar-right"><span class="live-dot"></span><span id="clock">--:--</span><span id="operator-name"></span></div>
+      </header>
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <section id="orders-view" class="view">
+        <div class="stats-row">
+          <div class="stat-card"><small>AGUARDANDO DECISÃO</small><strong id="stat-pending">0</strong><span>Pedidos pagos</span></div>
+          <div class="stat-card"><small>EM PREPARAÇÃO</small><strong id="stat-preparing">0</strong><span>Pedidos aceitos</span></div>
+          <div class="stat-card"><small>PRONTOS</small><strong id="stat-ready">0</strong><span>Aguardam retirada ou entrega</span></div>
+          <div class="stat-card"><small>REVISAR ESTORNOS</small><strong id="stat-refunds">0</strong><span>Exigem conferência</span></div>
+        </div>
+        <div class="section-heading"><div><span class="eyebrow">ACOMPANHAMENTO EM TEMPO REAL</span><h2>Fila de pedidos</h2></div>
+          <div class="header-actions"><label class="switch-line"><input id="sound-toggle" type="checkbox" checked> Aviso sonoro</label><button id="refresh-orders" type="button" class="subtle-btn">Atualizar</button></div>
+        </div>
+        <div id="orders-list" class="order-grid"><div class="empty-state">Carregando pedidos...</div></div>
+      </section>
+
+      <section id="products-view" class="view" hidden>
+        <div class="section-heading"><div><span class="eyebrow">CONTROLE DO CARDÁPIO</span><h2>Produtos e preços</h2></div>
+          <button id="new-product" class="primary-btn small" type="button">+ Novo produto</button></div>
+        <div class="catalog-layout">
+          <div class="catalog-list">
+            <div class="toolbar"><input id="product-search" type="search" placeholder="Buscar nome ou categoria...">
+              <select id="product-category-filter"><option value="">Todas as categorias</option></select></div>
+            <div id="products-list"></div>
+          </div>
+          <form id="product-editor" class="editor-card" hidden>
+            <div class="editor-heading"><h3 id="editor-title">Editar produto</h3><button type="button" id="close-editor" class="text-btn">Fechar</button></div>
+            <input type="hidden" name="id">
+            <label>Nome do produto<input name="name" required maxlength="120"></label>
+            <label>Categoria<select name="categoryId" required></select></label>
+            <label>Descrição<textarea name="description" rows="3" maxlength="1000"></textarea></label>
+            <label>Preço único em R$ <input name="price" type="number" min="0" step="0.01" placeholder="Deixe vazio se houver tamanhos"></label>
+            <div class="variant-heading"><strong>Tamanhos e variações</strong><button type="button" id="add-variant" class="text-btn">+ Adicionar</button></div>
+            <div id="variants-list"></div>
+            <label class="check-line"><input name="active" type="checkbox" checked> Disponível para os clientes</label>
+            <div class="editor-actions"><button type="submit" class="primary-btn">Salvar produto</button><button type="button" id="archive-product" class="danger-outline">Arquivar</button></div>
+          </form>
+        </div>
+        <details class="categories-box"><summary>Gerenciar categorias</summary>
+          <div id="categories-list"></div>
+          <form id="category-form" class="inline-form"><input name="title" placeholder="Nova categoria" required><input name="eyebrow" placeholder="Subtítulo"><button class="subtle-btn" type="submit">Adicionar</button></form>
+        </details>
+      </section>
+
+      <section id="settings-view" class="view" hidden>
+        <div class="section-heading"><div><span class="eyebrow">CONFIGURAÇÕES DA CASA</span><h2>Horários e operação</h2></div></div>
+        <form id="settings-form" class="settings-grid">
+          <div class="settings-card"><h3>Recebimento de pedidos</h3><label class="check-line"><input name="ordersEnabled" type="checkbox"> Permitir novos pedidos no site</label>
+            <p>Fora do horário de abertura, o cliente precisa escolher um horário futuro.</p>
+            <label class="check-line"><input name="deliveryEnabled" type="checkbox"> Habilitar entrega</label>
+            <label>Taxa de entrega (R$)<input name="deliveryFee" type="number" step="0.01" min="0" max="300" value="0"></label></div>
+          <div class="settings-card"><h3>Horário de funcionamento</h3><p>Horário local de Foz do Iguaçu. Desmarque um dia para fechar.</p>
+            <div id="hours-list"></div></div>
+          <div class="settings-card help-card"><h3>Regras automáticas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
+            <p><strong>Agendados:</strong> a equipe pode decidir até o horário escolhido pelo cliente.</p>
+            <p><strong>Recusas:</strong> o sistema solicita estorno no Asaas. Se o provedor exigir intervenção, o pedido fica destacado para revisão.</p>
+            <p><strong>Prazo:</strong> a rotina automática verifica pedidos a cada minuto.</p></div>
+          <button type="submit" class="primary-btn save-settings">Salvar alterações</button>
+        </form>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
