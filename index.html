@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="stylesheet" href="styles.css?v=20261106-uber-direct" />
+    <link rel="stylesheet" href="styles.css?v=20261106-admin-entry" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
     <script src="meta-pixel.js?v=20261106-1"></script>
     <!-- GENERATED_RESTAURANT_JSON_LD_START -->
@@ -50,10 +50,13 @@
         <button type="button" class="tab-link" data-page-link="contato">Contato</button>
       </nav>
 
-      <button class="header-order" type="button" data-cart-open>
-        <span>Meu pedido</span>
-        <b data-cart-count>0</b>
-      </button>
+      <div class="header-actions">
+        <a class="admin-entry" href="/gestao.html" aria-label="Entrar na área administrativa">Gestão</a>
+        <button class="header-order" type="button" data-cart-open>
+          <span>Meu pedido</span>
+          <b data-cart-count>0</b>
+        </button>
+      </div>
     </header>
 
     <main class="site-main">
@@ -220,6 +223,7 @@
     <footer class="footer">
       <div><strong>KIPEIXE</strong><span>Restaurante & Pesque-Pague · Foz do Iguaçu</span></div>
       <span>© <span data-year></span> Kipeixe</span>
+      <a class="footer-admin" href="/gestao.html">Área administrativa</a>
     </footer>
 
     <button class="quick-checkout" type="button" data-quick-checkout hidden aria-label="Finalizar pedido">
