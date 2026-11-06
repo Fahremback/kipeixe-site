@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="stylesheet" href="styles.css?v=20261106-espresso-paprika" />
+    <link rel="stylesheet" href="styles.css?v=20261106-asaas-payment" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
     <script src="meta-pixel.js?v=20261106-1"></script>
     <!-- GENERATED_RESTAURANT_JSON_LD_START -->
@@ -348,16 +348,27 @@
               </label>
             </div>
 
-            <button class="whatsapp-button" type="submit">
-              <span><strong>Enviar pelo WhatsApp</strong><small>Revisar e confirmar com o Kipeixe</small></span>
-              <b>→</b>
+            <div class="checkout-payment-section" aria-labelledby="checkout-payment-title">
+              <div class="checkout-section-title">
+                <span>06</span>
+                <div>
+                  <strong id="checkout-payment-title">Pagamento</strong>
+                  <small>Confira seu pedido e finalize com segurança</small>
+                </div>
+              </div>
+              <div class="checkout-payment-methods" aria-label="Formas de pagamento aceitas">
+                <span><b aria-hidden="true">◇</b> Pix</span>
+                <span><b aria-hidden="true">▣</b> Cartão de crédito</span>
+              </div>
+              <p class="checkout-payment-explainer">Escolha a forma de pagamento na próxima tela, no ambiente seguro do Asaas.</p>
+              <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
+            </div>
+            <button class="online-payment-button" data-online-checkout type="submit" disabled>
+              <span><strong>Conectando pagamento...</strong><small>Verificando disponibilidade</small></span>
+              <b aria-hidden="true">→</b>
             </button>
-            <button class="online-payment-button" data-online-checkout type="submit" hidden>
-              <span><strong>Pagar online</strong><small>Pix ou cartão de crédito · Asaas</small></span>
-              <b>↗</b>
-            </button>
-            <small class="checkout-online-hint" data-online-hint hidden>Para entregas, a taxa e a disponibilidade são confirmadas pelo WhatsApp.</small>
-            <small class="checkout-disclaimer" data-checkout-disclaimer>Pagamento online sujeito à confirmação do restaurante. Pedidos imediatos não aceitos em 30 minutos são recusados automaticamente.</small>
+            <small class="checkout-online-hint" data-online-hint role="status">Consultando o serviço de pagamento.</small>
+            <small class="checkout-disclaimer" data-checkout-disclaimer>Seu pedido só é encaminhado ao restaurante após a confirmação do pagamento. O restaurante ainda precisa aceitar o pedido.</small>
           </form>
         </div>
       </section>
@@ -389,7 +400,7 @@
 
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261106-product-links-1"></script>
+    <script src="script.js?v=20261106-payment-only"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {
