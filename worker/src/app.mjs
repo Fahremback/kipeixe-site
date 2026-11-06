@@ -4,6 +4,7 @@ import {
 } from './management.mjs';
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
+import { sendMetaOrderEvent } from './meta-capi.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
 const CHECKOUT_EVENTS = new Set(['CHECKOUT_CREATED', 'CHECKOUT_PAID', 'CHECKOUT_CANCELED', 'CHECKOUT_EXPIRED']);
@@ -69,7 +70,7 @@ function validateBuyer(data, settings) {
   return { name, phone, type, address, notes };
 }
 
-async function createOrder(request, env, origin) {
+async function createOrder(request, env, origin, ctx) {
   const settings = await storeSettings(env);
   if (!isPaymentsReady(env, settings.paymentMode) || !settings.paymentsEnabled || !settings.ordersEnabled) {
     return fail('Pedidos online indisponíveis.', 503, origin);
@@ -122,6 +123,13 @@ async function createOrder(request, env, origin) {
     const checkout = await createAsaasCheckout(order, env, settings.paymentMode);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
       updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
+    if (settings.paymentMode === 'production' && env.META_CAPI_ACCESS_TOKEN) {
+      ctx.waitUntil(sendMetaOrderEvent(env, {
+        name: 'InitiateCheckout', orderId: order.id, amountCents: order.totalCents,
+        clientIp: request.headers.get('CF-Connecting-IP'), userAgent: request.headers.get('User-Agent'),
+        paymentMode: settings.paymentMode,
+      }).catch(error => console.warn('Meta CAPI checkout:', error.message)));
+    }
     return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, totalCents: order.totalCents,
       scheduledFor: schedule, paymentMode: settings.paymentMode }, 201, origin);
   } catch (error) {
@@ -196,6 +204,14 @@ async function webhook(request, env, ctx, mode) {
         AND fulfillment_status='AWAITING_PAYMENT'`)
       .bind(checkout.id, status, paidAt, deadline, late ? 1 : 0, late ? 1 : 0, row.id).run();
     if (late && result.meta.changes) ctx.waitUntil(refundOrder(env, row.id));
+    if (!late && result.meta.changes && mode === 'production' && env.META_CAPI_ACCESS_TOKEN) {
+      const paidOrder = await env.DB.prepare('SELECT phone,total_cents FROM orders WHERE id=?')
+        .bind(row.id).first();
+      if (paidOrder) ctx.waitUntil(sendMetaOrderEvent(env, {
+        name: 'Purchase', orderId: row.id, amountCents: paidOrder.total_cents,
+        phone: paidOrder.phone, paymentMode: mode,
+      }).catch(error => console.warn('Meta CAPI purchase:', error.message)));
+    }
   } else if (event === 'CHECKOUT_CANCELED' || event === 'CHECKOUT_EXPIRED') {
     const state = event === 'CHECKOUT_CANCELED' ? 'CANCELED' : 'EXPIRED';
     await env.DB.prepare(`UPDATE orders SET payment_status=?, updated_at=CURRENT_TIMESTAMP
@@ -233,7 +249,7 @@ export default {
       }
       if (pathname === '/api/orders' && request.method === 'POST') {
         if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem não autorizada.', 403, origin);
-        return createOrder(request, env, origin);
+        return createOrder(request, env, origin, ctx);
       }
       const match = /^\/api\/orders\/([0-9a-f-]{36})$/i.exec(pathname);
       if (match && request.method === 'GET') return readOrder(request, env, origin, match[1]);
