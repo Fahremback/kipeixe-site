@@ -19,8 +19,9 @@ async function throttle(request, env) {
   return row.hits <= 8;
 }
 
-function checkoutLink(id) {
-  return `https://asaas.com/checkoutSession/show?id=${encodeURIComponent(id)}`;
+function checkoutLink(id, mode) {
+  const host = mode === 'sandbox' ? 'sandbox.asaas.com' : 'asaas.com';
+  return `https://${host}/checkoutSession/show?id=${encodeURIComponent(id)}`;
 }
 
 async function createAsaasCheckout(order, env, mode) {
@@ -47,7 +48,7 @@ async function createAsaasCheckout(order, env, mode) {
   if (!response.ok) throw new Error(`Asaas HTTP ${response.status}`);
   const result = await response.json();
   if (!result?.id || !/^[a-z0-9-]{15,100}$/i.test(result.id)) throw new Error('Checkout inválido.');
-  return { checkoutId: result.id, checkoutUrl: checkoutLink(result.id) };
+  return { checkoutId: result.id, checkoutUrl: checkoutLink(result.id, mode) };
 }
 
 function validateBuyer(data, settings) {

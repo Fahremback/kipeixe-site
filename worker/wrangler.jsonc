@@ -3,6 +3,12 @@
   "name": "kipeixe-orders",
   "main": "src/app.mjs",
   "compatibility_date": "2026-11-05",
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "routes": [
     {
       "pattern": "api.restaurantekipeixe.com.br",
