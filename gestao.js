@@ -457,8 +457,12 @@
   async function start() {
     try {
       const session = await api('/api/auth/session');
-      showDashboard(session.username);
-      await loadOrders();
+      if (!session.authenticated) {
+        showLogin();
+      } else {
+        showDashboard(session.username);
+        await loadOrders();
+      }
     } catch { showLogin(); }
     updateClock();
   }

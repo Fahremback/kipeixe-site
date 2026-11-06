@@ -151,7 +151,8 @@ async function verifyPassword(password, salt, expected) {
   if (!password || !salt || !expected) return false;
   const base = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({
-    name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 210000,
+    // Cloudflare Workers caps PBKDF2 iterations at 100000 per call.
+    name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 100000,
   }, base, 256);
   return safeEqual(hex(bits), expected);
 }
@@ -346,9 +347,12 @@ async function categoryRoute(request, env, origin, url, actor) {
 export async function handleAdmin(request, env, origin, url) {
   if (!env.DB) return fail('Banco de dados indisponível.', 503, origin);
   if (url.pathname === '/api/auth/login' && request.method === 'POST') return login(request, env, origin);
+  if (url.pathname === '/api/auth/session' && request.method === 'GET') {
+    const actor = await currentAdmin(request, env);
+    return reply({ authenticated: Boolean(actor), username: actor || null }, 200, origin);
+  }
   const actor = await currentAdmin(request, env);
   if (!actor) return fail('Sessão inválida. Entre novamente.', 401, origin);
-  if (url.pathname === '/api/auth/session' && request.method === 'GET') return reply({ username: actor }, 200, origin);
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
     await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').bind(await hash(cookieValue(request))).run();
     return reply({ ok: true }, 200, origin, { 'Set-Cookie': adminCookie('', 0) });
