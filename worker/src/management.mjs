@@ -1,6 +1,7 @@
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
 import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
+import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
 
 export const ALLOWED_ORIGINS = new Set([
   'https://restaurantekipeixe.com.br', 'https://www.restaurantekipeixe.com.br',
@@ -57,7 +58,8 @@ const canPrice = value => value === null || (Number.isInteger(value) && value >=
 
 export async function storeSettings(env) {
   if (!env.DB) return { ordersEnabled: false, paymentsEnabled: false, paymentMode: 'sandbox',
-    deliveryEnabled: false, deliveryFeeCents: 0, uberEnabled: false, hours: DEFAULT_HOURS };
+    deliveryEnabled: false, deliveryFeeCents: 0, uberEnabled: false,
+    ifoodEnabled: false, deliveryProvider: 'uber', hours: DEFAULT_HOURS };
   const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
   const values = Object.fromEntries(rows.map(row => [row.key, row.value]));
   let hours = DEFAULT_HOURS;
@@ -69,6 +71,8 @@ export async function storeSettings(env) {
     deliveryEnabled: values.delivery_enabled === 'true',
     deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
     uberEnabled: values.uber_enabled === 'true',
+    ifoodEnabled: values.ifood_enabled === 'true',
+    deliveryProvider: values.delivery_provider === 'ifood' ? 'ifood' : 'uber',
     hours,
   };
 }
@@ -81,8 +85,11 @@ export async function clientConfig(env) {
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
-    deliveryEnabled: uberReady(env, settings),
+    deliveryEnabled: settings.deliveryProvider === 'ifood'
+      ? ifoodReady(env, settings) : uberReady(env, settings),
+    deliveryProvider: settings.deliveryProvider,
     uberDirectReady: uberReady(env, settings),
+    ifoodShippingReady: ifoodReady(env, settings),
     deliveryFeeCents: settings.deliveryFeeCents,
     openingHours: settings.hours,
     openNow: openAt(now, settings.hours),
@@ -359,6 +366,8 @@ export async function handleAdmin(request, env, origin, url) {
       paymentSystemAvailable: env.PAYMENTS_ENABLED === 'true',
       uberDirectConfigured: uberConfigured(env),
       uberDirectSystemAvailable: env.UBER_DIRECT_ENABLED === 'true',
+      ifoodShippingConfigured: ifoodConfigured(env),
+      ifoodShippingSystemAvailable: env.IFOOD_SHIPPING_ENABLED === 'true',
     }, 200, origin);
     if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
     let data, hours;
@@ -368,10 +377,15 @@ export async function handleAdmin(request, env, origin, url) {
       if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
       if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
       if (typeof data.uberEnabled !== 'boolean') throw Error('Configuração Uber Direct inválida.');
+      if (typeof data.ifoodEnabled !== 'boolean' ||
+          !['uber', 'ifood'].includes(data.deliveryProvider))
+        throw Error('Configuração do serviço de entrega inválida.');
       if (data.uberEnabled && (!uberConfigured(env) || env.UBER_DIRECT_ENABLED !== 'true'))
         throw Error('Uber Direct exige aprovação da conta e credenciais válidas no servidor.');
-      if (data.deliveryEnabled && !data.uberEnabled)
-        throw Error('Ative Uber Direct para oferecer entrega no site.');
+      if (data.ifoodEnabled && (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true'))
+        throw Error('iFood Shipping exige credenciais autorizadas e habilitação no servidor.');
+      if (data.deliveryEnabled && !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
+        throw Error('Ative o serviço de entrega selecionado antes de oferecer entregas.');
       if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
       if (data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
         throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');
@@ -390,6 +404,10 @@ export async function handleAdmin(request, env, origin, url) {
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.paymentMode),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('uber_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.uberEnabled)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('ifood_enabled',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.ifoodEnabled)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('delivery_provider',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.deliveryProvider),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payments_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.paymentsEnabled)),
     ]);
@@ -402,6 +420,7 @@ export async function handleAdmin(request, env, origin, url) {
       subtotal_cents, delivery_cents, total_cents, payment_status, fulfillment_status, created_at,
       paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id, asaas_environment,
       uber_status,uber_delivery_id,uber_tracking_url,uber_quote_fee_cents,uber_dispatch_error
+      ,delivery_provider,ifood_status,ifood_order_id,ifood_tracking_url,ifood_dispatch_error
       FROM orders ORDER BY created_at DESC LIMIT 250`).all()).results;
     return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })) }, 200, origin);
   }
@@ -409,19 +428,22 @@ export async function handleAdmin(request, env, origin, url) {
   if (action && request.method === 'POST') {
     let data;
     try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
-    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, uber_delivery_id, uber_status FROM orders WHERE id = ?')
+    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, delivery_provider, uber_delivery_id, uber_status, ifood_order_id, ifood_status FROM orders WHERE id = ?')
       .bind(action[1]).first();
     if (!row || row.payment_status !== 'PAID') return fail('Pedido não pago ou inexistente.', 409, origin);
     if (data.action === 'COMPLETE' && row.order_type === 'Entrega')
-      return fail('Entrega Uber Direct só é concluída após confirmação do entregador.', 409, origin);
+      return fail('Entrega só é concluída após confirmação do parceiro logístico.', 409, origin);
     if (data.action === 'CANCEL_DELIVERY') {
       if (row.order_type !== 'Entrega' || row.fulfillment_status !== 'READY' ||
-          row.uber_delivery_id || ['REQUESTING', 'REVIEW'].includes(row.uber_status))
-        return fail('Despacho Uber pendente ou já realizado. Verifique antes de estornar.', 409, origin);
+          row.uber_delivery_id || row.ifood_order_id ||
+          ['REQUESTING', 'REVIEW'].includes(row.uber_status) ||
+          ['REQUESTING', 'REVIEW'].includes(row.ifood_status))
+        return fail('Despacho pendente ou já realizado. Verifique antes de estornar.', 409, origin);
       const changed = await env.DB.prepare("UPDATE orders SET fulfillment_status='REJECTED',refund_status='PENDING'," +
         "closed_reason='Entrega indisponível',updated_at=CURRENT_TIMESTAMP WHERE id=? AND " +
-        "fulfillment_status='READY' AND uber_delivery_id IS NULL " +
-        "AND (uber_status IS NULL OR uber_status NOT IN ('REQUESTING','REVIEW'))")
+        "fulfillment_status='READY' AND uber_delivery_id IS NULL AND ifood_order_id IS NULL " +
+        "AND (uber_status IS NULL OR uber_status NOT IN ('REQUESTING','REVIEW')) " +
+        "AND (ifood_status IS NULL OR ifood_status NOT IN ('REQUESTING','REVIEW'))")
         .bind(action[1]).run();
       if (!changed.meta.changes) return fail('Pedido alterado por outro operador.', 409, origin);
       await audit(env, actor, 'CANCEL_DELIVERY', action[1]);
@@ -445,9 +467,17 @@ export async function handleAdmin(request, env, origin, url) {
     if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
     await audit(env, actor, data.action, action[1]);
     if (rejecting) await refundOrder(env, action[1]);
-    const uber = target === 'READY' && row.order_type === 'Entrega'
+    const uber = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider !== 'ifood'
       ? await dispatchDelivery(env, action[1]) : null;
-    return reply({ ok: true, status: target, uber }, 200, origin);
+    const ifood = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider === 'ifood'
+      ? await dispatchIFood(env, action[1]) : null;
+    return reply({ ok: true, status: target, uber, ifood }, 200, origin);
+  }
+  const ifoodRetry = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/dispatch-ifood$/i.exec(url.pathname);
+  if (ifoodRetry && request.method === 'POST') {
+    const state = await dispatchIFood(env, ifoodRetry[1]);
+    await audit(env, actor, 'IFOOD_DISPATCH_RETRY', ifoodRetry[1], state.status);
+    return reply({ ok: state.status === 'REQUESTED', ifood: state }, 200, origin);
   }
   const dispatch = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/dispatch-uber$/i.exec(url.pathname);
   if (dispatch && request.method === 'POST') {

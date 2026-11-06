@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/webp" href="assets/logo.webp" />
-    <link rel="stylesheet" href="styles.css?v=20261106-admin-entry&release=1b3aca4" />
+    <link rel="stylesheet" href="styles.css?v=20261106-ifood-shipping" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
     <script src="meta-pixel.js?v=20261106-1"></script>
     <!-- GENERATED_RESTAURANT_JSON_LD_START -->
@@ -320,8 +320,24 @@
                 </div>
                 <small class="field-error" id="address-error" data-address-error hidden>Informe o endereço para entrega.</small>
               </label>
+              <div class="ifood-address" data-ifood-address hidden>
+                <p>Informe os dados de entrega e marque o ponto exato no mapa.</p>
+                <div class="ifood-address-grid">
+                  <label>CEP<input name="ifoodPostalCode" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="85851-000" /></label>
+                  <label>Número<input name="ifoodStreetNumber" maxlength="15" placeholder="123" /></label>
+                  <label>Rua<input name="ifoodStreetName" maxlength="50" autocomplete="address-line1" placeholder="Rua e nome" /></label>
+                  <label>Bairro<input name="ifoodNeighborhood" maxlength="50" autocomplete="address-level3" placeholder="Bairro" /></label>
+                  <label>Complemento (opcional)<input name="ifoodComplement" maxlength="50" autocomplete="address-line2" placeholder="Casa, apartamento..." /></label>
+                </div>
+                <div class="ifood-location-actions">
+                  <button type="button" data-ifood-use-location>Usar minha localização</button>
+                  <button type="button" data-ifood-show-map>Marcar no mapa</button>
+                </div>
+                <div class="ifood-location-map" data-ifood-map hidden aria-label="Mapa para marcar a localização da entrega"></div>
+                <small data-ifood-location-status role="status">Confirme no mapa a posição exata da entrega.</small>
+              </div>
               <div class="delivery-quote" data-delivery-quote>
-                <button class="delivery-quote-button" type="button" data-delivery-calculate>Calcular taxa pelo Uber Direct</button>
+                <button class="delivery-quote-button" type="button" data-delivery-calculate>Calcular entrega</button>
                 <small role="status" data-delivery-quote-status>Informe rua, número e bairro para consultar o valor exato.</small>
               </div>
             </div>
@@ -409,7 +425,7 @@
 
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261106-uber-direct-v2"></script>
+    <script src="script.js?v=20261106-ifood-shipping"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {

@@ -5,6 +5,8 @@ import {
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
+import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
+  addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood } from './ifood-shipping.mjs';
 import { sendMetaOrderEvent } from './meta-capi.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
@@ -13,13 +15,19 @@ const digits = value => String(value ?? '').replace(/\D/g, '');
 
 async function createDeliveryQuote(request, env, origin) {
   const settings = await storeSettings(env);
-  if (!uberReady(env, settings) || !settings.ordersEnabled)
-    return fail('Uber Direct indisponível para pedidos.', 503, origin);
-  let address;
+  const ifood = settings.deliveryProvider === 'ifood';
+  if (!(ifood ? ifoodReady(env, settings) : uberReady(env, settings)) || !settings.ordersEnabled)
+    return fail('Serviço de entregas indisponível.', 503, origin);
+  let address, ifoodAddress;
   try {
     const raw = await request.text();
-    if (raw.length > 1500) return fail('Endereço excessivo.', 413, origin);
-    address = normalizedAddress(JSON.parse(raw).address);
+    if (raw.length > 2500) return fail('Endereço excessivo.', 413, origin);
+    const data = JSON.parse(raw);
+    if (ifood) {
+      ifoodAddress = validateIFoodAddress(data.ifoodAddress);
+      address = ifoodAddressText(ifoodAddress);
+      if (data.address !== address) throw Error('Endereço foi alterado. Recalcule o frete.');
+    } else address = normalizedAddress(data.address);
   } catch (error) { return fail(error.message || 'Endereço inválido.', 422, origin); }
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const windowStart = Math.floor(Date.now() / 900_000);
@@ -29,14 +37,23 @@ async function createDeliveryQuote(request, env, origin) {
     .bind(ip, windowStart).first();
   if (limit.hits > 20) return fail('Muitas cotações. Tente depois.', 429, origin);
   try {
+    if (ifood) {
+      const quote = await quoteIFood(env, ifoodAddress);
+      const id = crypto.randomUUID();
+      await env.DB.prepare('INSERT INTO ifood_quotes(id,external_quote_id,address_json,fee_cents,expires_at) ' +
+        'VALUES (?,?,?,?,?)').bind(id, quote.externalQuoteId, JSON.stringify(quote.address),
+        quote.feeCents, quote.expiresAt).run();
+      return reply({ quoteId: id, provider: 'ifood', feeCents: quote.feeCents,
+        expiresAt: quote.expiresAt }, 200, origin);
+    }
     const quote = await quoteDelivery(env, address);
     const id = crypto.randomUUID();
     await env.DB.prepare('INSERT INTO uber_quotes(id,uber_quote_id,address,fee_cents,expires_at) ' +
       'VALUES (?,?,?,?,?)').bind(id, quote.uberQuoteId, quote.address,
       quote.feeCents, quote.expiresAt).run();
-    return reply({ quoteId: id, feeCents: quote.feeCents, expiresAt: quote.expiresAt }, 200, origin);
+    return reply({ quoteId: id, provider: 'uber', feeCents: quote.feeCents, expiresAt: quote.expiresAt }, 200, origin);
   } catch (e) {
-    console.warn('Uber Direct quote:', e.message);
+    console.warn('Delivery quote:', e.message);
     return fail('Entrega indisponível neste endereço ou horário. Tente mais tarde.', 422, origin);
   }
 }
@@ -147,12 +164,22 @@ async function createOrder(request, env, origin, ctx) {
   if (!await throttle(request, env)) return fail('Muitos pedidos. Tente novamente depois.', 429, origin);
   let deliveryQuote = null;
   if (buyer.type === 'Entrega') {
-    if (!uberReady(env, settings)) return fail('Entregas Uber Direct indisponíveis.', 503, origin);
+    const ifood = settings.deliveryProvider === 'ifood';
+    if (!(ifood ? ifoodReady(env, settings) : uberReady(env, settings)))
+      return fail('Serviço de entregas indisponível.', 503, origin);
     const quoteId = String(body.deliveryQuoteId || '');
     if (!/^[0-9a-f-]{36}$/i.test(quoteId)) return fail('Calcule o frete antes de pagar.', 422, origin);
-    deliveryQuote = await env.DB.prepare('SELECT * FROM uber_quotes WHERE id=? AND ' +
+    const table = ifood ? 'ifood_quotes' : 'uber_quotes';
+    deliveryQuote = await env.DB.prepare('SELECT * FROM ' + table + ' WHERE id=? AND ' +
       'expires_at > ? AND order_id IS NULL').bind(quoteId, new Date().toISOString()).first();
-    if (!deliveryQuote || deliveryQuote.address !== normalizedAddress(buyer.address))
+    if (ifood) {
+      let normalized;
+      try { normalized = validateIFoodAddress(body.ifoodAddress); }
+      catch (error) { return fail(error.message, 422, origin); }
+      if (!deliveryQuote || buyer.address !== ifoodAddressText(normalized) ||
+          deliveryQuote.address_json !== JSON.stringify(normalized))
+        return fail('Frete vencido ou endereço alterado. Calcule novamente.', 409, origin);
+    } else if (!deliveryQuote || deliveryQuote.address !== normalizedAddress(buyer.address))
       return fail('Frete vencido ou endereço alterado. Calcule novamente.', 409, origin);
   }
   const deliveryCents = deliveryQuote ? deliveryQuote.fee_cents : 0;
@@ -168,15 +195,21 @@ async function createOrder(request, env, origin, ctx) {
     await env.DB.prepare(`INSERT INTO orders
       (id,request_id,access_hash,name,phone,order_type,address,notes,items_json,
        subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for,asaas_environment,
-       uber_quote_id,uber_quote_fee_cents,uber_status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?, ?, ?, ?, ?)`)
+       uber_quote_id,uber_quote_fee_cents,uber_status,delivery_provider,ifood_quote_id,ifood_address_json,ifood_status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(order.id, requestId, tokenHash, buyer.name, buyer.phone, buyer.type, buyer.address,
         buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents,
-        schedule, settings.paymentMode, deliveryQuote?.uber_quote_id || null,
-        deliveryQuote?.fee_cents ?? null, deliveryQuote ? 'QUOTED' : null).run();
+        schedule, settings.paymentMode, settings.deliveryProvider === 'uber' ? deliveryQuote?.uber_quote_id || null : null,
+        settings.deliveryProvider === 'uber' ? deliveryQuote?.fee_cents ?? null : null,
+        deliveryQuote && settings.deliveryProvider === 'uber' ? 'QUOTED' : null,
+        buyer.type === 'Entrega' ? settings.deliveryProvider : null,
+        settings.deliveryProvider === 'ifood' ? deliveryQuote?.external_quote_id || null : null,
+        settings.deliveryProvider === 'ifood' ? deliveryQuote?.address_json || null : null,
+        deliveryQuote && settings.deliveryProvider === 'ifood' ? 'QUOTED' : null).run();
   } catch { return fail('Pedido já registrado.', 409, origin); }
   if (deliveryQuote) {
-    const claim = await env.DB.prepare('UPDATE uber_quotes SET order_id=? WHERE id=? AND order_id IS NULL')
+    const quoteTable = settings.deliveryProvider === 'ifood' ? 'ifood_quotes' : 'uber_quotes';
+    const claim = await env.DB.prepare('UPDATE ' + quoteTable + ' SET order_id=? WHERE id=? AND order_id IS NULL')
       .bind(order.id, deliveryQuote.id).run();
     if (!claim.meta.changes) {
       await env.DB.prepare('DELETE FROM orders WHERE id=?').bind(order.id).run();
@@ -210,7 +243,8 @@ async function readOrder(request, env, origin, id) {
   if (!/^[0-9a-f-]{36}$/i.test(token)) return fail('Acesso negado.', 401, origin);
   const row = await env.DB.prepare(`SELECT id, access_hash, payment_status, fulfillment_status, total_cents,
     delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason,
-    asaas_environment, uber_delivery_id, uber_status, uber_tracking_url
+    asaas_environment, uber_delivery_id, uber_status, uber_tracking_url,delivery_provider,
+    ifood_order_id,ifood_status,ifood_tracking_url
     FROM orders WHERE id=?`).bind(id).first();
   if (!row || !safeEqual(row.access_hash, await hash(token))) return fail('Pedido não encontrado.', 404, origin);
   const { access_hash, ...data } = row;
@@ -218,7 +252,10 @@ async function readOrder(request, env, origin, id) {
     totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
     scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,
     closedReason: data.closed_reason, createdAt: data.created_at, paymentMode: data.asaas_environment,
-    uberDeliveryId: data.uber_delivery_id, uberStatus: data.uber_status, uberTrackingUrl: data.uber_tracking_url }, 200, origin);
+    deliveryProvider: data.delivery_provider,
+    uberDeliveryId: data.uber_delivery_id, uberStatus: data.uber_status, uberTrackingUrl: data.uber_tracking_url,
+    ifoodOrderId: data.ifood_order_id, ifoodStatus: data.ifood_status,
+    ifoodTrackingUrl: data.ifood_tracking_url }, 200, origin);
 }
 
 async function webhook(request, env, ctx, mode) {
@@ -334,6 +371,10 @@ export default {
     }
   },
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(Promise.all([sweepExpired(env), dispatchScheduledReady(env)]));
+    ctx.waitUntil(Promise.all([
+      sweepExpired(env), dispatchScheduledReady(env),
+      dispatchScheduledIFood(env).catch(error => console.warn('iFood dispatch:', error.message)),
+      syncIFoodEvents(env).catch(error => console.warn('iFood events:', error.message)),
+    ]));
   },
 };

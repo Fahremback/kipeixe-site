@@ -121,3 +121,44 @@ publique o Worker e ative Uber Direct e Entrega na Central Kipeixe.
 
 As migrations 0005_uber_direct.sql e 0006_uber_quote_limits.sql adicionam
 campos de entregas, cotações temporárias e controle de consultas por IP.
+
+## iFood — Entrega Fácil para pedidos externos
+
+O iFood permite usar entregadores em pedidos vendidos pelo site, sem que a
+venda tenha ocorrido no aplicativo iFood. A operação tem dois canais:
+
+- Manual: Portal do Parceiro iFood > Gestor de Pedidos > Solicitar Entrega
+  Fácil/Sob Demanda. Requer conta de restaurante com serviço habilitado na
+  região; não exige API.
+- Automático: API Shipping, documentada em
+  https://developer.ifood.com.br/en-US/docs/food/guides/modules/shipping/outside.
+  Exige cadastro profissional com CNPJ, aplicativo funcional e homologação.
+
+O módulo de automação do Kipeixe está implementado, desativado por padrão.
+Configurar como secrets privados do Cloudflare Worker:
+
+- IFOOD_CLIENT_ID
+- IFOOD_CLIENT_SECRET
+- IFOOD_MERCHANT_ID (UUID da loja habilitada para Entrega Fácil)
+
+Depois da aprovação, ajustar IFOOD_SHIPPING_ENABLED para true no Wrangler,
+publicar Worker, selecionar iFood como operador na Central Kipeixe e marcar
+Ativar integração iFood e Habilitar entrega. Até esse momento o site não
+oferece entregas sem operador confirmado.
+
+Fluxo automatizado: cliente informa CEP, rua, número e bairro, e marca no
+mapa o destino real. O backend consulta disponibilidade por coordenadas,
+salva cotação e incorpora o frete no checkout Asaas. O pagamento é único e
+vai para a conta Asaas, não para o iFood. Depois de pagamento confirmado,
+aceite e preparo, a equipe marca Pronto. O backend recalcula o valor e
+contrata entregador somente quando a nova tarifa for menor ou igual à taxa
+já paga. Caso contrário, exige revisão. Em erros HTTP ambíguos, marca
+REVIEW e não reenvia para evitar dois entregadores.
+
+Pedidos agendados são despachados a partir de 45 minutos antes do horário.
+O cron recebe eventos via polling uma vez por minuto, confirma eventos
+processados e atualiza o status do cliente. O iFood oferece página segura
+de rastreamento e código de confirmação pelos últimos quatro dígitos do
+telefone do destinatário.
+
+Migração 0007_ifood_shipping.sql: cotações e campos de pedido iFood.

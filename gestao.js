@@ -89,21 +89,31 @@
       order.address ? `Endereço: ${esc(order.address)}` : '',
       order.notes ? `Observações: ${esc(order.notes)}` : '',
     ].filter(Boolean).join('<p></p>');
+    const isIFood = order.delivery_provider === 'ifood';
+    const logisticsName = isIFood ? 'iFood' : 'Uber Direct';
+    const logisticsStatus = isIFood ? order.ifood_status : order.uber_status;
+    const logisticsError = isIFood ? order.ifood_dispatch_error : order.uber_dispatch_error;
+    const logisticsUrl = isIFood ? order.ifood_tracking_url : order.uber_tracking_url;
+    const validLink = isIFood
+      ? /^https:\/\/(?:[a-z0-9-]+\.)*ifood\.com\.br\//i.test(logisticsUrl || '')
+      : /^https:\/\/(?:[^/]+\.)?uber(?:eats)?\.com\//.test(logisticsUrl || '');
     const uber = order.order_type === 'Entrega'
-      ? '<p class="order-extra"><strong>Uber Direct:</strong> ' +
-        esc(order.uber_status || 'Aguardando preparo') +
-        (order.uber_dispatch_error ? ' · ' + esc(order.uber_dispatch_error) : '') +
-        (order.uber_tracking_url && /^https:\/\/(?:[^/]+\.)?uber(?:eats)?\.com\//.test(order.uber_tracking_url)
-          ? ' · <a href="' + esc(order.uber_tracking_url) +
+      ? '<p class="order-extra"><strong>' + logisticsName + ':</strong> ' +
+        esc(logisticsStatus || 'Aguardando preparo') +
+        (logisticsError ? ' · ' + esc(logisticsError) : '') +
+        (validLink
+          ? ' · <a href="' + esc(logisticsUrl) +
           '" target="_blank" rel="noopener noreferrer">Acompanhar entregador</a>' : '') + '</p>' : '';
     const actions = [];
     if (waiting) actions.push(`<button data-action="ACCEPT" data-id="${order.id}">Aceitar</button><button class="reject" data-action="REJECT" data-id="${order.id}">Recusar</button>`);
     if (status === 'PREPARING') actions.push(`<button data-action="READY" data-id="${order.id}">Marcar pronto</button>`);
     if (status === 'READY' && order.order_type !== 'Entrega') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
-    if (status === 'READY' && order.order_type === 'Entrega' && order.uber_status === 'FAILED')
+    if (status === 'READY' && order.order_type === 'Entrega' && !isIFood && order.uber_status === 'FAILED')
       actions.push(`<button data-uber-dispatch="${order.id}">Tentar solicitar Uber</button>`);
+    if (status === 'READY' && order.order_type === 'Entrega' && isIFood && order.ifood_status === 'FAILED')
+      actions.push(`<button data-ifood-dispatch="${order.id}">Tentar solicitar iFood</button>`);
     if (status === 'READY' && order.order_type === 'Entrega' && !order.uber_delivery_id &&
-        !['REQUESTING', 'REVIEW'].includes(order.uber_status))
+        !order.ifood_order_id && !['REQUESTING', 'REVIEW'].includes(logisticsStatus))
       actions.push(`<button class="reject" data-action="CANCEL_DELIVERY" data-id="${order.id}">Cancelar entrega e estornar</button>`);
     if (reviewing) actions.push(`<button class="reject" data-refund="${order.id}">Revisar estorno</button>`);
     return `
@@ -164,8 +174,10 @@
     const action = event.target.closest('[data-action]');
     const refund = event.target.closest('[data-refund]');
     const dispatch = event.target.closest('[data-uber-dispatch]');
-    if (!action && !refund && !dispatch) return;
-    const id = action?.dataset.id || refund?.dataset.refund || dispatch?.dataset.uberDispatch;
+    const ifoodDispatch = event.target.closest('[data-ifood-dispatch]');
+    if (!action && !refund && !dispatch && !ifoodDispatch) return;
+    const id = action?.dataset.id || refund?.dataset.refund || dispatch?.dataset.uberDispatch ||
+      ifoodDispatch?.dataset.ifoodDispatch;
     if (action?.dataset.action === 'REJECT' &&
       !confirm('Recusar este pedido pago e solicitar estorno pelo Asaas?')) return;
     if (action?.dataset.action === 'CANCEL_DELIVERY' &&
@@ -178,11 +190,15 @@
       } else if (dispatch) {
         const result = await api(`/api/admin/orders/${id}/dispatch-uber`, { method: 'POST' });
         notify('Uber Direct: ' + (result.uber?.status || 'verificação pendente'), !result.ok);
+      } else if (ifoodDispatch) {
+        const result = await api(`/api/admin/orders/${id}/dispatch-ifood`, { method: 'POST' });
+        notify('iFood: ' + (result.ifood?.status || 'verificação pendente'), !result.ok);
       } else {
         const result = await api(`/api/admin/orders/${id}/action`, {
           method: 'POST', body: JSON.stringify({ action: action.dataset.action })
         });
-        notify(result.uber ? 'Pedido pronto · Uber Direct: ' + result.uber.status : 'Pedido atualizado.');
+        notify(result.ifood ? 'Pedido pronto · iFood: ' + result.ifood.status
+          : result.uber ? 'Pedido pronto · Uber Direct: ' + result.uber.status : 'Pedido atualizado.');
       }
       await loadOrders();
     } catch (error) { notify(error.message, true); }
@@ -333,6 +349,14 @@
     form.elements.ordersEnabled.checked = settings.ordersEnabled;
     form.elements.deliveryEnabled.checked = settings.deliveryEnabled;
     form.elements.uberEnabled.checked = settings.uberEnabled || false;
+    form.elements.ifoodEnabled.checked = settings.ifoodEnabled || false;
+    form.elements.deliveryProvider.value = settings.deliveryProvider || 'uber';
+    const ifoodReady = settings.ifoodShippingConfigured && settings.ifoodShippingSystemAvailable;
+    const ifoodStatus = $('#ifood-integration-status');
+    ifoodStatus.textContent = ifoodReady
+      ? 'API iFood configurada. Selecione o operador e ative a integração.'
+      : 'Aguardando credenciais de homologação Shipping/Entrega Fácil.';
+    ifoodStatus.classList.toggle('is-ready', ifoodReady);
     const uberReady = settings.uberDirectConfigured && settings.uberDirectSystemAvailable;
     const uberStatus = $('#uber-integration-status');
     uberStatus.textContent = uberReady
@@ -381,6 +405,8 @@
           ordersEnabled: form.elements.ordersEnabled.checked,
           deliveryEnabled: form.elements.deliveryEnabled.checked,
           uberEnabled: form.elements.uberEnabled.checked,
+          ifoodEnabled: form.elements.ifoodEnabled.checked,
+          deliveryProvider: form.elements.deliveryProvider.value,
           deliveryFeeCents: Math.round(Number(form.elements.deliveryFee.value) * 100),
           paymentMode: form.elements.paymentMode.value,
           paymentsEnabled: form.elements.paymentsEnabled.checked,

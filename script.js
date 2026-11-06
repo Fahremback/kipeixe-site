@@ -515,6 +515,18 @@
   const addressField = qs('[data-address-field]');
   const deliveryQuoteButton = qs('[data-delivery-calculate]');
   const deliveryQuoteStatus = qs('[data-delivery-quote-status]');
+  const ifoodAddressSection = qs('[data-ifood-address]');
+  const ifoodLocationStatus = qs('[data-ifood-location-status]');
+  const ifoodMapNode = qs('[data-ifood-map]');
+  const ifoodFields = {
+    postalCode: qs('[name="ifoodPostalCode"]', orderForm),
+    streetNumber: qs('[name="ifoodStreetNumber"]', orderForm),
+    streetName: qs('[name="ifoodStreetName"]', orderForm),
+    neighborhood: qs('[name="ifoodNeighborhood"]', orderForm),
+    complement: qs('[name="ifoodComplement"]', orderForm),
+  };
+  let ifoodCoordinates = null;
+  let ifoodMap = null, ifoodMarker = null;
   let deliveryQuote = null;
   const notesStep = qs('[data-notes-step]');
   const nameError = qs('[data-name-error]');
@@ -701,6 +713,14 @@
     if (!orderType || !addressField) return;
     const delivery = orderType.value === 'Entrega';
     addressField.hidden = !delivery;
+    const useIFood = storeConfig?.deliveryProvider === 'ifood' && delivery;
+    if (ifoodAddressSection) ifoodAddressSection.hidden = !useIFood;
+    const inputAddress = qs('input[name="address"]', addressField);
+    if (inputAddress) {
+      inputAddress.readOnly = useIFood;
+      inputAddress.placeholder = useIFood ? 'Preenchido automaticamente com os dados abaixo' : 'Rua, número e bairro';
+    }
+    if (useIFood && ifoodMap) setTimeout(() => ifoodMap.invalidateSize(), 0);
     const input = qs('input', addressField);
     if (!delivery && input) {
       input.removeAttribute('aria-invalid');
@@ -720,6 +740,7 @@
   orderChoices.forEach((button) => {
     button.addEventListener('click', () => {
       if (!orderType) return;
+      deliveryQuote = null;
       orderType.value = button.dataset.orderChoice || 'Retirada no Kipeixe';
       orderChoices.forEach((choice) => {
         const selected = choice === button;
@@ -733,6 +754,96 @@
 
   const nameInput = qs('input[name="name"]', orderForm);
   const addressInput = qs('input[name="address"]', orderForm);
+  const isIFood = () => storeConfig?.deliveryProvider === 'ifood';
+  const currentIFoodAddress = () => ({
+    postalCode: String(ifoodFields.postalCode?.value || '').replace(/\D/g, ''),
+    streetNumber: ifoodFields.streetNumber?.value.trim() || '',
+    streetName: ifoodFields.streetName?.value.trim() || '',
+    neighborhood: ifoodFields.neighborhood?.value.trim() || '',
+    complement: ifoodFields.complement?.value.trim() || '',
+    latitude: ifoodCoordinates?.latitude,
+    longitude: ifoodCoordinates?.longitude,
+    city: 'Foz do Iguaçu',
+  });
+  function updateIFoodAddress() {
+    if (!isIFood()) return;
+    const a = currentIFoodAddress();
+    addressInput.value = a.streetName && a.streetNumber && a.neighborhood && /^\d{8}$/.test(a.postalCode)
+      ? a.streetName + ', ' + a.streetNumber + ', ' + a.neighborhood +
+        ', CEP ' + a.postalCode + ', Foz do Iguaçu - PR' : '';
+    deliveryQuote = null;
+    if (deliveryQuoteStatus) deliveryQuoteStatus.textContent = 'Endereço alterado. Calcule novamente o frete.';
+    renderCart();
+  }
+  Object.values(ifoodFields).forEach(input => input?.addEventListener('input', updateIFoodAddress));
+  ifoodFields.postalCode?.addEventListener('blur', async () => {
+    const cep = currentIFoodAddress().postalCode;
+    if (!/^\d{8}$/.test(cep)) return;
+    try {
+      const response = await fetch('https://viacep.com.br/ws/' + cep + '/json/', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok || data.erro || data.localidade?.toLowerCase() !== 'foz do iguaçu') {
+        ifoodLocationStatus.textContent = 'CEP não corresponde a Foz do Iguaçu.';
+        return;
+      }
+      if (!ifoodFields.streetName.value.trim()) ifoodFields.streetName.value = data.logradouro || '';
+      if (!ifoodFields.neighborhood.value.trim()) ifoodFields.neighborhood.value = data.bairro || '';
+      updateIFoodAddress();
+    } catch { ifoodLocationStatus.textContent = 'CEP não localizado. Preencha rua e bairro manualmente.'; }
+  });
+  function setIFoodCoordinates(latitude, longitude) {
+    ifoodCoordinates = { latitude: Number(latitude.toFixed(6)), longitude: Number(longitude.toFixed(6)) };
+    if (ifoodLocationStatus)
+      ifoodLocationStatus.textContent = 'Ponto da entrega confirmado. Confira CEP, rua, número e bairro.';
+    if (ifoodMap && window.L) {
+      if (ifoodMarker) ifoodMarker.setLatLng([latitude, longitude]);
+      else ifoodMarker = window.L.marker([latitude, longitude]).addTo(ifoodMap);
+      ifoodMap.setView([latitude, longitude], 16);
+    }
+    updateIFoodAddress();
+  }
+  qs('[data-ifood-use-location]')?.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      ifoodLocationStatus.textContent = 'Seu navegador não oferece localização. Use o mapa.';
+      return;
+    }
+    ifoodLocationStatus.textContent = 'Obtendo localização. Confirme que está no endereço da entrega.';
+    navigator.geolocation.getCurrentPosition(position => {
+      setIFoodCoordinates(position.coords.latitude, position.coords.longitude);
+    }, () => { ifoodLocationStatus.textContent = 'Localização não autorizada. Marque o ponto no mapa.'; },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+  });
+  qs('[data-ifood-show-map]')?.addEventListener('click', async () => {
+    ifoodMapNode.hidden = false;
+    if (ifoodMap) { ifoodMap.invalidateSize(); return; }
+    try {
+      if (!window.L) {
+        if (!document.querySelector('[data-leaflet-css]')) {
+          const css = document.createElement('link');
+          css.rel = 'stylesheet';
+          css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          css.dataset.leafletCss = '1';
+          document.head.append(css);
+        }
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.onload = resolve; script.onerror = reject;
+          document.head.append(script);
+        });
+      }
+      ifoodMap = window.L.map(ifoodMapNode, { scrollWheelZoom: false })
+        .setView(ifoodCoordinates ? [ifoodCoordinates.latitude, ifoodCoordinates.longitude] : [-25.5365, -54.5870],
+          ifoodCoordinates ? 16 : 12);
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(ifoodMap);
+      ifoodMap.on('click', event => setIFoodCoordinates(event.latlng.lat, event.latlng.lng));
+      if (ifoodCoordinates) setIFoodCoordinates(ifoodCoordinates.latitude, ifoodCoordinates.longitude);
+      ifoodLocationStatus.textContent = 'Toque no mapa sobre o endereço exato da entrega.';
+      setTimeout(() => ifoodMap.invalidateSize(), 150);
+    } catch { ifoodLocationStatus.textContent = 'Mapa indisponível. Use o botão de localização.'; }
+  });
 
   nameInput?.addEventListener('input', () => {
     if (nameInput.value.trim()) setFieldError(nameInput, nameError, false);
@@ -745,24 +856,26 @@
   });
 
   deliveryQuoteButton?.addEventListener('click', async () => {
-    if (!storeConfig?.uberDirectReady) {
-      deliveryQuoteStatus.textContent = 'Uber Direct ainda não disponível para esta região.';
+    if (!storeConfig?.deliveryEnabled) {
+      deliveryQuoteStatus.textContent = 'Entregas temporariamente indisponíveis.';
       return;
     }
     deliveryQuoteButton.disabled = true;
-    deliveryQuoteStatus.textContent = 'Consultando taxa e disponibilidade com a Uber...';
+    const provider = isIFood() ? 'iFood' : 'Uber Direct';
+    deliveryQuoteStatus.textContent = 'Consultando taxa e disponibilidade com ' + provider + '...';
     deliveryQuote = null;
     renderCart();
     try {
       const response = await fetch(API + '/api/delivery/quote', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: addressInput.value.trim() }),
+        body: JSON.stringify({ address: addressInput.value.trim(),
+          ...(isIFood() ? { ifoodAddress: currentIFoodAddress() } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw Error(data.error || 'Não foi possível cotar a entrega.');
       deliveryQuote = { ...data, address: addressInput.value.trim() };
-      deliveryQuoteStatus.textContent = 'Entrega Uber Direct: ' +
-        currency.format(data.feeCents / 100) + '. Cotação válida por até 15 minutos.';
+      deliveryQuoteStatus.textContent = 'Entrega ' + provider + ': ' +
+        currency.format(data.feeCents / 100) + '. Frete calculado para este endereço.';
       renderCart();
     } catch (error) {
       deliveryQuoteStatus.textContent = error.message;
@@ -907,6 +1020,9 @@
         : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
       const deliveryChoice = qs('[data-order-choice="Entrega"]');
       if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
+      if (deliveryQuoteButton) deliveryQuoteButton.textContent =
+        'Calcular taxa pelo ' + (isIFood() ? 'iFood' : 'Uber Direct');
+      syncAddressField();
       if (!storeConfig.deliveryEnabled && orderType?.value === 'Entrega') {
         qs('[data-order-choice="Retirada no Kipeixe"]')?.click();
       }
@@ -983,18 +1099,30 @@
           delivered: 'entrega concluída', PRICE_CHANGED: 'frete alterado; restaurante revisando',
           REVIEW: 'solicitação em verificação', FAILED: 'restaurante verificando a entrega',
         }[data.uberStatus] || 'em acompanhamento') + '.' : '';
-      showOrderStatus(title, description + paymentText + refundText + courierText,
+      const ifoodText = data.ifoodStatus && data.ifoodStatus !== 'QUOTED'
+        ? ' iFood: ' + ({
+          REQUESTED: 'entrega solicitada', DELIVERY_IN_TRANSIT: 'entregador a caminho',
+          DELIVERY_CONCLUDED: 'pedido entregue', DELIVERY_CANCELLED: 'entrega cancelada',
+          PRICE_CHANGED: 'frete alterado; restaurante analisando',
+          REVIEW: 'solicitação em verificação', FAILED: 'restaurante verificando a entrega',
+        }[data.ifoodStatus] || 'em acompanhamento') +
+          '. Para receber, confirme os últimos 4 dígitos do seu telefone com o entregador.' : '';
+      showOrderStatus(title, description + paymentText + refundText + courierText + ifoodText,
         data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
       if (uberTrackingLink) {
         let safeTracking = null;
         try {
-          const url = new URL(data.uberTrackingUrl);
+          const url = new URL(data.deliveryProvider === 'ifood' ? data.ifoodTrackingUrl : data.uberTrackingUrl);
           if (url.protocol === 'https:' &&
-              ['uber.com', 'ubereats.com'].some(domain =>
-                url.hostname === domain || url.hostname.endsWith('.' + domain))) safeTracking = url.href;
+              (data.deliveryProvider === 'ifood'
+                ? (url.hostname === 'ifood.com.br' || url.hostname.endsWith('.ifood.com.br'))
+                : ['uber.com', 'ubereats.com'].some(domain =>
+                  url.hostname === domain || url.hostname.endsWith('.' + domain)))) safeTracking = url.href;
         } catch {}
         uberTrackingLink.hidden = !safeTracking;
         if (safeTracking) uberTrackingLink.href = safeTracking;
+        uberTrackingLink.textContent = data.deliveryProvider === 'ifood'
+          ? 'Acompanhar entregador iFood' : 'Acompanhar entregador Uber';
       }
       if (['COMPLETED', 'REJECTED', 'AUTO_REJECTED'].includes(data.orderStatus) &&
           !['PENDING', 'REVIEW', 'PROCESSING'].includes(data.refundStatus)) {
@@ -1026,7 +1154,7 @@
     if (!cart.length || name.length < 2 || phone.length < 10 || type === 'Entrega' && !address) return;
     if (type === 'Entrega' && (!deliveryQuote || deliveryQuote.address !== address ||
         Date.parse(deliveryQuote.expiresAt) < Date.now() + 30000)) {
-      deliveryQuoteStatus.textContent = 'Calcule ou atualize a taxa Uber Direct antes de pagar.';
+      deliveryQuoteStatus.textContent = 'Calcule ou atualize a taxa de entrega antes de pagar.';
       deliveryQuoteButton?.focus();
       return;
     }
@@ -1048,6 +1176,7 @@
       items: cart.map(item => ({ productId: item.productId || undefined,
         name: item.name, variant: item.variant || '', qty: item.qty })),
       deliveryQuoteId: type === 'Entrega' ? deliveryQuote.quoteId : null,
+      ifoodAddress: type === 'Entrega' && isIFood() ? currentIFoodAddress() : null,
       expectedTotalCents: Math.round(cartValue() * 100) +
         (type === 'Entrega' ? Number(deliveryQuote.feeCents) : 0)
     };

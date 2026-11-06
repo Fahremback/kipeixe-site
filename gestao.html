@@ -8,7 +8,7 @@
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
   <link rel="stylesheet" href="gestao.css?v=20261106-espresso-paprika">
-  <script src="gestao.js?v=20261106-uber-direct" defer></script>
+  <script src="gestao.js?v=20261106-ifood-shipping" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -98,8 +98,23 @@
           <div class="settings-card"><h3>Recebimento de pedidos</h3><label class="check-line"><input name="ordersEnabled" type="checkbox"> Permitir novos pedidos no site</label>
             <p>Fora do horário de abertura, o cliente precisa escolher um horário futuro.</p>
             <label class="check-line"><input name="deliveryEnabled" type="checkbox"> Habilitar entrega</label>
-            <p>Com Uber Direct, o frete é calculado automaticamente conforme o endereço, antes do pagamento.</p>
+            <label>Operador logístico
+              <select name="deliveryProvider">
+                <option value="ifood">iFood Entrega Fácil</option>
+                <option value="uber">Uber Direct</option>
+              </select>
+            </label>
+            <p>A taxa é calculada pelo operador escolhido antes do pagamento. A entrega só é solicitada após o preparo.</p>
             <label>Taxa fixa para outras integrações (R$)<input name="deliveryFee" type="number" step="0.01" min="0" max="300" value="0"></label></div>
+          <div class="settings-card">
+            <h3>iFood — Entrega Fácil</h3>
+            <p>Solicita entregadores do iFood para pedidos vendidos diretamente pelo site do Kipeixe.</p>
+            <p id="ifood-integration-status" class="environment-status" role="status">Verificando credenciais iFood...</p>
+            <label class="check-line"><input name="ifoodEnabled" type="checkbox"> Ativar integração iFood</label>
+            <p>Exige credenciais Client ID, Client Secret, Merchant ID, módulo Shipping autorizado e homologação.</p>
+            <a href="https://developer.ifood.com.br/pt-BR" target="_blank" rel="noopener noreferrer">Portal Desenvolvedor iFood</a>
+            <a href="https://portal.ifood.com.br/" target="_blank" rel="noopener noreferrer">Entrega Fácil manual — Portal do Parceiro</a>
+          </div>
           <div class="settings-card">
             <h3>Uber Direct — entregadores</h3>
             <p>A Uber faz a cotação na finalização do pedido. Após aceite e preparo, o restaurante solicita o entregador ao marcar o pedido como pronto.</p>
