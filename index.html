@@ -249,6 +249,7 @@
           <div class="online-order-actions">
             <button data-online-status-refresh type="button" hidden>Verificar pagamento</button>
             <a data-online-status-link href="https://asaas.com" target="_blank" rel="noopener noreferrer" hidden>Retomar pagamento</a>
+            <a data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entregador Uber</a>
           </div>
         </div>
         <div class="cart-checkout" data-cart-checkout hidden>
@@ -315,6 +316,10 @@
                 </div>
                 <small class="field-error" id="address-error" data-address-error hidden>Informe o endereço para entrega.</small>
               </label>
+              <div class="delivery-quote" data-delivery-quote>
+                <button class="delivery-quote-button" type="button" data-delivery-calculate>Calcular taxa pelo Uber Direct</button>
+                <small role="status" data-delivery-quote-status>Informe rua, número e bairro para consultar o valor exato.</small>
+              </div>
             </div>
 
             <div class="checkout-section">
@@ -400,7 +405,7 @@
 
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261106-payment-only"></script>
+    <script src="script.js?v=20261106-uber-direct-v2"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {

@@ -1395,3 +1395,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .checkout-payment-methods span{font-size:11px;padding:10px 8px;gap:6px}
 }
 .site-header{background:rgba(43,32,25,.97)}
+.delivery-quote{display:grid;gap:7px;padding:12px;background:#fff7ed;border:1px solid #ead1ba;border-radius:13px;margin-top:9px}
+.delivery-quote-button{padding:12px 15px;border:1px solid #b94521;background:#fff7ed;color:#942f19;border-radius:10px;font-weight:800;cursor:pointer}
+.delivery-quote-button:disabled{opacity:.55;cursor:progress}
+.delivery-quote small{font-size:11px;line-height:1.45;color:#78604d}

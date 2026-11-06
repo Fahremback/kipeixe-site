@@ -98,7 +98,16 @@
           <div class="settings-card"><h3>Recebimento de pedidos</h3><label class="check-line"><input name="ordersEnabled" type="checkbox"> Permitir novos pedidos no site</label>
             <p>Fora do horário de abertura, o cliente precisa escolher um horário futuro.</p>
             <label class="check-line"><input name="deliveryEnabled" type="checkbox"> Habilitar entrega</label>
-            <label>Taxa de entrega (R$)<input name="deliveryFee" type="number" step="0.01" min="0" max="300" value="0"></label></div>
+            <p>Com Uber Direct, o frete é calculado automaticamente conforme o endereço, antes do pagamento.</p>
+            <label>Taxa fixa para outras integrações (R$)<input name="deliveryFee" type="number" step="0.01" min="0" max="300" value="0"></label></div>
+          <div class="settings-card">
+            <h3>Uber Direct — entregadores</h3>
+            <p>A Uber faz a cotação na finalização do pedido. Após aceite e preparo, o restaurante solicita o entregador ao marcar o pedido como pronto.</p>
+            <p id="uber-integration-status" class="environment-status" role="status">Consultando credenciais...</p>
+            <label class="check-line"><input name="uberEnabled" type="checkbox"> Ativar Uber Direct para entregas</label>
+            <p>Coleta: Av. João Ricieri Maran, 1417, Três Lagoas, Foz do Iguaçu. A integração exige Customer ID, Client ID, Client Secret e chave de assinatura dos webhooks na Cloudflare.</p>
+            <a href="https://direct.uber.com/" target="_blank" rel="noopener noreferrer">Abrir painel Uber Direct</a>
+          </div>
           <div class="settings-card asaas-settings">
             <h3>Pagamentos Asaas</h3>
             <p>Selecione em qual conta os novos pedidos serão cobrados. Pedidos anteriores continuam associados à conta original.</p>

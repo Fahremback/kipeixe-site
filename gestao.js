@@ -89,10 +89,22 @@
       order.address ? `Endereço: ${esc(order.address)}` : '',
       order.notes ? `Observações: ${esc(order.notes)}` : '',
     ].filter(Boolean).join('<p></p>');
+    const uber = order.order_type === 'Entrega'
+      ? '<p class="order-extra"><strong>Uber Direct:</strong> ' +
+        esc(order.uber_status || 'Aguardando preparo') +
+        (order.uber_dispatch_error ? ' · ' + esc(order.uber_dispatch_error) : '') +
+        (order.uber_tracking_url && /^https:\/\/(?:[^/]+\.)?uber(?:eats)?\.com\//.test(order.uber_tracking_url)
+          ? ' · <a href="' + esc(order.uber_tracking_url) +
+          '" target="_blank" rel="noopener noreferrer">Acompanhar entregador</a>' : '') + '</p>' : '';
     const actions = [];
     if (waiting) actions.push(`<button data-action="ACCEPT" data-id="${order.id}">Aceitar</button><button class="reject" data-action="REJECT" data-id="${order.id}">Recusar</button>`);
     if (status === 'PREPARING') actions.push(`<button data-action="READY" data-id="${order.id}">Marcar pronto</button>`);
-    if (status === 'READY') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
+    if (status === 'READY' && order.order_type !== 'Entrega') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
+    if (status === 'READY' && order.order_type === 'Entrega' && order.uber_status === 'FAILED')
+      actions.push(`<button data-uber-dispatch="${order.id}">Tentar solicitar Uber</button>`);
+    if (status === 'READY' && order.order_type === 'Entrega' && !order.uber_delivery_id &&
+        !['REQUESTING', 'REVIEW'].includes(order.uber_status))
+      actions.push(`<button class="reject" data-action="CANCEL_DELIVERY" data-id="${order.id}">Cancelar entrega e estornar</button>`);
     if (reviewing) actions.push(`<button class="reject" data-refund="${order.id}">Revisar estorno</button>`);
     return `
       <article class="order-card ${waiting ? 'urgent' : ''} ${reviewing ? 'review' : ''}">
@@ -102,7 +114,7 @@
         <div class="order-customer">${esc(order.name)}</div>
         <div class="order-extra">Telefone: ${esc(order.phone)}</div>
         <ul class="order-items">${items}</ul>
-        <p class="order-extra">${scheduled}</p><div class="order-extra">${details}</div>
+        <p class="order-extra">${scheduled}</p><div class="order-extra">${details}</div>${uber}
         <div class="order-footer"><strong class="order-total">${money(order.total_cents)}</strong>
           ${waiting ? `<span class="timer" data-deadline="${esc(order.acceptance_deadline || '')}">${deadlineRemaining(order.acceptance_deadline)}</span>` : ''}</div>
         ${order.refund_status !== 'NOT_REQUIRED' ? `<p class="order-extra">Estorno: ${esc(order.refund_status)}</p>` : ''}
@@ -151,20 +163,26 @@
   $('#orders-list').addEventListener('click', async event => {
     const action = event.target.closest('[data-action]');
     const refund = event.target.closest('[data-refund]');
-    if (!action && !refund) return;
-    const id = action?.dataset.id || refund?.dataset.refund;
+    const dispatch = event.target.closest('[data-uber-dispatch]');
+    if (!action && !refund && !dispatch) return;
+    const id = action?.dataset.id || refund?.dataset.refund || dispatch?.dataset.uberDispatch;
     if (action?.dataset.action === 'REJECT' &&
       !confirm('Recusar este pedido pago e solicitar estorno pelo Asaas?')) return;
+    if (action?.dataset.action === 'CANCEL_DELIVERY' &&
+      !confirm('Cancelar este pedido pago sem entregador e solicitar estorno ao Asaas?')) return;
     event.target.disabled = true;
     try {
       if (refund) {
         const result = await api(`/api/admin/orders/${id}/retry-refund`, { method: 'POST' });
         notify(result.ok ? 'Estorno solicitado ao Asaas.' : 'Estorno ainda exige conferência na conta Asaas.', !result.ok);
+      } else if (dispatch) {
+        const result = await api(`/api/admin/orders/${id}/dispatch-uber`, { method: 'POST' });
+        notify('Uber Direct: ' + (result.uber?.status || 'verificação pendente'), !result.ok);
       } else {
-        await api(`/api/admin/orders/${id}/action`, {
+        const result = await api(`/api/admin/orders/${id}/action`, {
           method: 'POST', body: JSON.stringify({ action: action.dataset.action })
         });
-        notify('Pedido atualizado.');
+        notify(result.uber ? 'Pedido pronto · Uber Direct: ' + result.uber.status : 'Pedido atualizado.');
       }
       await loadOrders();
     } catch (error) { notify(error.message, true); }
@@ -314,6 +332,13 @@
     const form = $('#settings-form');
     form.elements.ordersEnabled.checked = settings.ordersEnabled;
     form.elements.deliveryEnabled.checked = settings.deliveryEnabled;
+    form.elements.uberEnabled.checked = settings.uberEnabled || false;
+    const uberReady = settings.uberDirectConfigured && settings.uberDirectSystemAvailable;
+    const uberStatus = $('#uber-integration-status');
+    uberStatus.textContent = uberReady
+      ? 'Conta Uber Direct conectada. Ative a entrega para disponibilizar cotações.'
+      : 'Aguardando aprovação da conta Uber Direct e credenciais no servidor. Entregas desativadas.';
+    uberStatus.classList.toggle('is-ready', uberReady);
     form.elements.deliveryFee.value = (settings.deliveryFeeCents / 100).toFixed(2);
     form.elements.paymentMode.value = settings.paymentMode || 'sandbox';
     form.elements.paymentsEnabled.checked = settings.paymentsEnabled || false;
@@ -355,6 +380,7 @@
         method: 'PUT', body: JSON.stringify({
           ordersEnabled: form.elements.ordersEnabled.checked,
           deliveryEnabled: form.elements.deliveryEnabled.checked,
+          uberEnabled: form.elements.uberEnabled.checked,
           deliveryFeeCents: Math.round(Number(form.elements.deliveryFee.value) * 100),
           paymentMode: form.elements.paymentMode.value,
           paymentsEnabled: form.elements.paymentsEnabled.checked,

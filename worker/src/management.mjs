@@ -1,5 +1,6 @@
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
 import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
+import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 
 export const ALLOWED_ORIGINS = new Set([
   'https://restaurantekipeixe.com.br', 'https://www.restaurantekipeixe.com.br',
@@ -56,7 +57,7 @@ const canPrice = value => value === null || (Number.isInteger(value) && value >=
 
 export async function storeSettings(env) {
   if (!env.DB) return { ordersEnabled: false, paymentsEnabled: false, paymentMode: 'sandbox',
-    deliveryEnabled: false, deliveryFeeCents: 0, hours: DEFAULT_HOURS };
+    deliveryEnabled: false, deliveryFeeCents: 0, uberEnabled: false, hours: DEFAULT_HOURS };
   const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
   const values = Object.fromEntries(rows.map(row => [row.key, row.value]));
   let hours = DEFAULT_HOURS;
@@ -67,6 +68,7 @@ export async function storeSettings(env) {
     paymentMode: PAYMENT_MODES.has(values.payment_mode) ? values.payment_mode : 'sandbox',
     deliveryEnabled: values.delivery_enabled === 'true',
     deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
+    uberEnabled: values.uber_enabled === 'true',
     hours,
   };
 }
@@ -79,7 +81,8 @@ export async function clientConfig(env) {
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
-    deliveryEnabled: settings.deliveryEnabled,
+    deliveryEnabled: uberReady(env, settings),
+    uberDirectReady: uberReady(env, settings),
     deliveryFeeCents: settings.deliveryFeeCents,
     openingHours: settings.hours,
     openNow: openAt(now, settings.hours),
@@ -244,6 +247,10 @@ export async function sweepExpired(env, now = new Date()) {
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at < ?').bind(Date.now()).run();
   await env.DB.prepare('DELETE FROM login_limits WHERE window_start < ?')
     .bind(Math.floor(Date.now() / 900000) - 2).run();
+  await env.DB.prepare('DELETE FROM uber_quote_limits WHERE window_start < ?')
+    .bind(Math.floor(Date.now() / 900000) - 2).run();
+  await env.DB.prepare('DELETE FROM uber_quotes WHERE expires_at < ? AND order_id IS NULL')
+    .bind(new Date(Date.now() - 24 * 3600000).toISOString()).run();
   return closed;
 }
 
@@ -350,6 +357,8 @@ export async function handleAdmin(request, env, origin, url) {
         production: { configured: paymentConfigured(env, 'production') },
       },
       paymentSystemAvailable: env.PAYMENTS_ENABLED === 'true',
+      uberDirectConfigured: uberConfigured(env),
+      uberDirectSystemAvailable: env.UBER_DIRECT_ENABLED === 'true',
     }, 200, origin);
     if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
     let data, hours;
@@ -358,6 +367,11 @@ export async function handleAdmin(request, env, origin, url) {
       hours = validateHours(data.hours);
       if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
       if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
+      if (typeof data.uberEnabled !== 'boolean') throw Error('Configuração Uber Direct inválida.');
+      if (data.uberEnabled && (!uberConfigured(env) || env.UBER_DIRECT_ENABLED !== 'true'))
+        throw Error('Uber Direct exige aprovação da conta e credenciais válidas no servidor.');
+      if (data.deliveryEnabled && !data.uberEnabled)
+        throw Error('Ative Uber Direct para oferecer entrega no site.');
       if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
       if (data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
         throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');
@@ -374,6 +388,8 @@ export async function handleAdmin(request, env, origin, url) {
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(json(hours)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payment_mode',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.paymentMode),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('uber_enabled',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.uberEnabled)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payments_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.paymentsEnabled)),
     ]);
@@ -384,7 +400,8 @@ export async function handleAdmin(request, env, origin, url) {
     await sweepExpired(env);
     const rows = (await env.DB.prepare(`SELECT id, name, phone, order_type, address, notes, items_json,
       subtotal_cents, delivery_cents, total_cents, payment_status, fulfillment_status, created_at,
-      paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id, asaas_environment
+      paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id, asaas_environment,
+      uber_status,uber_delivery_id,uber_tracking_url,uber_quote_fee_cents,uber_dispatch_error
       FROM orders ORDER BY created_at DESC LIMIT 250`).all()).results;
     return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })) }, 200, origin);
   }
@@ -392,9 +409,25 @@ export async function handleAdmin(request, env, origin, url) {
   if (action && request.method === 'POST') {
     let data;
     try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
-    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline FROM orders WHERE id = ?')
+    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, uber_delivery_id, uber_status FROM orders WHERE id = ?')
       .bind(action[1]).first();
     if (!row || row.payment_status !== 'PAID') return fail('Pedido não pago ou inexistente.', 409, origin);
+    if (data.action === 'COMPLETE' && row.order_type === 'Entrega')
+      return fail('Entrega Uber Direct só é concluída após confirmação do entregador.', 409, origin);
+    if (data.action === 'CANCEL_DELIVERY') {
+      if (row.order_type !== 'Entrega' || row.fulfillment_status !== 'READY' ||
+          row.uber_delivery_id || ['REQUESTING', 'REVIEW'].includes(row.uber_status))
+        return fail('Despacho Uber pendente ou já realizado. Verifique antes de estornar.', 409, origin);
+      const changed = await env.DB.prepare("UPDATE orders SET fulfillment_status='REJECTED',refund_status='PENDING'," +
+        "closed_reason='Entrega indisponível',updated_at=CURRENT_TIMESTAMP WHERE id=? AND " +
+        "fulfillment_status='READY' AND uber_delivery_id IS NULL " +
+        "AND (uber_status IS NULL OR uber_status NOT IN ('REQUESTING','REVIEW'))")
+        .bind(action[1]).run();
+      if (!changed.meta.changes) return fail('Pedido alterado por outro operador.', 409, origin);
+      await audit(env, actor, 'CANCEL_DELIVERY', action[1]);
+      await refundOrder(env, action[1]);
+      return reply({ ok: true, status: 'REJECTED' }, 200, origin);
+    }
     let target;
     try { target = nextStatus(row.fulfillment_status, data.action); } catch (e) { return fail(e.message, 409, origin); }
     if (PENDING_DECISION.has(row.fulfillment_status) && row.acceptance_deadline <= new Date().toISOString()) {
@@ -412,7 +445,15 @@ export async function handleAdmin(request, env, origin, url) {
     if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
     await audit(env, actor, data.action, action[1]);
     if (rejecting) await refundOrder(env, action[1]);
-    return reply({ ok: true, status: target }, 200, origin);
+    const uber = target === 'READY' && row.order_type === 'Entrega'
+      ? await dispatchDelivery(env, action[1]) : null;
+    return reply({ ok: true, status: target, uber }, 200, origin);
+  }
+  const dispatch = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/dispatch-uber$/i.exec(url.pathname);
+  if (dispatch && request.method === 'POST') {
+    const state = await dispatchDelivery(env, dispatch[1]);
+    await audit(env, actor, 'UBER_DISPATCH_RETRY', dispatch[1], state.status);
+    return reply({ ok: ['pending', 'pickup', 'dropoff'].includes(state.status), uber: state }, 200, origin);
   }
   const retry = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/retry-refund$/i.exec(url.pathname);
   if (retry && request.method === 'POST') {

@@ -24,7 +24,10 @@
   "vars": {
     "PAYMENTS_ENABLED": "true",
     "DELIVERY_ENABLED": "false",
-    "DELIVERY_FEE_CENTS": "0"
+    "DELIVERY_FEE_CENTS": "0",
+    "UBER_DIRECT_ENABLED": "false",
+    "UBER_PICKUP_ADDRESS": "Av. João Ricieri Maran, 1417, Três Lagoas, Foz do Iguaçu - PR, 85862-425, Brasil",
+    "UBER_PICKUP_PHONE": "+554535772363"
   },
   "d1_databases": [
     {

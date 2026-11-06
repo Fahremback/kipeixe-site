@@ -4,11 +4,42 @@ import {
 } from './management.mjs';
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
+import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { sendMetaOrderEvent } from './meta-capi.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
 const CHECKOUT_EVENTS = new Set(['CHECKOUT_CREATED', 'CHECKOUT_PAID', 'CHECKOUT_CANCELED', 'CHECKOUT_EXPIRED']);
 const digits = value => String(value ?? '').replace(/\D/g, '');
+
+async function createDeliveryQuote(request, env, origin) {
+  const settings = await storeSettings(env);
+  if (!uberReady(env, settings) || !settings.ordersEnabled)
+    return fail('Uber Direct indisponível para pedidos.', 503, origin);
+  let address;
+  try {
+    const raw = await request.text();
+    if (raw.length > 1500) return fail('Endereço excessivo.', 413, origin);
+    address = normalizedAddress(JSON.parse(raw).address);
+  } catch (error) { return fail(error.message || 'Endereço inválido.', 422, origin); }
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const windowStart = Math.floor(Date.now() / 900_000);
+  await env.DB.prepare('INSERT INTO uber_quote_limits(ip,window_start,hits) VALUES (?,?,1) ' +
+    'ON CONFLICT(ip,window_start) DO UPDATE SET hits=hits+1').bind(ip, windowStart).run();
+  const limit = await env.DB.prepare('SELECT hits FROM uber_quote_limits WHERE ip=? AND window_start=?')
+    .bind(ip, windowStart).first();
+  if (limit.hits > 20) return fail('Muitas cotações. Tente depois.', 429, origin);
+  try {
+    const quote = await quoteDelivery(env, address);
+    const id = crypto.randomUUID();
+    await env.DB.prepare('INSERT INTO uber_quotes(id,uber_quote_id,address,fee_cents,expires_at) ' +
+      'VALUES (?,?,?,?,?)').bind(id, quote.uberQuoteId, quote.address,
+      quote.feeCents, quote.expiresAt).run();
+    return reply({ quoteId: id, feeCents: quote.feeCents, expiresAt: quote.expiresAt }, 200, origin);
+  } catch (e) {
+    console.warn('Uber Direct quote:', e.message);
+    return fail('Entrega indisponível neste endereço ou horário. Tente mais tarde.', 422, origin);
+  }
+}
 
 async function throttle(request, env) {
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -102,7 +133,17 @@ async function createOrder(request, env, origin, ctx) {
     return fail('Pedido já registrado. Consulte seu status.', 409, origin);
   }
   if (!await throttle(request, env)) return fail('Muitos pedidos. Tente novamente depois.', 429, origin);
-  const deliveryCents = buyer.type === 'Entrega' ? settings.deliveryFeeCents : 0;
+  let deliveryQuote = null;
+  if (buyer.type === 'Entrega') {
+    if (!uberReady(env, settings)) return fail('Entregas Uber Direct indisponíveis.', 503, origin);
+    const quoteId = String(body.deliveryQuoteId || '');
+    if (!/^[0-9a-f-]{36}$/i.test(quoteId)) return fail('Calcule o frete antes de pagar.', 422, origin);
+    deliveryQuote = await env.DB.prepare('SELECT * FROM uber_quotes WHERE id=? AND ' +
+      'expires_at > ? AND order_id IS NULL').bind(quoteId, new Date().toISOString()).first();
+    if (!deliveryQuote || deliveryQuote.address !== normalizedAddress(buyer.address))
+      return fail('Frete vencido ou endereço alterado. Calcule novamente.', 409, origin);
+  }
+  const deliveryCents = deliveryQuote ? deliveryQuote.fee_cents : 0;
   if (Number.isInteger(body.expectedTotalCents) &&
       body.expectedTotalCents !== priced.subtotalCents + deliveryCents) {
     return fail('Os preços do cardápio mudaram. Atualize a página antes de pagar.', 409, origin);
@@ -114,11 +155,22 @@ async function createOrder(request, env, origin, ctx) {
   try {
     await env.DB.prepare(`INSERT INTO orders
       (id,request_id,access_hash,name,phone,order_type,address,notes,items_json,
-       subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for,asaas_environment)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?, ?)`)
+       subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for,asaas_environment,
+       uber_quote_id,uber_quote_fee_cents,uber_status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?, ?, ?, ?, ?)`)
       .bind(order.id, requestId, tokenHash, buyer.name, buyer.phone, buyer.type, buyer.address,
-        buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents, schedule, settings.paymentMode).run();
+        buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents,
+        schedule, settings.paymentMode, deliveryQuote?.uber_quote_id || null,
+        deliveryQuote?.fee_cents ?? null, deliveryQuote ? 'QUOTED' : null).run();
   } catch { return fail('Pedido já registrado.', 409, origin); }
+  if (deliveryQuote) {
+    const claim = await env.DB.prepare('UPDATE uber_quotes SET order_id=? WHERE id=? AND order_id IS NULL')
+      .bind(order.id, deliveryQuote.id).run();
+    if (!claim.meta.changes) {
+      await env.DB.prepare('DELETE FROM orders WHERE id=?').bind(order.id).run();
+      return fail('Cotação já utilizada. Recalcule o frete.', 409, origin);
+    }
+  }
   try {
     const checkout = await createAsaasCheckout(order, env, settings.paymentMode);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
@@ -145,14 +197,16 @@ async function readOrder(request, env, origin, id) {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || '';
   if (!/^[0-9a-f-]{36}$/i.test(token)) return fail('Acesso negado.', 401, origin);
   const row = await env.DB.prepare(`SELECT id, access_hash, payment_status, fulfillment_status, total_cents,
-    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason, asaas_environment
+    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason,
+    asaas_environment, uber_delivery_id, uber_status, uber_tracking_url
     FROM orders WHERE id=?`).bind(id).first();
   if (!row || !safeEqual(row.access_hash, await hash(token))) return fail('Pedido não encontrado.', 404, origin);
   const { access_hash, ...data } = row;
   return reply({ orderId: data.id, paymentStatus: data.payment_status, orderStatus: data.fulfillment_status,
     totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
     scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,
-    closedReason: data.closed_reason, createdAt: data.created_at, paymentMode: data.asaas_environment }, 200, origin);
+    closedReason: data.closed_reason, createdAt: data.created_at, paymentMode: data.asaas_environment,
+    uberDeliveryId: data.uber_delivery_id, uberStatus: data.uber_status, uberTrackingUrl: data.uber_tracking_url }, 200, origin);
 }
 
 async function webhook(request, env, ctx, mode) {
@@ -239,6 +293,14 @@ export default {
     try {
       const webhookMode = /^\/api\/webhook\/asaas\/(sandbox|production)$/.exec(pathname)?.[1];
       if (webhookMode && request.method === 'POST') return webhook(request, env, ctx, webhookMode);
+      if (pathname === '/api/webhook/uber-direct' && request.method === 'POST') {
+        const result = await uberWebhook(request, env);
+        return reply(result.data, result.status);
+      }
+      if (pathname === '/api/delivery/quote' && request.method === 'POST') {
+        if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem não autorizada.', 403, origin);
+        return createDeliveryQuote(request, env, origin);
+      }
       if (pathname === '/api/config' && request.method === 'GET') return reply(await clientConfig(env), 200, origin);
       if (pathname === '/api/catalog' && request.method === 'GET') {
         return reply(await getCatalog(env), 200, origin);
@@ -260,6 +322,6 @@ export default {
     }
   },
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(sweepExpired(env));
+    ctx.waitUntil(Promise.all([sweepExpired(env), dispatchScheduledReady(env)]));
   },
 };

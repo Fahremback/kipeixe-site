@@ -513,6 +513,9 @@
   const orderType = qs('[data-order-type]');
   const orderChoices = qsa('[data-order-choice]');
   const addressField = qs('[data-address-field]');
+  const deliveryQuoteButton = qs('[data-delivery-calculate]');
+  const deliveryQuoteStatus = qs('[data-delivery-quote-status]');
+  let deliveryQuote = null;
   const notesStep = qs('[data-notes-step]');
   const nameError = qs('[data-name-error]');
   const addressError = qs('[data-address-error]');
@@ -569,7 +572,7 @@
     cartCheckout.hidden = count === 0;
     if (cartTotal) cartTotal.textContent = currency.format(cartValue());
     if (paymentTotal) paymentTotal.textContent = currency.format(cartValue() +
-      (orderType?.value === 'Entrega' ? Number(storeConfig?.deliveryFeeCents || 0) / 100 : 0));
+      (orderType?.value === 'Entrega' ? Number(deliveryQuote?.feeCents || 0) / 100 : 0));
 
     cartItems.innerHTML = cart.map((item) => `
       <article class="cart-row" data-cart-id="${escapeHtml(item.id)}">
@@ -704,6 +707,7 @@
       if (addressError) addressError.hidden = true;
     }
     if (notesStep) notesStep.textContent = '05';
+    renderCart();
   };
 
   const setFieldError = (input, errorNode, messageVisible) => {
@@ -735,6 +739,34 @@
   });
   addressInput?.addEventListener('input', () => {
     if (addressInput.value.trim()) setFieldError(addressInput, addressError, false);
+    deliveryQuote = null;
+    if (deliveryQuoteStatus) deliveryQuoteStatus.textContent = 'Endereço alterado. Calcule novamente o frete.';
+    renderCart();
+  });
+
+  deliveryQuoteButton?.addEventListener('click', async () => {
+    if (!storeConfig?.uberDirectReady) {
+      deliveryQuoteStatus.textContent = 'Uber Direct ainda não disponível para esta região.';
+      return;
+    }
+    deliveryQuoteButton.disabled = true;
+    deliveryQuoteStatus.textContent = 'Consultando taxa e disponibilidade com a Uber...';
+    deliveryQuote = null;
+    renderCart();
+    try {
+      const response = await fetch(API + '/api/delivery/quote', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addressInput.value.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error || 'Não foi possível cotar a entrega.');
+      deliveryQuote = { ...data, address: addressInput.value.trim() };
+      deliveryQuoteStatus.textContent = 'Entrega Uber Direct: ' +
+        currency.format(data.feeCents / 100) + '. Cotação válida por até 15 minutos.';
+      renderCart();
+    } catch (error) {
+      deliveryQuoteStatus.textContent = error.message;
+    } finally { deliveryQuoteButton.disabled = false; }
   });
 
   const onlineButton = qs('[data-online-checkout]');
@@ -753,6 +785,7 @@
   const onlineStatusMessage = qs('[data-online-status-message]');
   const onlineStatusRefresh = qs('[data-online-status-refresh]');
   const onlineStatusLink = qs('[data-online-status-link]');
+  const uberTrackingLink = qs('[data-uber-tracking]');
   const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
   const phoneError = qs('[data-phone-error]');
   const phoneInput = qs('input[name="phone"]', orderForm);
@@ -877,6 +910,7 @@
       if (!storeConfig.deliveryEnabled && orderType?.value === 'Entrega') {
         qs('[data-order-choice="Retirada no Kipeixe"]')?.click();
       }
+      if (!storeConfig.deliveryEnabled) deliveryQuote = null;
       const onlineLabel = qs('strong', onlineButton);
       const onlineCaption = qs('small', onlineButton);
       if (onlineLabel) onlineLabel.textContent = !storeConfig.onlinePaymentEnabled
@@ -942,8 +976,26 @@
       const refundText = data.refundStatus === 'REVIEW' ? ' Estorno precisa de conferência do restaurante.' :
         data.refundStatus === 'REQUESTED' ? ' Estorno solicitado.' :
         data.refundStatus === 'REFUNDED' ? ' Estorno confirmado.' : '';
-      showOrderStatus(title, description + paymentText + refundText,
+      const courierText = data.uberStatus && !['QUOTED'].includes(data.uberStatus)
+        ? ' Uber Direct: ' + ({
+          pending: 'procurando entregador', pickup: 'entregador a caminho do restaurante',
+          pickup_complete: 'pedido retirado', dropoff: 'entregador a caminho do destino',
+          delivered: 'entrega concluída', PRICE_CHANGED: 'frete alterado; restaurante revisando',
+          REVIEW: 'solicitação em verificação', FAILED: 'restaurante verificando a entrega',
+        }[data.uberStatus] || 'em acompanhamento') + '.' : '';
+      showOrderStatus(title, description + paymentText + refundText + courierText,
         data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
+      if (uberTrackingLink) {
+        let safeTracking = null;
+        try {
+          const url = new URL(data.uberTrackingUrl);
+          if (url.protocol === 'https:' &&
+              ['uber.com', 'ubereats.com'].some(domain =>
+                url.hostname === domain || url.hostname.endsWith('.' + domain))) safeTracking = url.href;
+        } catch {}
+        uberTrackingLink.hidden = !safeTracking;
+        if (safeTracking) uberTrackingLink.href = safeTracking;
+      }
       if (['COMPLETED', 'REJECTED', 'AUTO_REJECTED'].includes(data.orderStatus) &&
           !['PENDING', 'REVIEW', 'PROCESSING'].includes(data.refundStatus)) {
         clearInterval(statusInterval);
@@ -972,6 +1024,12 @@
     setFieldError(phoneInput, phoneError, phone.length < 10);
     setFieldError(addressInput, addressError, type === 'Entrega' && !address);
     if (!cart.length || name.length < 2 || phone.length < 10 || type === 'Entrega' && !address) return;
+    if (type === 'Entrega' && (!deliveryQuote || deliveryQuote.address !== address ||
+        Date.parse(deliveryQuote.expiresAt) < Date.now() + 30000)) {
+      deliveryQuoteStatus.textContent = 'Calcule ou atualize a taxa Uber Direct antes de pagar.';
+      deliveryQuoteButton?.focus();
+      return;
+    }
     if (mode === 'scheduled' && !dateInput) {
       scheduleInput?.focus();
       showOrderStatus('Escolha a data', 'Selecione o horário desejado antes de pagar.');
@@ -989,8 +1047,9 @@
       mode, scheduledAt,
       items: cart.map(item => ({ productId: item.productId || undefined,
         name: item.name, variant: item.variant || '', qty: item.qty })),
+      deliveryQuoteId: type === 'Entrega' ? deliveryQuote.quoteId : null,
       expectedTotalCents: Math.round(cartValue() * 100) +
-        (type === 'Entrega' ? Number(storeConfig.deliveryFeeCents || 0) : 0)
+        (type === 'Entrega' ? Number(deliveryQuote.feeCents) : 0)
     };
     paymentBusy = true;
     onlineButton.disabled = true;
