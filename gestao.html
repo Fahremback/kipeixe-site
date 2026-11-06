@@ -99,6 +99,21 @@
             <p>Fora do horário de abertura, o cliente precisa escolher um horário futuro.</p>
             <label class="check-line"><input name="deliveryEnabled" type="checkbox"> Habilitar entrega</label>
             <label>Taxa de entrega (R$)<input name="deliveryFee" type="number" step="0.01" min="0" max="300" value="0"></label></div>
+          <div class="settings-card asaas-settings">
+            <h3>Pagamentos Asaas</h3>
+            <p>Selecione em qual conta os novos pedidos serão cobrados. Pedidos anteriores continuam associados à conta original.</p>
+            <label>Ambiente da integração
+              <select name="paymentMode">
+                <option value="sandbox">Sandbox — simulação, sem dinheiro real</option>
+                <option value="production">Produção — pagamentos reais</option>
+              </select>
+            </label>
+            <p id="asaas-environment-status" class="environment-status" role="status"></p>
+            <label class="check-line"><input name="paymentsEnabled" type="checkbox"> Habilitar pagamento online neste ambiente</label>
+            <p id="asaas-risk-note" class="environment-note"></p>
+            <p>As chaves permanecem no servidor, nunca no navegador. Cada ambiente exige sua própria API Key e webhook.</p>
+            <a href="https://sandbox.asaas.com/" target="_blank" rel="noopener noreferrer">Abrir conta de testes Asaas</a>
+          </div>
           <div class="settings-card"><h3>Horário de funcionamento</h3><p>Horário local de Foz do Iguaçu. Desmarque um dia para fechar.</p>
             <div id="hours-list"></div></div>
           <div class="settings-card help-card"><h3>Regras automáticas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>

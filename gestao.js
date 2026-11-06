@@ -83,6 +83,7 @@
     const reviewing = order.refund_status === 'REVIEW';
     const status = order.payment_status === 'PAID' ? order.fulfillment_status : 'AWAITING_PAYMENT';
     const scheduled = order.scheduled_for ? `Agendado: ${formatDate(order.scheduled_for)}` : 'Pedido imediato';
+    const environment = order.asaas_environment === 'production' ? 'Produção' : 'Sandbox';
     const items = order.items.map(item => `<li><strong>${item.qty}×</strong> ${esc(item.name)}${item.variant ? ` · ${esc(item.variant)}` : ''}</li>`).join('');
     const details = [
       order.address ? `Endereço: ${esc(order.address)}` : '',
@@ -97,7 +98,7 @@
       <article class="order-card ${waiting ? 'urgent' : ''} ${reviewing ? 'review' : ''}">
         <div class="order-top"><span class="order-id">#${esc(order.id.slice(0, 8).toUpperCase())}</span>
           <span class="status-tag ${waiting ? 'wait' : reviewing ? 'fail' : ''}">${esc(LABELS[status] || status)}</span></div>
-        <div class="order-meta"><span>${formatDate(order.created_at)}</span><span>${esc(order.order_type)}</span></div>
+        <div class="order-meta"><span>${formatDate(order.created_at)} · ${environment}</span><span>${esc(order.order_type)}</span></div>
         <div class="order-customer">${esc(order.name)}</div>
         <div class="order-extra">Telefone: ${esc(order.phone)}</div>
         <ul class="order-items">${items}</ul>
@@ -314,6 +315,9 @@
     form.elements.ordersEnabled.checked = settings.ordersEnabled;
     form.elements.deliveryEnabled.checked = settings.deliveryEnabled;
     form.elements.deliveryFee.value = (settings.deliveryFeeCents / 100).toFixed(2);
+    form.elements.paymentMode.value = settings.paymentMode || 'sandbox';
+    form.elements.paymentsEnabled.checked = settings.paymentsEnabled || false;
+    updatePaymentEnvironment();
     $('#hours-list').innerHTML = DAYS.map((day, index) => {
       const slot = settings.hours[String(index)];
       return `<div class="hour-row" data-day="${index}">
@@ -323,6 +327,21 @@
       </div>`;
     }).join('');
   }
+  function updatePaymentEnvironment() {
+    if (!settings) return;
+    const form = $('#settings-form');
+    const mode = form.elements.paymentMode.value;
+    const ready = Boolean(settings.asaasEnvironments?.[mode]?.configured && settings.paymentSystemAvailable);
+    const status = $('#asaas-environment-status');
+    status.textContent = ready
+      ? 'Chave e webhook cadastrados — ambiente pronto para ativação.'
+      : 'Ambiente ainda não configurado. Cadastre a API Key e o webhook no servidor antes de ativar.';
+    status.classList.toggle('is-ready', ready);
+    $('#asaas-risk-note').textContent = mode === 'sandbox'
+      ? 'MODO TESTE: pedidos e pagamentos simulados, sem transferência real de dinheiro.'
+      : 'ATENÇÃO: Produção realiza cobranças reais na conta vinculada à chave de produção.';
+  }
+  $('#settings-form').elements.paymentMode.addEventListener('change', updatePaymentEnvironment);
   $('#settings-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -337,6 +356,8 @@
           ordersEnabled: form.elements.ordersEnabled.checked,
           deliveryEnabled: form.elements.deliveryEnabled.checked,
           deliveryFeeCents: Math.round(Number(form.elements.deliveryFee.value) * 100),
+          paymentMode: form.elements.paymentMode.value,
+          paymentsEnabled: form.elements.paymentsEnabled.checked,
           hours,
         }),
       });

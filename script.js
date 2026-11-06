@@ -727,8 +727,16 @@
         qs('[data-order-choice="Retirada no Kipeixe"]')?.click();
       }
       if (storeConfig.onlinePaymentEnabled) {
+        const onlineLabel = qs('strong', onlineButton);
+        const onlineCaption = qs('small', onlineButton);
+        if (onlineLabel) onlineLabel.textContent = storeConfig.sandbox ? 'Simular pagamento' : 'Pagar online';
+        if (onlineCaption) onlineCaption.textContent = storeConfig.sandbox
+          ? 'Ambiente Sandbox · nenhum dinheiro real'
+          : 'Pix ou cartão de crédito · Asaas';
         if (checkoutDisclaimer) checkoutDisclaimer.textContent =
-          'Após o pagamento, aguarde a aceitação do Kipeixe. Pedido imediato sem resposta em 30 minutos será recusado e o estorno solicitado.';
+          storeConfig.sandbox
+            ? 'AMBIENTE DE TESTES: pagamentos fictícios. Após simular, acompanhe o aceite do pedido.'
+            : 'Após o pagamento, aguarde a aceitação do Kipeixe. Pedido imediato sem resposta em 30 minutos será recusado e o estorno solicitado.';
         if (hoursHint) hoursHint.textContent = storeConfig.openNow
           ? 'O restaurante está aberto. Também é possível agendar um horário.'
           : 'O restaurante está fechado agora. Escolha um horário agendado.';
@@ -842,6 +850,7 @@
       });
       const result = await response.json();
       if (!response.ok) throw Error(result.error || 'Falha ao iniciar pagamento.');
+      if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
       safeStorage.set('kipeixe_current_order_v2', currentOrder);
       track('InitiateCheckout', {

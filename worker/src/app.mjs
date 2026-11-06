@@ -3,6 +3,7 @@ import {
   clientConfig, getCatalog, priceCart, handleAdmin, sweepExpired, refundOrder,
 } from './management.mjs';
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
+import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
 const CHECKOUT_EVENTS = new Set(['CHECKOUT_CREATED', 'CHECKOUT_PAID', 'CHECKOUT_CANCELED', 'CHECKOUT_EXPIRED']);
@@ -22,8 +23,8 @@ function checkoutLink(id) {
   return `https://asaas.com/checkoutSession/show?id=${encodeURIComponent(id)}`;
 }
 
-async function createAsaasCheckout(order, env) {
-  const base = env.ASAAS_ENV === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3';
+async function createAsaasCheckout(order, env, mode) {
+  const account = paymentConfig(env, mode);
   const callback = {
     successUrl: `${SITE}?pedido=${order.id}&retorno=pagamento#cardapio`,
     cancelUrl: `${SITE}?pedido=${order.id}&retorno=cancelado#cardapio`,
@@ -34,10 +35,10 @@ async function createAsaasCheckout(order, env) {
     quantity: item.qty, value: item.unitCents / 100,
   }));
   if (order.deliveryCents > 0) items.push({ name: 'Entrega', quantity: 1, value: order.deliveryCents / 100 });
-  const response = await fetch(`${base}/checkouts`, {
+  const response = await fetch(`${account.url}/checkouts`, {
     method: 'POST', signal: AbortSignal.timeout(15000),
     headers: { 'Content-Type': 'application/json', Accept: 'application/json',
-      'User-Agent': 'Kipeixe-Orders/2.0', access_token: env.ASAAS_API_KEY },
+      'User-Agent': 'Kipeixe-Orders/2.0', access_token: account.key },
     body: JSON.stringify({
       billingTypes: ['PIX', 'CREDIT_CARD'], chargeTypes: ['DETACHED'], minutesToExpire: 60,
       externalReference: order.id, callback, items,
@@ -69,7 +70,9 @@ function validateBuyer(data, settings) {
 
 async function createOrder(request, env, origin) {
   const settings = await storeSettings(env);
-  if (!isPaymentsReady(env) || !settings.ordersEnabled) return fail('Pedidos online indisponíveis.', 503, origin);
+  if (!isPaymentsReady(env, settings.paymentMode) || !settings.paymentsEnabled || !settings.ordersEnabled) {
+    return fail('Pedidos online indisponíveis.', 503, origin);
+  }
   let body, buyer, schedule, priced;
   try {
     if ((Number(request.headers.get('content-length')) || 0) > 25000) return fail('Pedido muito grande.', 413, origin);
@@ -109,17 +112,17 @@ async function createOrder(request, env, origin) {
   try {
     await env.DB.prepare(`INSERT INTO orders
       (id,request_id,access_hash,name,phone,order_type,address,notes,items_json,
-       subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?)`)
+       subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,scheduled_for,asaas_environment)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'CREATING', 'AWAITING_PAYMENT', ?, ?)`)
       .bind(order.id, requestId, tokenHash, buyer.name, buyer.phone, buyer.type, buyer.address,
-        buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents, schedule).run();
+        buyer.notes, JSON.stringify(order.items), order.subtotalCents, deliveryCents, order.totalCents, schedule, settings.paymentMode).run();
   } catch { return fail('Pedido já registrado.', 409, origin); }
   try {
-    const checkout = await createAsaasCheckout(order, env);
+    const checkout = await createAsaasCheckout(order, env, settings.paymentMode);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
       updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
     return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, totalCents: order.totalCents,
-      scheduledFor: schedule }, 201, origin);
+      scheduledFor: schedule, paymentMode: settings.paymentMode }, 201, origin);
   } catch (error) {
     // The provider may have created a payment even if the HTTP response was lost.
     await env.DB.prepare(`UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
@@ -133,19 +136,21 @@ async function readOrder(request, env, origin, id) {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || '';
   if (!/^[0-9a-f-]{36}$/i.test(token)) return fail('Acesso negado.', 401, origin);
   const row = await env.DB.prepare(`SELECT id, access_hash, payment_status, fulfillment_status, total_cents,
-    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason
+    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason, asaas_environment
     FROM orders WHERE id=?`).bind(id).first();
   if (!row || !safeEqual(row.access_hash, await hash(token))) return fail('Pedido não encontrado.', 404, origin);
   const { access_hash, ...data } = row;
   return reply({ orderId: data.id, paymentStatus: data.payment_status, orderStatus: data.fulfillment_status,
     totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
     scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,
-    closedReason: data.closed_reason, createdAt: data.created_at }, 200, origin);
+    closedReason: data.closed_reason, createdAt: data.created_at, paymentMode: data.asaas_environment }, 200, origin);
 }
 
-async function webhook(request, env, ctx) {
-  if (!env.DB || !env.ASAAS_WEBHOOK_TOKEN ||
-      !safeEqual(request.headers.get('asaas-access-token') || '', env.ASAAS_WEBHOOK_TOKEN)) {
+async function webhook(request, env, ctx, mode) {
+  if (!PAYMENT_MODES.has(mode)) return fail('Ambiente inválido.', 404);
+  const account = paymentConfig(env, mode);
+  if (!env.DB || !account.webhookToken ||
+      !safeEqual(request.headers.get('asaas-access-token') || '', account.webhookToken)) {
     return fail('Webhook não autorizado.', 401);
   }
   let payload;
@@ -160,14 +165,15 @@ async function webhook(request, env, ctx) {
   if (!CHECKOUT_EVENTS.has(event)) {
     if (event === 'PAYMENT_REFUNDED' && payload.payment?.id) {
       await env.DB.prepare(`UPDATE orders SET refund_status='REFUNDED', updated_at=CURRENT_TIMESTAMP
-        WHERE payment_id=? AND refund_status IN ('REQUESTED','PROCESSING','REVIEW')`)
-        .bind(payload.payment.id).run();
+        WHERE payment_id=? AND asaas_environment=? AND refund_status IN ('REQUESTED','PROCESSING','REVIEW')`)
+        .bind(payload.payment.id, mode).run();
     }
     return reply({ received: true });
   }
   if (!checkout?.id || typeof checkout.id !== 'string') return fail('Checkout inválido.', 400);
-  const row = await env.DB.prepare('SELECT id, checkout_id, payment_status, fulfillment_status, scheduled_for FROM orders WHERE checkout_id=? OR id=?')
-    .bind(checkout.id, checkout.externalReference || '').first();
+  const row = await env.DB.prepare(`SELECT id, checkout_id, payment_status, fulfillment_status, scheduled_for
+    FROM orders WHERE asaas_environment = ? AND (checkout_id = ? OR id = ?)`)
+    .bind(mode, checkout.id, checkout.externalReference || '').first();
   if (!row) return fail('Pedido ainda não sincronizado.', 503);
   if (row.checkout_id && row.checkout_id !== checkout.id) return fail('Checkout divergente.', 409);
   if (checkout.externalReference && checkout.externalReference !== row.id) return fail('Referência divergente.', 409);
@@ -214,7 +220,8 @@ export default {
       return reply(null, 204, origin);
     }
     try {
-      if (pathname === '/api/webhook/asaas' && request.method === 'POST') return webhook(request, env, ctx);
+      const webhookMode = /^\/api\/webhook\/asaas\/(sandbox|production)$/.exec(pathname)?.[1];
+      if (webhookMode && request.method === 'POST') return webhook(request, env, ctx, webhookMode);
       if (pathname === '/api/config' && request.method === 'GET') return reply(await clientConfig(env), 200, origin);
       if (pathname === '/api/catalog' && request.method === 'GET') {
         return reply(await getCatalog(env), 200, origin);

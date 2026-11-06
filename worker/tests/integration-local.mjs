@@ -47,11 +47,25 @@ const saved = await authed('/api/admin/products/' + p.id, {
 });
 assert.equal(saved.status, 200, 'Preço deveria ser editável');
 const settings = await json(await authed('/api/admin/settings'));
+assert.equal(settings.paymentMode, 'sandbox');
+assert.equal(settings.paymentsEnabled, false);
+assert.equal(settings.asaasEnvironments.sandbox.configured, false);
+assert.equal(settings.asaasEnvironments.production.configured, false);
+assert.equal(settings.paymentSystemAvailable, false);
+const activation = await authed('/api/admin/settings', {
+  method: 'PUT', body: JSON.stringify({ ...settings, paymentsEnabled: true }),
+});
+assert.equal(activation.status, 422, 'Pagamento não pode ativar sem API Key.');
+const previewMode = await authed('/api/admin/settings', {
+  method: 'PUT', body: JSON.stringify({ ...settings, paymentMode: 'production', paymentsEnabled: false }),
+});
+assert.equal(previewMode.status, 200, 'Alteração de modo desativado deve ser permitida');
+assert.equal((await json(await authed('/api/admin/settings'))).paymentMode, 'production');
 const settingsSaved = await authed('/api/admin/settings', {
-  method: 'PUT', body: JSON.stringify(settings),
+  method: 'PUT', body: JSON.stringify({ ...settings, paymentMode: 'sandbox', paymentsEnabled: false }),
 });
 assert.equal(settingsSaved.status, 200);
-const webhook = await request('/api/webhook/asaas', { method: 'POST', body: '{}' });
+const webhook = await request('/api/webhook/asaas/sandbox', { method: 'POST', body: '{}' });
 assert.equal(webhook.status, 401);
 const orders = await json(await authed('/api/admin/orders'));
 assert.ok(Array.isArray(orders.orders));

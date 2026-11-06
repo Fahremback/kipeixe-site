@@ -8,9 +8,7 @@
   ],
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
-    "ASAAS_ENV": "sandbox",
     "PAYMENTS_ENABLED": "false",
-    "ALLOW_SANDBOX_CHECKOUT": "false",
     "DELIVERY_ENABLED": "false",
     "DELIVERY_FEE_CENTS": "0"
   },

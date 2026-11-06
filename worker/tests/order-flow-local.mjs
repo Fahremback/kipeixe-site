@@ -11,7 +11,8 @@ const siteOrigin = 'https://restaurantekipeixe.com.br';
 const credentials = readFileSync(resolve(root, '.local-admin-credentials.txt'), 'utf8');
 const username = /Usuário: (.*)/.exec(credentials)[1];
 const password = /Senha: (.*)/.exec(credentials)[1];
-const webhookToken = /ASAAS_WEBHOOK_TOKEN="([^"]+)"/.exec(readFileSync(resolve(root, '.dev.vars'), 'utf8'))[1];
+const webhookToken = /ASAAS_SANDBOX_WEBHOOK_TOKEN="([^"]+)"/.exec(readFileSync(resolve(root, '.dev.vars'), 'utf8'))[1];
+const productionWebhookToken = /ASAAS_PRODUCTION_WEBHOOK_TOKEN="([^"]+)"/.exec(readFileSync(resolve(root, '.dev.vars'), 'utf8'))[1];
 
 const sql = command => {
   const output = execFileSync(process.execPath, [
@@ -43,7 +44,7 @@ const cookie = login.headers.get('set-cookie').split(';')[0];
 const request = (path, options = {}) => fetch(base + path, {
   ...options, headers: { Origin: siteOrigin, Cookie: cookie, ...options.headers },
 });
-async function seed(scheduledFor = null, paid = false) {
+async function seed(scheduledFor = null, paid = false, mode = 'sandbox') {
   const id = randomUUID(), checkout = 'test-checkout-' + randomUUID();
   const fields = [
     quote(id), quote(randomUUID()), quote('hash' + randomUUID()), quote('Teste Kipeixe'),
@@ -52,17 +53,17 @@ async function seed(scheduledFor = null, paid = false) {
     5500, 0, 5500, quote(checkout),
     quote(paid ? 'PAID' : 'PENDING'),
     quote(paid ? 'AWAITING_ACCEPTANCE' : 'AWAITING_PAYMENT'),
-    scheduledFor ? quote(scheduledFor) : 'NULL',
+    scheduledFor ? quote(scheduledFor) : 'NULL', quote(mode),
   ];
   sql(`INSERT INTO orders (id, request_id, access_hash, name, phone, order_type, address,
     notes, items_json, subtotal_cents, delivery_cents, total_cents, checkout_id, payment_status,
-    fulfillment_status, scheduled_for) VALUES (${fields.join(',')})`);
+    fulfillment_status, scheduled_for, asaas_environment) VALUES (${fields.join(',')})`);
   return { id, checkout };
 }
-async function paidWebhook(order, eventId = randomUUID()) {
-  const response = await fetch(base + '/api/webhook/asaas', {
+async function paidWebhook(order, eventId = randomUUID(), mode = 'sandbox', token = webhookToken) {
+  const response = await fetch(base + '/api/webhook/asaas/' + mode, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'asaas-access-token': webhookToken },
+    headers: { 'Content-Type': 'application/json', 'asaas-access-token': token },
     body: JSON.stringify({
       id: eventId, event: 'CHECKOUT_PAID',
       checkout: { id: order.checkout, externalReference: order.id },
@@ -119,4 +120,18 @@ assert.equal(item.fulfillment_status, 'AUTO_REJECTED');
 assert.ok(['REVIEW', 'REQUESTED'].includes(item.refund_status));
 assert.equal((await action(expired.id, 'ACCEPT')).status, 409);
 
-console.log('Fluxo local aprovado: pagamento confirmado, duplicidade, aceite, preparo, entrega, agendamento e expiração automática.');
+const production = await seed(null, false, 'production');
+const ignored = await fetch(base + '/api/webhook/asaas/sandbox', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', 'asaas-access-token': webhookToken },
+  body: JSON.stringify({
+    id: randomUUID(), event: 'CHECKOUT_PAID',
+    checkout: { id: production.checkout, externalReference: production.id },
+  }),
+});
+assert.equal(ignored.status, 503, 'Sandbox não pode quitar pedidos do ambiente de Produção.');
+assert.equal((await state(production.id)).payment_status, 'PENDING');
+await paidWebhook(production, randomUUID(), 'production', productionWebhookToken);
+assert.equal((await state(production.id)).payment_status, 'PAID');
+assert.equal((await state(production.id)).asaas_environment, 'production');
+
+console.log('Fluxo local aprovado: pagamento, idempotência, aceite, agendamento, expiração e separação Sandbox/Produção.');

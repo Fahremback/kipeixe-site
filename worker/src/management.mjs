@@ -1,13 +1,12 @@
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
+import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 
 export const ALLOWED_ORIGINS = new Set([
   'https://restaurantekipeixe.com.br', 'https://www.restaurantekipeixe.com.br',
 ]);
 const encoder = new TextEncoder();
 const json = (value) => JSON.stringify(value);
-export const isPaymentsReady = env => Boolean(env.DB && env.ASAAS_API_KEY && env.ASAAS_WEBHOOK_TOKEN &&
-  env.PAYMENTS_ENABLED === 'true' && ['sandbox', 'production'].includes(env.ASAAS_ENV) &&
-  (env.ASAAS_ENV !== 'sandbox' || env.ALLOW_SANDBOX_CHECKOUT === 'true'));
+export const isPaymentsReady = paymentReady;
 
 export function reply(data, status = 200, origin = '', extra = {}) {
   const headers = new Headers({
@@ -56,13 +55,16 @@ const cents = value => value === null ? null : Number(value);
 const canPrice = value => value === null || (Number.isInteger(value) && value >= 100 && value <= 500000);
 
 export async function storeSettings(env) {
-  if (!env.DB) return { ordersEnabled: false, deliveryEnabled: false, deliveryFeeCents: 0, hours: DEFAULT_HOURS };
+  if (!env.DB) return { ordersEnabled: false, paymentsEnabled: false, paymentMode: 'sandbox',
+    deliveryEnabled: false, deliveryFeeCents: 0, hours: DEFAULT_HOURS };
   const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
   const values = Object.fromEntries(rows.map(row => [row.key, row.value]));
   let hours = DEFAULT_HOURS;
   try { hours = validateHours(JSON.parse(values.opening_hours)); } catch {}
   return {
     ordersEnabled: values.orders_enabled === 'true',
+    paymentsEnabled: values.payments_enabled === 'true',
+    paymentMode: PAYMENT_MODES.has(values.payment_mode) ? values.payment_mode : 'sandbox',
     deliveryEnabled: values.delivery_enabled === 'true',
     deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
     hours,
@@ -73,14 +75,16 @@ export async function clientConfig(env) {
   const settings = await storeSettings(env);
   const now = new Date();
   return {
-    onlinePaymentEnabled: isPaymentsReady(env) && settings.ordersEnabled,
-    paymentsConfigured: isPaymentsReady(env),
+    onlinePaymentEnabled: isPaymentsReady(env, settings.paymentMode) &&
+      settings.paymentsEnabled && settings.ordersEnabled,
+    paymentsConfigured: paymentConfigured(env, settings.paymentMode),
+    paymentMode: settings.paymentMode,
     deliveryEnabled: settings.deliveryEnabled,
     deliveryFeeCents: settings.deliveryFeeCents,
     openingHours: settings.hours,
     openNow: openAt(now, settings.hours),
     localNow: localSlot(now),
-    sandbox: env.ASAAS_ENV === 'sandbox',
+    sandbox: settings.paymentMode === 'sandbox',
     acceptsOrders: settings.ordersEnabled,
   };
 }
@@ -181,12 +185,12 @@ async function audit(env, actor, action, subject, details = '') {
     .bind(actor, action, subject, details).run();
 }
 
-const asaasBase = env => env.ASAAS_ENV === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3';
-async function asaas(env, path, method = 'GET') {
-  if (!env.ASAAS_API_KEY) throw new Error('Credencial Asaas não configurada.');
-  const response = await fetch(asaasBase(env) + path, {
+async function asaas(env, mode, path, method = 'GET') {
+  const account = paymentConfig(env, mode);
+  if (!account.key) throw new Error('Credencial Asaas não configurada.');
+  const response = await fetch(account.url + path, {
     method, signal: AbortSignal.timeout(15000),
-    headers: { 'access_token': env.ASAAS_API_KEY, 'Accept': 'application/json',
+    headers: { 'access_token': account.key, 'Accept': 'application/json',
       'Content-Type': 'application/json', 'User-Agent': 'Kipeixe-Orders/2.0' },
   });
   const body = await response.json().catch(() => ({}));
@@ -195,17 +199,17 @@ async function asaas(env, path, method = 'GET') {
 }
 
 export async function refundOrder(env, id) {
-  const order = await env.DB.prepare('SELECT id, checkout_id, refund_status FROM orders WHERE id = ?').bind(id).first();
+  const order = await env.DB.prepare('SELECT id, checkout_id, refund_status, asaas_environment FROM orders WHERE id = ?').bind(id).first();
   if (!order || !order.checkout_id || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
   const claim = await env.DB.prepare(`UPDATE orders SET refund_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND refund_status IN ('PENDING', 'REVIEW')`).bind(id).run();
   if (!claim.meta.changes) return false;
   try {
-    const listing = await asaas(env, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
+    const listing = await asaas(env, order.asaas_environment, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
     const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
     if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
     await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(eligible[0].id, id).run();
-    await asaas(env, `/payments/${encodeURIComponent(eligible[0].id)}/refund`, 'POST');
+    await asaas(env, order.asaas_environment, `/payments/${encodeURIComponent(eligible[0].id)}/refund`, 'POST');
     await env.DB.prepare(`UPDATE orders SET refund_status = 'REQUESTED', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
       .bind(id).run();
     await audit(env, 'system', 'REFUND_REQUESTED', id, eligible[0].id);
@@ -339,7 +343,14 @@ export async function handleAdmin(request, env, origin, url) {
     return reply(await getCatalog(env, true), 200, origin);
   }
   if (url.pathname === '/api/admin/settings') {
-    if (request.method === 'GET') return reply(await storeSettings(env), 200, origin);
+    if (request.method === 'GET') return reply({
+      ...(await storeSettings(env)),
+      asaasEnvironments: {
+        sandbox: { configured: paymentConfigured(env, 'sandbox') },
+        production: { configured: paymentConfigured(env, 'production') },
+      },
+      paymentSystemAvailable: env.PAYMENTS_ENABLED === 'true',
+    }, 200, origin);
     if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
     let data, hours;
     try {
@@ -347,6 +358,10 @@ export async function handleAdmin(request, env, origin, url) {
       hours = validateHours(data.hours);
       if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
       if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
+      if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
+      if (data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
+        throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');
+      }
     } catch (e) { return fail(e.message, 422, origin); }
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('orders_enabled',?)
@@ -357,15 +372,19 @@ export async function handleAdmin(request, env, origin, url) {
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.deliveryFeeCents)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('opening_hours',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(json(hours)),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payment_mode',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.paymentMode),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payments_enabled',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.paymentsEnabled)),
     ]);
-    await audit(env, actor, 'SETTINGS_CHANGED', 'store');
+    await audit(env, actor, 'SETTINGS_CHANGED', 'store', `asaas:${data.paymentMode} payments:${data.paymentsEnabled}`);
     return reply({ ok: true }, 200, origin);
   }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {
     await sweepExpired(env);
     const rows = (await env.DB.prepare(`SELECT id, name, phone, order_type, address, notes, items_json,
       subtotal_cents, delivery_cents, total_cents, payment_status, fulfillment_status, created_at,
-      paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id
+      paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id, asaas_environment
       FROM orders ORDER BY created_at DESC LIMIT 250`).all()).results;
     return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })) }, 200, origin);
   }
