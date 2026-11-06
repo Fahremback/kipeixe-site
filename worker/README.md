@@ -141,6 +141,21 @@ Configurar como secrets privados do Cloudflare Worker:
 - IFOOD_CLIENT_SECRET
 - IFOOD_MERCHANT_ID (UUID da loja habilitada para Entrega Fácil)
 
+### Verificação real da API em sandbox
+
+As credenciais do aplicativo de teste centralizado ficam somente em
+`worker/.env.ifood-test` (ignorado pelo Git). Use
+`node worker/scripts/check-ifood-test.mjs` a partir da raiz do site para
+validar OAuth, consulta do merchant e cotação Shipping usando as coordenadas
+da própria loja de teste. Esse comando não cria pedidos nem solicita entregadores.
+
+Em 06/11/2026, as três consultas retornaram HTTP 200 e a cotação foi
+interpretada pelo módulo de produção. A loja simulada retornada pelo iFood
+fica em Bujari (AC); consultar um destino em Foz com esse merchant retorna
+`DeliveryDistanceTooHigh`. Nunca instalar as credenciais de teste no Worker
+de produção. O serviço real exige um aplicativo Shipping homologado e a
+autorização do merchant Kipeixe de Foz do Iguaçu.
+
 Depois da aprovação, ajustar IFOOD_SHIPPING_ENABLED para true no Wrangler,
 publicar Worker, selecionar iFood como operador na Central Kipeixe e marcar
 Ativar integração iFood e Habilitar entrega. Até esse momento o site não

@@ -7,3 +7,4 @@ node_modules/
 .local-admin-credentials.txt
 .wrangler/
 node_modules/
+.env.ifood-test
