@@ -113,6 +113,60 @@ test('Uber dispatch refuses a raised fee rather than charge restaurant unexpecte
   } finally { globalThis.fetch = original; }
 });
 
+test('Uber sandbox simulation dispatches a quoted order and receives signed courier updates', async () => {
+  const original = globalThis.fetch;
+  const requests = [];
+  const db = fakeDb();
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url.endsWith('/delivery_quotes')) return new Response(JSON.stringify(quote(950)), { status: 200 });
+    if (url.endsWith('/deliveries')) {
+      return new Response(JSON.stringify({
+        id: 'del_robot123', status: 'pending',
+        tracking_url: 'https://www.ubereats.com/orders/simulated',
+      }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ access_token: 'test-token', expires_in: 3600 }), { status: 200 });
+  };
+  try {
+    const dispatch = await dispatchDelivery({ ...env, DB: db }, exampleOrder().id);
+    assert.equal(dispatch.status, 'pending');
+    assert.equal(dispatch.id, 'del_robot123');
+    const deliveryCall = requests.find(call => call.url.endsWith('/deliveries'));
+    assert.ok(deliveryCall);
+    const body = JSON.parse(deliveryCall.options.body);
+    assert.equal(body.quote_id, quote().id);
+    assert.equal(body.external_id, exampleOrder().id);
+    assert.equal(body.manifest_total_value, 3200);
+    assert.equal(body.idempotency_key, exampleOrder().id);
+    assert.equal(body.test_specifications, undefined, 'real backend must never inject robot testing flags');
+    assert.ok(db.statements.some(statement => statement.args.includes('del_robot123')));
+
+    for (const status of ['pickup', 'pickup_complete', 'dropoff', 'delivered']) {
+      const event = JSON.stringify({
+        kind: 'event.delivery_status',
+        customer_id: env.UBER_DIRECT_CUSTOMER_ID,
+        delivery_id: 'del_robot123',
+        status,
+        data: {
+          external_id: exampleOrder().id,
+          tracking_url: 'https://www.ubereats.com/orders/simulated',
+        },
+      });
+      const signature = createHmac('sha256', env.UBER_DIRECT_WEBHOOK_SECRET)
+        .update(event).digest('hex');
+      const response = await uberWebhook(new Request('https://api.example.com/api/webhook/uber-direct', {
+        method: 'POST', body: event, headers: { 'x-uber-signature': signature },
+      }), { ...env, DB: db });
+      assert.equal(response.status, 200);
+    }
+    assert.ok(db.statements.some(statement =>
+      statement.args.includes('delivered') && statement.sql.includes('fulfillment_status')));
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test('signed webhooks accept only authentic payloads and reject forgeries', async () => {
   const payload = JSON.stringify({ kind: 'event.delivery_status', delivery_id: 'del_123456789',
     status: 'pickup', customer_id: env.UBER_DIRECT_CUSTOMER_ID,

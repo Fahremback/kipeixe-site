@@ -56,6 +56,22 @@ function checkoutLink(id, mode) {
   return `https://${host}/checkoutSession/show?id=${encodeURIComponent(id)}`;
 }
 
+export function asaasCheckoutItems(order) {
+  const items = order.items.map(item => {
+    const fullName = item.variant ? (item.name + ' (' + item.variant + ')') : item.name;
+    return {
+      name: fullName.slice(0, 30),
+      description: fullName.length > 30 ? fullName.slice(0, 150) : undefined,
+      quantity: item.qty,
+      value: item.unitCents / 100,
+    };
+  });
+  if (order.deliveryCents > 0) items.push({
+    name: 'Entrega', quantity: 1, value: order.deliveryCents / 100,
+  });
+  return items;
+}
+
 async function createAsaasCheckout(order, env, mode) {
   const account = paymentConfig(env, mode);
   const callback = {
@@ -63,11 +79,7 @@ async function createAsaasCheckout(order, env, mode) {
     cancelUrl: `${SITE}?pedido=${order.id}&retorno=cancelado#cardapio`,
     expiredUrl: `${SITE}?pedido=${order.id}&retorno=expirado#cardapio`,
   };
-  const items = order.items.map(item => ({
-    name: (item.variant ? `${item.name} (${item.variant})` : item.name).slice(0, 100),
-    quantity: item.qty, value: item.unitCents / 100,
-  }));
-  if (order.deliveryCents > 0) items.push({ name: 'Entrega', quantity: 1, value: order.deliveryCents / 100 });
+  const items = asaasCheckoutItems(order);
   const response = await fetch(`${account.url}/checkouts`, {
     method: 'POST', signal: AbortSignal.timeout(15000),
     headers: { 'Content-Type': 'application/json', Accept: 'application/json',
