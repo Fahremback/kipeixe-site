@@ -4,9 +4,16 @@
   "main": "src/app.mjs",
   "compatibility_date": "2026-11-05",
   "routes": [
-    { "pattern": "api.restaurantekipeixe.com.br", "custom_domain": true }
+    {
+      "pattern": "api.restaurantekipeixe.com.br",
+      "custom_domain": true
+    }
   ],
-  "triggers": { "crons": ["* * * * *"] },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
   "vars": {
     "PAYMENTS_ENABLED": "false",
     "DELIVERY_ENABLED": "false",
@@ -16,7 +23,7 @@
     {
       "binding": "DB",
       "database_name": "kipeixe-orders",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "46297b1a-a948-4531-ba1c-493ece612081",
       "migrations_dir": "migrations"
     }
   ]

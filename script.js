@@ -677,6 +677,7 @@
   const phoneInput = qs('input[name="phone"]', orderForm);
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
   let statusInterval = null;
+  let fulfillmentTouched = false;
 
   const activeOpeningHours = () => storeConfig?.openingHours ||
     (window.KIPEIXE_API_ENABLED !== true ? hoursService?.DEFAULT_HOURS : null);
@@ -706,6 +707,9 @@
     if (immediateOption) immediateOption.hidden = !canOrderNow;
     if (immediateInput) immediateInput.disabled = !canOrderNow;
     fulfillmentSwitch?.classList.toggle('is-schedule-only', !canOrderNow);
+    if (canOrderNow && !fulfillmentTouched && immediateInput) {
+      immediateInput.checked = true;
+    }
     if (!canOrderNow && scheduledInput && !scheduledInput.checked) {
       scheduledInput.checked = true;
       clearScheduleError();
@@ -740,6 +744,7 @@
     return validation.valid || invalidSchedule(validation.message);
   }
   qsa('input[name="mode"]', orderForm).forEach(radio => radio.addEventListener('change', () => {
+    fulfillmentTouched = true;
     clearScheduleError();
     syncSchedule();
   }));
