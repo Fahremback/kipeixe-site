@@ -30,6 +30,10 @@
       .toLowerCase()
       .trim();
 
+  const productSlug = (value = '') => normalize(value)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
   const safeStorage = {
     get(key, fallback) {
       try {
@@ -514,12 +518,12 @@
   const addressError = qs('[data-address-error]');
   let checkoutTracked = false;
 
-  function openCart() {
+  function openCart(trackCheckout = true) {
     cartDrawer?.classList.add('is-open');
     cartDrawer?.setAttribute('aria-hidden', 'false');
     document.body.classList.add('cart-open');
     syncSchedule();
-    if (cart.length && !checkoutTracked) {
+    if (cart.length && trackCheckout && !checkoutTracked) {
       checkoutTracked = true;
       track('InitiateCheckout', {
         value: cartValue(), currency: 'BRL', num_items: cartCount(),
@@ -581,20 +585,21 @@
     `).join('');
   };
 
-  const addItem = (name, variant, price, productId = '') => {
+  const addItem = (name, variant, price, productId = '', quantity = 1) => {
     const numericPrice = Number(price);
-    if (!Number.isFinite(numericPrice)) return;
+    if (!Number.isFinite(numericPrice) || numericPrice < 0 ||
+        !Number.isInteger(quantity) || quantity < 1 || quantity > 5) return;
     const id = makeItemId(name, variant);
     const existing = cart.find((entry) => entry.id === id);
-    if (existing) existing.qty += 1;
-    else cart.push({ id, name, variant, productId, price: numericPrice, qty: 1 });
+    if (existing) existing.qty += quantity;
+    else cart.push({ id, name, variant, productId, price: numericPrice, qty: quantity });
     checkoutTracked = false;
     track('AddToCart', {
       content_name: name,
       content_ids: [id],
       content_type: 'product',
-      contents: [{ id, quantity: 1, item_price: numericPrice }],
-      value: numericPrice,
+      contents: [{ id, quantity, item_price: numericPrice }],
+      value: numericPrice * quantity,
       currency: 'BRL'
     });
     renderCart();
@@ -603,7 +608,62 @@
       void quickCheckout.offsetWidth;
       quickCheckout.classList.add('is-pulsing');
     }
+    return true;
   };
+
+  // Campaign/deep links: ?produto=porcoes:tilapia&quantidade=1#cardapio
+  // Product names, categories and prices are always resolved against MENU.
+  // The parameter is consumed so refreshing the page cannot add it twice.
+  function applyProductDeepLink() {
+    const url = new URL(window.location.href);
+    const requests = url.searchParams.getAll('produto');
+    if (!requests.length) return;
+    url.searchParams.delete('produto');
+    url.searchParams.delete('variante');
+    url.searchParams.delete('quantidade');
+    history.replaceState(history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    // Never change a basket during a return from the payment provider.
+    if (url.searchParams.has('pedido') || url.searchParams.has('retorno')) return;
+
+    const requestedQty = Number(inboundUrl.searchParams.get('quantidade') || '1');
+    const quantity = Number.isInteger(requestedQty) && requestedQty >= 1 && requestedQty <= 5
+      ? requestedQty : 1;
+    const requestedVariant = productSlug(inboundUrl.searchParams.get('variante') || '');
+    const added = [];
+    // Limit external links to five products to prevent accidental huge orders.
+    for (const request of requests.slice(0, 5)) {
+      const [categorySlug, itemSlug, ...extra] = request.split(':');
+      if (!categorySlug || !itemSlug || extra.length) continue;
+      const categoryIndex = MENU.findIndex(c => productSlug(c.id) === productSlug(categorySlug));
+      if (categoryIndex === -1) continue;
+      const category = MENU[categoryIndex];
+      const item = category.items.find(i => productSlug(i.name) === productSlug(itemSlug));
+      if (!item) continue;
+      let price = item.price, variant = '';
+      if (item.variants?.length) {
+        const option = item.variants.find(v => productSlug(v.label) === requestedVariant)
+          || (item.variants.length === 1 && !requestedVariant ? item.variants[0] : null);
+        if (!option) continue;
+        price = option.price;
+        variant = option.label;
+      } else if (requestedVariant) continue;
+      if (!Number.isFinite(price)) continue;
+      if (!addItem(item.name, variant, price, item.id || '', quantity)) continue;
+      added.push({ categoryIndex, item, price, variant });
+    }
+
+    if (!added.length) return;
+    setPage('cardapio');
+    renderCategory(added[0].categoryIndex, false);
+    for (const { item, price, variant } of added) {
+      track('ViewContent', {
+        content_name: item.name, content_ids: [makeItemId(item.name, variant)],
+        content_type: 'product', value: price, currency: 'BRL'
+      });
+    }
+    // Display the prefilled order without claiming the visitor initiated checkout.
+    openCart(false);
+  }
 
   menuItems?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-add-item]');
@@ -850,7 +910,7 @@
     onlineStatusMessage.textContent = message;
     if (onlineStatusLink) {
       onlineStatusLink.hidden = !link;
-      if (link && /^https:\/\/asaas\.com\//.test(link)) onlineStatusLink.href = link;
+      if (link && /^https:\/\/(?:sandbox\.)?asaas\.com\//.test(link)) onlineStatusLink.href = link;
     }
     if (onlineStatusRefresh) onlineStatusRefresh.hidden = !currentOrder;
   }
@@ -936,7 +996,7 @@
           id: item.id, quantity: item.qty, item_price: item.price
         }))
       });
-      if (!/^https:\/\/asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
+      if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
       window.location.assign(result.checkoutUrl);
     } catch (error) {
       showOrderStatus('Pagamento indisponível', error.message);
@@ -1036,6 +1096,7 @@
       checkOrderStatus();
       if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
     }
+    applyProductDeepLink();
   });
 
   document.addEventListener('keydown', (event) => {
