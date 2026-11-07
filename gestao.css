@@ -4,3 +4,6 @@
 .environment-status{padding:11px 13px;border-radius:10px;background:#fff0d7;color:#8d5725;font-size:12px;font-weight:750}
 .environment-status.is-ready{background:#f9eddc;color:#7e4327}
 .environment-note{font-size:12px;background:#f7eee0;padding:11px;border-left:3px solid #b94521;border-radius:8px}
+.order-payment-ok{margin:9px 0 5px;padding:8px 11px;background:#e8f3e7;color:#285d35;font-size:12px;font-weight:800;border-radius:8px}
+.order-demo-note{margin:12px 0;background:#fff0cc;border:1px solid #dfb968;color:#754816;font-size:12px;font-weight:850;padding:10px;border-radius:9px}
+.order-card.demo-order{border:2px dashed #b7803f}

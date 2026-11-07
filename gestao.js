@@ -16,6 +16,8 @@
     AWAITING_PAYMENT: 'Aguardando pagamento', AWAITING_ACCEPTANCE: 'Aguardando aceite',
     SCHEDULED: 'Agendado', PREPARING: 'Preparando', READY: 'Pronto',
     COMPLETED: 'Concluído', REJECTED: 'Recusado', AUTO_REJECTED: 'Recusa automática',
+    PAYMENT_EXPIRED: 'Pagamento expirado', PAYMENT_CANCELED: 'Pagamento cancelado',
+    PAYMENT_REVIEW: 'Verificar pagamento',
   };
   const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   let orders = [], categories = [], products = [], settings = null, lastPendingIds = new Set();
@@ -81,7 +83,17 @@
   function orderCard(order) {
     const waiting = ['AWAITING_ACCEPTANCE', 'SCHEDULED'].includes(order.fulfillment_status);
     const reviewing = order.refund_status === 'REVIEW';
-    const status = order.payment_status === 'PAID' ? order.fulfillment_status : 'AWAITING_PAYMENT';
+    const status = order.payment_status === 'PAID' ? order.fulfillment_status :
+      ({ EXPIRED: 'PAYMENT_EXPIRED', CANCELED: 'PAYMENT_CANCELED',
+        REVIEW: 'PAYMENT_REVIEW' }[order.payment_status] || 'AWAITING_PAYMENT');
+    const demo = order.name.startsWith('[DEMO]');
+    const paymentExpiration = order.payment_status === 'PENDING' ?
+      new Date(Date.parse(order.created_at.replace(' ', 'T') + 'Z') + 60 * 60000).toISOString() : '';
+    const paymentInfo = order.payment_status === 'PAID'
+      ? '<p class="order-payment-ok">Pagamento confirmado' +
+        (order.asaas_environment === 'sandbox' ? ' · Sandbox (sem dinheiro real)' : '') + '</p>'
+      : paymentExpiration ? `<p class="order-extra">Pagamento expira em <span class="timer"
+          data-deadline="${esc(paymentExpiration)}">${deadlineRemaining(paymentExpiration)}</span></p>` : '';
     const scheduled = order.scheduled_for ? `Agendado: ${formatDate(order.scheduled_for)}` : 'Pedido imediato';
     const environment = order.asaas_environment === 'production' ? 'Produção' : 'Sandbox';
     const items = order.items.map(item => `<li><strong>${item.qty}×</strong> ${esc(item.name)}${item.variant ? ` · ${esc(item.variant)}` : ''}</li>`).join('');
@@ -117,11 +129,13 @@
       actions.push(`<button class="reject" data-action="CANCEL_DELIVERY" data-id="${order.id}">Cancelar entrega e estornar</button>`);
     if (reviewing) actions.push(`<button class="reject" data-refund="${order.id}">Revisar estorno</button>`);
     return `
-      <article class="order-card ${waiting ? 'urgent' : ''} ${reviewing ? 'review' : ''}">
+      <article class="order-card ${waiting ? 'urgent' : ''} ${reviewing ? 'review' : ''} ${demo ? 'demo-order' : ''}">
         <div class="order-top"><span class="order-id">#${esc(order.id.slice(0, 8).toUpperCase())}</span>
           <span class="status-tag ${waiting ? 'wait' : reviewing ? 'fail' : ''}">${esc(LABELS[status] || status)}</span></div>
         <div class="order-meta"><span>${formatDate(order.created_at)} · ${environment}</span><span>${esc(order.order_type)}</span></div>
+        ${demo ? '<p class="order-demo-note">SIMULAÇÃO — pagamento fictício. Não preparar nem contabilizar como venda.</p>' : ''}
         <div class="order-customer">${esc(order.name)}</div>
+        ${paymentInfo}
         <div class="order-extra">Telefone: ${esc(order.phone)}</div>
         <ul class="order-items">${items}</ul>
         <p class="order-extra">${scheduled}</p><div class="order-extra">${details}</div>${uber}

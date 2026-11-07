@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
-  <link rel="stylesheet" href="gestao.css?v=20261106-espresso-paprika">
-  <script src="gestao.js?v=20261106-ifood-shipping-anon-session" defer></script>
+  <link rel="stylesheet" href="gestao.css?v=20261107-payment-status">
+  <script src="gestao.js?v=20261107-payment-expiration-demo" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -141,6 +141,7 @@
           <div class="settings-card"><h3>Horário de funcionamento</h3><p>Horário local de Foz do Iguaçu. Desmarque um dia para fechar.</p>
             <div id="hours-list"></div></div>
           <div class="settings-card help-card"><h3>Regras automáticas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
+            <p><strong>Prazo para pagar:</strong> o checkout Asaas expira após 60 minutos. Pedidos não pagos passam para “Pagamento expirado” automaticamente.</p>
             <p><strong>Agendados:</strong> a equipe pode decidir até o horário escolhido pelo cliente.</p>
             <p><strong>Recusas:</strong> o sistema solicita estorno no Asaas. Se o provedor exigir intervenção, o pedido fica destacado para revisão.</p>
             <p><strong>Prazo:</strong> a rotina automática verifica pedidos a cada minuto.</p></div>

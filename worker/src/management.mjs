@@ -240,21 +240,28 @@ export async function refundOrder(env, id) {
 export async function sweepExpired(env, now = new Date()) {
   if (!env.DB) return 0;
   const deadline = now.toISOString();
-  const rows = (await env.DB.prepare(`SELECT id FROM orders
+  // Asaas checkouts are valid for 60 minutes. Keep the local queue in sync
+  // even if CHECKOUT_EXPIRED was not delivered by the payment webhook.
+  // REVIEW is intentionally excluded: its charge outcome is uncertain.
+  await env.DB.prepare(`UPDATE orders SET payment_status='EXPIRED', updated_at=CURRENT_TIMESTAMP
+    WHERE payment_status='PENDING' AND datetime(created_at, '+60 minutes') <= datetime(?)`)
+    .bind(deadline).run();
+  const rows = (await env.DB.prepare(`SELECT id, checkout_id FROM orders
     WHERE payment_status = 'PAID' AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED')
     AND acceptance_deadline IS NOT NULL AND acceptance_deadline <= ? LIMIT 100`)
     .bind(deadline).all()).results;
   let closed = 0;
   for (const row of rows) {
     const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status = 'AUTO_REJECTED',
-      refund_status = 'PENDING', closed_reason = 'Prazo de aceitação esgotado', updated_at = CURRENT_TIMESTAMP
+      refund_status = CASE WHEN checkout_id IS NULL THEN 'NOT_REQUIRED' ELSE 'PENDING' END,
+      closed_reason = 'Prazo de aceitação esgotado', updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND payment_status = 'PAID'
       AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED') AND acceptance_deadline <= ?`)
       .bind(row.id, deadline).run();
     if (result.meta.changes) {
       closed++;
       await audit(env, 'system', 'AUTO_REJECTED', row.id);
-      await refundOrder(env, row.id);
+      if (row.checkout_id) await refundOrder(env, row.id);
     }
   }
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at < ?').bind(Date.now()).run();
@@ -437,7 +444,7 @@ export async function handleAdmin(request, env, origin, url) {
   if (action && request.method === 'POST') {
     let data;
     try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
-    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, delivery_provider, uber_delivery_id, uber_status, ifood_order_id, ifood_status FROM orders WHERE id = ?')
+    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, checkout_id, delivery_provider, uber_delivery_id, uber_status, ifood_order_id, ifood_status FROM orders WHERE id = ?')
       .bind(action[1]).first();
     if (!row || row.payment_status !== 'PAID') return fail('Pedido não pago ou inexistente.', 409, origin);
     if (data.action === 'COMPLETE' && row.order_type === 'Entrega')
@@ -472,10 +479,10 @@ export async function handleAdmin(request, env, origin, url) {
       updated_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status = 'PAID'
       AND fulfillment_status = ?
       AND (fulfillment_status NOT IN ('AWAITING_ACCEPTANCE','SCHEDULED') OR acceptance_deadline > ?)`)
-      .bind(target, rejecting ? 1 : 0, rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
+      .bind(target, rejecting && row.checkout_id ? 1 : 0, rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
     if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
     await audit(env, actor, data.action, action[1]);
-    if (rejecting) await refundOrder(env, action[1]);
+    if (rejecting && row.checkout_id) await refundOrder(env, action[1]);
     const uber = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider !== 'ifood'
       ? await dispatchDelivery(env, action[1]) : null;
     const ifood = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider === 'ifood'
