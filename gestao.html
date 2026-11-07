@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
-  <link rel="stylesheet" href="gestao.css?v=20261107-order-history">
-  <script src="gestao.js?v=20261107-order-history" defer></script>
+  <link rel="stylesheet" href="gestao.css?v=20261107-720p-queue">
+  <script src="gestao.js?v=20261107-720p-queue" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -54,16 +54,22 @@
       <div id="notice" class="notice" role="status" hidden></div>
 
       <section id="orders-view" class="view">
-        <div class="stats-row">
-          <div class="stat-card"><small>AGUARDANDO DECISÃO</small><strong id="stat-pending">0</strong><span>Pedidos pagos</span></div>
-          <div class="stat-card"><small>EM PREPARAÇÃO</small><strong id="stat-preparing">0</strong><span>Pedidos aceitos</span></div>
-          <div class="stat-card"><small>PRONTOS</small><strong id="stat-ready">0</strong><span>Aguardam retirada ou entrega</span></div>
-          <div class="stat-card"><small>REVISAR ESTORNOS</small><strong id="stat-refunds">0</strong><span>Exigem conferência</span></div>
+        <div class="stats-row" aria-label="Resumo dos pedidos em andamento">
+          <div class="stat-card" data-stat="pending"><strong id="stat-pending">0</strong><small>Aceitar agora</small></div>
+          <div class="stat-card" data-stat="preparing"><strong id="stat-preparing">0</strong><small>Preparando</small></div>
+          <div class="stat-card" data-stat="ready"><strong id="stat-ready">0</strong><small>Prontos</small></div>
+          <div class="stat-card" data-stat="refunds"><strong id="stat-refunds">0</strong><small>Conferir pendências</small></div>
         </div>
-        <div class="section-heading"><div><span class="eyebrow">ACOMPANHAMENTO EM TEMPO REAL</span><h2>Fila de pedidos</h2></div>
-          <div class="header-actions"><label class="switch-line"><input id="sound-toggle" type="checkbox" checked> Aviso sonoro</label><button id="refresh-orders" type="button" class="subtle-btn">Atualizar</button></div>
+        <div class="section-heading order-queue-heading">
+          <div><span class="eyebrow">ATUALIZA AUTOMATICAMENTE · 8 SEGUNDOS</span><h2>Pedidos em andamento <span id="active-orders-count" class="order-heading-count"></span></h2></div>
+          <div class="header-actions"><label class="switch-line"><input id="sound-toggle" type="checkbox" checked> Som</label><button id="refresh-orders" type="button" class="subtle-btn">Atualizar agora</button></div>
         </div>
         <div id="orders-list" class="order-grid"><div class="empty-state">Carregando pedidos...</div></div>
+        <details id="other-orders-panel" class="low-priority-orders">
+          <summary><span id="secondary-orders-summary">Outros pedidos</span><span class="secondary-disclosure">Mostrar / ocultar</span></summary>
+          <div id="secondary-orders-list" class="order-grid secondary-order-grid"></div>
+          <div class="secondary-history-row"><span id="secondary-limit-note"></span><button type="button" id="open-history-from-orders" class="subtle-btn">Ver histórico completo</button></div>
+        </details>
       </section>
 
       <section id="history-view" class="view" hidden>

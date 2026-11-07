@@ -24,6 +24,8 @@
   let users = [], currentUsername = '', currentRole = '';
   let firstPoll = true, pollBusy = false, activeTab = 'orders', soundArmed = false;
   let historyPage = 1, historyPages = 1, historySelected = null;
+  let ordersRenderSignature = '', expandedOrderIds = new Set();
+  let noticeHideTimer = null;
 
   async function api(path, options = {}) {
     const response = await fetch(API + path, {
@@ -39,10 +41,12 @@
     return result;
   }
   function notify(message, error = false) {
+    clearTimeout(noticeHideTimer);
     const box = $('#notice');
     box.textContent = message;
     box.className = 'notice' + (error ? ' error' : '');
     box.hidden = false;
+    noticeHideTimer = setTimeout(() => { box.hidden = true; }, error ? 8000 : 4500);
   }
   function resetPanelView() {
     activeTab = 'orders';
@@ -58,11 +62,14 @@
     users = [];
     currentUsername = '';
     currentRole = '';
+    expandedOrderIds.clear();
+    ordersRenderSignature = '';
     $('#users-list').textContent = '';
     resetPanelView();
   }
   function showDashboard(username, role = 'staff') {
     resetPanelView();
+    ordersRenderSignature = '';
     $('#login-view').hidden = true;
     $('#dashboard-view').hidden = false;
     currentUsername = username;
@@ -100,27 +107,52 @@
     return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   }
 
+  // Only paid orders needing immediate operational attention fill the main screen.
+  // Future appointments, unpaid checkouts and finished orders stay accessible below.
+  const isSoonScheduled = order => {
+    const time = Date.parse(order.scheduled_for || '');
+    return Number.isFinite(time) && time - Date.now() <= 45 * 60000;
+  };
+  const needsAttention = order => {
+    // Sandbox orders (including demonstrations) must never compete for the
+    // team's attention or trigger an operational notification.
+    if (order.asaas_environment === 'sandbox' || order.name.startsWith('[DEMO]')) return false;
+    if (order.refund_status === 'REVIEW' || order.payment_status === 'REVIEW') return true;
+    if (order.payment_status !== 'PAID') return false;
+    if (['AWAITING_ACCEPTANCE', 'PREPARING', 'READY'].includes(order.fulfillment_status)) return true;
+    return order.fulfillment_status === 'SCHEDULED' && isSoonScheduled(order);
+  };
+  const decisionDue = order => order.asaas_environment !== 'sandbox' &&
+    !order.name.startsWith('[DEMO]') && order.payment_status === 'PAID' &&
+    (order.fulfillment_status === 'AWAITING_ACCEPTANCE' ||
+      (order.fulfillment_status === 'SCHEDULED' && isSoonScheduled(order)));
+  const priorityRank = order => {
+    if (order.refund_status === 'REVIEW' || order.payment_status === 'REVIEW') return 0;
+    if (decisionDue(order)) return 1;
+    if (order.fulfillment_status === 'READY') return 2;
+    return 3;
+  };
+  const orderTimestamp = order => {
+    const value = order.created_at || '';
+    const timestamp = Date.parse(value.includes('T') ? value :
+      value.replace(' ', 'T') + 'Z');
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  };
+
   function orderCard(order) {
-    const waiting = ['AWAITING_ACCEPTANCE', 'SCHEDULED'].includes(order.fulfillment_status);
+    const waiting = order.payment_status === 'PAID' &&
+      ['AWAITING_ACCEPTANCE', 'SCHEDULED'].includes(order.fulfillment_status);
     const reviewing = order.refund_status === 'REVIEW';
     const status = order.payment_status === 'PAID' ? order.fulfillment_status :
       ({ EXPIRED: 'PAYMENT_EXPIRED', CANCELED: 'PAYMENT_CANCELED',
         REVIEW: 'PAYMENT_REVIEW' }[order.payment_status] || 'AWAITING_PAYMENT');
     const demo = order.name.startsWith('[DEMO]');
-    const paymentExpiration = order.payment_status === 'PENDING' ?
-      new Date(Date.parse(order.created_at.replace(' ', 'T') + 'Z') + 60 * 60000).toISOString() : '';
-    const paymentInfo = order.payment_status === 'PAID'
-      ? '<p class="order-payment-ok">Pagamento confirmado' +
-        (order.asaas_environment === 'sandbox' ? ' · Sandbox (sem dinheiro real)' : '') + '</p>'
-      : paymentExpiration ? `<p class="order-extra">Pagamento expira em <span class="timer"
-          data-deadline="${esc(paymentExpiration)}">${deadlineRemaining(paymentExpiration)}</span></p>` : '';
-    const scheduled = order.scheduled_for ? `Agendado: ${formatDate(order.scheduled_for)}` : 'Pedido imediato';
-    const environment = order.asaas_environment === 'production' ? 'Produção' : 'Sandbox';
-    const items = order.items.map(item => `<li><strong>${item.qty}×</strong> ${esc(item.name)}${item.variant ? ` · ${esc(item.variant)}` : ''}</li>`).join('');
-    const details = [
-      order.address ? `Endereço: ${esc(order.address)}` : '',
-      order.notes ? `Observações: ${esc(order.notes)}` : '',
-    ].filter(Boolean).join('<p></p>');
+    const paymentExpiration = order.payment_status === 'PENDING' && orderTimestamp(order)
+      ? new Date(orderTimestamp(order) + 60 * 60000).toISOString() : '';
+    const createdTime = formatDate(order.created_at);
+    const environment = order.asaas_environment === 'production' ? '' : ' · Sandbox';
+    const items = (order.items || []).map(item =>
+      `<li><strong>${esc(item.qty)}×</strong> ${esc(item.name)}${item.variant ? ` · ${esc(item.variant)}` : ''}</li>`);
     const isIFood = order.delivery_provider === 'ifood';
     const logisticsName = isIFood ? 'iFood' : 'Uber Direct';
     const logisticsStatus = isIFood ? order.ifood_status : order.uber_status;
@@ -137,7 +169,7 @@
           ? ' · <a href="' + esc(logisticsUrl) +
           '" target="_blank" rel="noopener noreferrer">Acompanhar entregador</a>' : '') + '</p>' : '';
     const actions = [];
-    if (waiting) actions.push(`<button data-action="ACCEPT" data-id="${order.id}">Aceitar</button><button class="reject" data-action="REJECT" data-id="${order.id}">Recusar</button>`);
+    if (waiting) actions.push(`<button class="accept" data-action="ACCEPT" data-id="${esc(order.id)}">Aceitar</button><button class="reject" data-action="REJECT" data-id="${esc(order.id)}">Recusar</button>`);
     if (status === 'PREPARING') actions.push(`<button data-action="READY" data-id="${order.id}">Marcar pronto</button>`);
     if (status === 'READY' && order.order_type !== 'Entrega') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
     if (status === 'READY' && order.order_type === 'Entrega' && !isIFood && order.uber_status === 'FAILED')
@@ -148,45 +180,88 @@
         !order.ifood_order_id && !['REQUESTING', 'REVIEW'].includes(logisticsStatus))
       actions.push(`<button class="reject" data-action="CANCEL_DELIVERY" data-id="${order.id}">Cancelar entrega e estornar</button>`);
     if (reviewing) actions.push(`<button class="reject" data-refund="${order.id}">Revisar estorno</button>`);
-    return `
-      <article class="order-card ${waiting ? 'urgent' : ''} ${reviewing ? 'review' : ''} ${demo ? 'demo-order' : ''}">
-        <div class="order-top"><span class="order-id">#${esc(order.id.slice(0, 8).toUpperCase())}</span>
-          <span class="status-tag ${waiting ? 'wait' : reviewing ? 'fail' : ''}">${esc(LABELS[status] || status)}</span></div>
-        <div class="order-meta"><span>${formatDate(order.created_at)} · ${environment}</span><span>${esc(order.order_type)}</span></div>
-        ${demo ? '<p class="order-demo-note">SIMULAÇÃO — pagamento fictício. Não preparar nem contabilizar como venda.</p>' : ''}
-        <div class="order-customer">${esc(order.name)}</div>
-        ${paymentInfo}
-        <div class="order-extra">Telefone: ${esc(order.phone)}</div>
-        <ul class="order-items">${items}</ul>
-        <p class="order-extra">${scheduled}</p><div class="order-extra">${details}</div>${uber}
-        <div class="order-footer"><strong class="order-total">${money(order.total_cents)}</strong>
-          ${waiting ? `<span class="timer" data-deadline="${esc(order.acceptance_deadline || '')}">${deadlineRemaining(order.acceptance_deadline)}</span>` : ''}</div>
-        ${order.refund_status !== 'NOT_REQUIRED' ? `<p class="order-extra">Estorno: ${esc(order.refund_status)}</p>` : ''}
-        <div class="order-actions">${actions.join('')}</div>
-      </article>`;
+    const totalItems = items.length;
+    const moreItems = totalItems > 3 ? `<span class="extra-items">+${totalItems - 3} item(ns) · abrir detalhes</span>` : '';
+    return `<article class="order-card compact-order ${decisionDue(order) ? 'urgent' : ''} ${reviewing || order.payment_status === 'REVIEW' ? 'review' : ''} ${demo ? 'demo-order' : ''}">
+      <div class="order-top">
+        <span class="order-id">#${esc(order.id.slice(0, 8).toUpperCase())}</span>
+        <span class="status-tag ${waiting ? 'wait' : reviewing ? 'fail' : ''}">${esc(LABELS[status] || status)}</span>
+      </div>
+      <div class="order-meta"><span>${esc(createdTime)}${environment}</span><span>${esc(order.order_type)}</span></div>
+      <div class="order-customer">${esc(order.name)}</div>
+      ${demo ? '<p class="order-demo-note">TESTE · NÃO PREPARAR / NÃO CONTABILIZAR</p>' : ''}
+      ${order.notes ? `<p class="order-note"><strong>Obs:</strong> ${esc(order.notes)}</p>` : ''}
+      <ul class="order-items">${items.slice(0, 3).join('')}${moreItems ? `<li>${moreItems}</li>` : ''}</ul>
+      <div class="order-footer">
+        <strong class="order-total">${money(order.total_cents)}</strong>
+        ${waiting ? `<span class="order-deadline">Aceite <span class="timer" data-deadline="${esc(order.acceptance_deadline || '')}">${deadlineRemaining(order.acceptance_deadline)}</span></span>` : ''}
+        ${order.payment_status === 'PAID' && !waiting ? '<span class="paid-indicator">✓ Pago</span>' : ''}
+      </div>
+      ${actions.length ? `<div class="order-actions">${actions.join('')}</div>` : ''}
+      <details class="order-details" data-order-details="${esc(order.id)}" ${expandedOrderIds.has(order.id) ? 'open' : ''}>
+        <summary>Detalhes ${moreItems ? `· ${totalItems} itens` : ''}</summary>
+        <div class="order-details-content">
+          <p><strong>Telefone:</strong> ${esc(order.phone)}</p>
+          <p><strong>Pagamento:</strong> ${esc(order.payment_status)}${order.asaas_environment === 'sandbox' ? ' · Sandbox, sem cobrança real' : ''}</p>
+          ${paymentExpiration ? `<p><strong>Expira em:</strong> <span class="timer" data-deadline="${esc(paymentExpiration)}">${deadlineRemaining(paymentExpiration)}</span></p>` : ''}
+          ${order.scheduled_for ? `<p><strong>Agendado:</strong> ${esc(formatDate(order.scheduled_for))}</p>` : ''}
+          ${order.address ? `<p><strong>Endereço:</strong> ${esc(order.address)}</p>` : ''}
+          ${order.notes ? `<p><strong>Observações completas:</strong> ${esc(order.notes)}</p>` : ''}
+          ${totalItems > 3 ? `<ul class="order-all-items">${items.join('')}</ul>` : ''}
+          ${uber}
+          ${order.refund_status !== 'NOT_REQUIRED' ? `<p><strong>Estorno:</strong> ${esc(order.refund_status)}</p>` : ''}
+          ${order.closed_reason ? `<p><strong>Encerramento:</strong> ${esc(order.closed_reason)}</p>` : ''}
+        </div>
+      </details>
+    </article>`;
   }
   function renderOrders() {
-    const pending = orders.filter(o => o.payment_status === 'PAID' &&
-      ['AWAITING_ACCEPTANCE', 'SCHEDULED'].includes(o.fulfillment_status));
-    const preparing = orders.filter(o => o.fulfillment_status === 'PREPARING');
-    const ready = orders.filter(o => o.fulfillment_status === 'READY');
-    const reviewing = orders.filter(o => o.refund_status === 'REVIEW');
+    const pending = orders.filter(decisionDue);
+    const preparing = orders.filter(o => needsAttention(o) && o.fulfillment_status === 'PREPARING');
+    const ready = orders.filter(o => needsAttention(o) && o.fulfillment_status === 'READY');
+    const reviewing = orders.filter(o => needsAttention(o) &&
+      (o.refund_status === 'REVIEW' || o.payment_status === 'REVIEW'));
     $('#stat-pending').textContent = pending.length;
     $('#stat-preparing').textContent = preparing.length;
     $('#stat-ready').textContent = ready.length;
     $('#stat-refunds').textContent = reviewing.length;
+    $('#orders-view [data-stat="pending"]').classList.toggle('has-items', pending.length > 0);
+    $('#orders-view [data-stat="refunds"]').classList.toggle('has-items', reviewing.length > 0);
     $('#pending-count').textContent = pending.length;
-    const priority = { AWAITING_ACCEPTANCE: 0, SCHEDULED: 1, PREPARING: 2, READY: 3,
-      AWAITING_PAYMENT: 4, REJECTED: 5, AUTO_REJECTED: 5, COMPLETED: 6 };
-    const sorted = [...orders].sort((a, b) => {
-      const sa = a.payment_status === 'PAID' ? a.fulfillment_status : 'AWAITING_PAYMENT';
-      const sb = b.payment_status === 'PAID' ? b.fulfillment_status : 'AWAITING_PAYMENT';
-      return (priority[sa] ?? 9) - (priority[sb] ?? 9) ||
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-    $('#orders-list').innerHTML = sorted.length
-      ? sorted.map(orderCard).join('')
-      : '<div class="empty-state">Nenhum pedido registrado ainda. A fila será atualizada automaticamente.</div>';
+    const main = orders.filter(needsAttention).sort((a, b) =>
+      priorityRank(a) - priorityRank(b) ||
+      (priorityRank(a) === 1
+        ? Date.parse(a.acceptance_deadline || '') - Date.parse(b.acceptance_deadline || '') || 0
+        : 0) || orderTimestamp(b) - orderTimestamp(a));
+    const secondary = orders.filter(o => !needsAttention(o)).sort((a, b) =>
+      (a.fulfillment_status === 'SCHEDULED' ? 0 : 1) -
+      (b.fulfillment_status === 'SCHEDULED' ? 0 : 1) || orderTimestamp(b) - orderTimestamp(a));
+    $('#active-orders-count').textContent = main.length;
+    const future = secondary.filter(o => o.payment_status === 'PAID' &&
+      o.fulfillment_status === 'SCHEDULED' && o.asaas_environment !== 'sandbox' &&
+      !o.name.startsWith('[DEMO]')).length;
+    const tests = secondary.filter(o => o.asaas_environment === 'sandbox' || o.name.startsWith('[DEMO]')).length;
+    const unpaid = secondary.filter(o => o.payment_status !== 'PAID' &&
+      !['EXPIRED', 'CANCELED'].includes(o.payment_status) &&
+      o.asaas_environment !== 'sandbox' && !o.name.startsWith('[DEMO]')).length;
+    const closed = secondary.length - future - unpaid - tests;
+    $('#secondary-orders-summary').textContent = `Outros pedidos · ${secondary.length}` +
+      (tests ? `   ·   ${tests} teste(s)` : '') +
+      (future ? `   ·   ${future} agendado(s)` : '') +
+      (unpaid ? `   ·   ${unpaid} aguardando pagamento` : '') +
+      (closed ? `   ·   ${closed} encerrado(s)` : '');
+    $('#other-orders-panel').hidden = secondary.length === 0;
+    const signature = JSON.stringify([orders, main.map(o => o.id), secondary.slice(0, 12).map(o => o.id)]);
+    if (signature !== ordersRenderSignature) {
+      $('#orders-list').innerHTML = main.length
+        ? main.map(orderCard).join('')
+        : '<div class="empty-state quiet-queue">Tudo em dia. Nenhum pedido exige ação agora.</div>';
+      $('#secondary-orders-list').innerHTML = secondary.slice(0, 12).map(orderCard).join('');
+      $('#secondary-limit-note').textContent = secondary.length > 12
+        ? `Mostrando os 12 mais recentes de ${secondary.length} · use o histórico para os demais.`
+        : 'Pedidos sem ação imediata ficam fora da fila principal.';
+      ordersRenderSignature = signature;
+    }
     const current = new Set(pending.map(o => o.id));
     if (!firstPoll && [...current].some(id => !lastPendingIds.has(id))) pingNewOrder();
     lastPendingIds = current;
@@ -198,13 +273,13 @@
     try {
       orders = (await api('/api/admin/orders')).orders || [];
       if (activeTab === 'orders') renderOrders();
-      else $('#pending-count').textContent = orders.filter(o => o.payment_status === 'PAID' &&
-        ['AWAITING_ACCEPTANCE', 'SCHEDULED'].includes(o.fulfillment_status)).length;
+      else $('#pending-count').textContent = orders.filter(decisionDue).length;
     } catch (error) {
       notify('Falha ao atualizar pedidos: ' + error.message, true);
     } finally { pollBusy = false; }
   }
-  $('#orders-list').addEventListener('click', async event => {
+  // Use one action handler for both the priority queue and secondary orders.
+  async function onOrderAction(event) {
     const action = event.target.closest('[data-action]');
     const refund = event.target.closest('[data-refund]');
     const dispatch = event.target.closest('[data-uber-dispatch]');
@@ -237,7 +312,19 @@
       await loadOrders();
     } catch (error) { notify(error.message, true); }
     finally { event.target.disabled = false; }
-  });
+  }
+  for (const container of [$('#orders-list'), $('#secondary-orders-list')]) {
+    container.addEventListener('click', onOrderAction);
+    container.addEventListener('click', event => {
+      const summary = event.target.closest('summary');
+      const details = summary?.parentElement;
+      if (!details?.matches('[data-order-details]')) return;
+      const id = details.dataset.orderDetails;
+      if (details.open) expandedOrderIds.delete(id);
+      else expandedOrderIds.add(id);
+    });
+  }
+  $('#open-history-from-orders').addEventListener('click', () => switchTab('history'));
   $('#refresh-orders').addEventListener('click', loadOrders);
   function updateClock() {
     $('#clock').textContent = new Intl.DateTimeFormat('pt-BR', {
