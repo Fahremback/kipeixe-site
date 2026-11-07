@@ -8,3 +8,4 @@ node_modules/
 .wrangler/
 node_modules/
 .env.ifood-test
+.env.ifood-prod
