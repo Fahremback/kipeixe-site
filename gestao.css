@@ -7,3 +7,10 @@
 .order-payment-ok{margin:9px 0 5px;padding:8px 11px;background:#e8f3e7;color:#285d35;font-size:12px;font-weight:800;border-radius:8px}
 .order-demo-note{margin:12px 0;background:#fff0cc;border:1px solid #dfb968;color:#754816;font-size:12px;font-weight:850;padding:10px;border-radius:9px}
 .order-card.demo-order{border:2px dashed #b7803f}
+.users-layout{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:17px;align-items:start;margin-top:18px}
+.users-list{display:grid;gap:10px}
+.user-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border:1px solid var(--border);border-radius:11px}
+.user-row.inactive{opacity:.58}
+.user-row small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.user-row button{border:1px solid var(--border);background:#fff8ee;color:var(--espresso);padding:8px 12px;border-radius:9px;font-weight:750}
+@media(max-width:850px){.users-layout{grid-template-columns:1fr}}

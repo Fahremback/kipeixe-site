@@ -11,7 +11,7 @@ test('session probe returns anonymous state without HTTP error', async () => {
   const target = url('/api/auth/session');
   const response = await handleAdmin(request(target.pathname), { DB: {} }, origin, target);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { authenticated: false, username: null });
+  assert.deepEqual(await response.json(), { authenticated: false, username: null, role: null });
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.equal(response.headers.get('Access-Control-Allow-Origin'), origin);
 });
@@ -25,18 +25,19 @@ test('admin endpoints still refuse requests without a valid session', async () =
 test('session probe keeps a valid session authenticated', async () => {
   const token = 'a'.repeat(64);
   const db = { prepare(sql) {
-    assert.match(sql, /SELECT username FROM admin_sessions/);
+    if (/SELECT username FROM admin_users/.test(sql)) return { first: async () => ({ username: 'gestor' }) };
+    assert.match(sql, /SELECT u.username,u.role FROM admin_sessions/);
     return { bind(hash, expires) {
       assert.match(hash, /^[0-9a-f]{64}$/);
       assert.equal(typeof expires, 'number');
-      return { first: async () => ({ username: 'gestor' }) };
+      return { first: async () => ({ username: 'gestor', role: 'owner' }) };
     }};
   }};
   const target = url('/api/auth/session');
   const response = await handleAdmin(request(target.pathname, { Cookie: 'kipeixe_session=' + token }),
     { DB: db }, origin, target);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { authenticated: true, username: 'gestor' });
+  assert.deepEqual(await response.json(), { authenticated: true, username: 'gestor', role: 'owner' });
 });
 
 test('login preflight advertises the permitted site origin and POST headers', async () => {

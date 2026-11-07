@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
-  <link rel="stylesheet" href="gestao.css?v=20261107-payment-status">
-  <script src="gestao.js?v=20261107-payment-expiration-demo" defer></script>
+  <link rel="stylesheet" href="gestao.css?v=20261107-account-management">
+  <script src="gestao.js?v=20261107-account-management" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -42,6 +42,7 @@
         <button type="button" data-tab="orders" class="active"><span>◫</span> Pedidos <b id="pending-count">0</b></button>
         <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
         <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
+        <button type="button" data-tab="users" hidden><span>♙</span> Usuários e acessos</button>
       </nav>
       <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Ver site público ↗</a><button type="button" id="logout">Sair da central</button></div>
     </aside>
@@ -147,6 +148,38 @@
             <p><strong>Prazo:</strong> a rotina automática verifica pedidos a cada minuto.</p></div>
           <button type="submit" class="primary-btn save-settings">Salvar alterações</button>
         </form>
+      </section>
+      <section id="users-view" class="view" hidden>
+        <div class="section-heading"><div><span class="eyebrow">ACESSO RESTRITO AO PROPRIETÁRIO</span>
+          <h2>Usuários e acessos</h2></div></div>
+        <p>Altere seu login, crie acessos para a equipe e desative contas. Cada pessoa deve usar seu próprio usuário.</p>
+        <div class="users-layout">
+          <div class="settings-card">
+            <h3>Contas cadastradas</h3>
+            <div id="users-list" class="users-list">Carregando...</div>
+          </div>
+          <form id="new-user-form" class="settings-card" autocomplete="off">
+            <h3>Adicionar usuário da equipe</h3>
+            <label>Login <input name="username" required minlength="3" maxlength="40" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,39}" autocomplete="off" placeholder="ex.: atendente1"></label>
+            <label>Senha inicial <input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label>
+            <p>A equipe pode acessar pedidos e cardápio, mas não pode gerenciar contas, pagamentos ou configurações.</p>
+            <button class="primary-btn" type="submit">Criar usuário</button>
+          </form>
+          <form id="edit-user-form" class="settings-card" autocomplete="off" hidden>
+            <h3>Editar acesso: <span id="edit-user-title"></span></h3>
+            <input type="hidden" name="originalUsername">
+            <label>Novo login <input name="username" required minlength="3" maxlength="40" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,39}" autocomplete="off"></label>
+            <label>Nova senha (opcional) <input name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Deixe vazio para manter a atual"></label>
+            <label id="current-password-row" hidden>Senha atual do proprietário
+              <input name="currentPassword" type="password" autocomplete="current-password"></label>
+            <label id="user-active-row" class="check-line"><input name="active" type="checkbox"> Conta ativa</label>
+            <p>Alterar a senha ou desativar uma conta encerra as demais sessões desse usuário.</p>
+            <div class="editor-actions">
+              <button class="primary-btn" type="submit">Salvar alterações</button>
+              <button id="cancel-edit-user" class="subtle-btn" type="button">Cancelar</button>
+            </div>
+          </form>
+        </div>
       </section>
     </main>
   </div>

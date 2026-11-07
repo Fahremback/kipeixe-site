@@ -162,16 +162,32 @@ async function verifyPassword(password, salt, expected) {
   return safeEqual(legacy, expected);
 }
 
+const validUsername = value => /^[a-z0-9][a-z0-9._-]{2,39}$/.test(value);
+const validNewPassword = value => typeof value === 'string' && value.length >= 12 && value.length <= 128;
+
+async function ensureInitialOwner(env) {
+  const owner = await env.DB.prepare("SELECT username FROM admin_users WHERE role='owner' LIMIT 1").first();
+  if (owner || !env.ADMIN_USERNAME || !env.ADMIN_PASSWORD_HASH || !env.ADMIN_PASSWORD_SALT) return;
+  // Idempotent bootstrap: the original Cloudflare credential remains usable
+  // until the owner changes their login, but can never recreate an old account.
+  await env.DB.prepare(`INSERT INTO admin_users (username,password_hash,password_salt,role)
+    SELECT ?,?,?,'owner' WHERE NOT EXISTS (SELECT 1 FROM admin_users WHERE role='owner')`)
+    .bind(env.ADMIN_USERNAME, env.ADMIN_PASSWORD_HASH, env.ADMIN_PASSWORD_SALT).run();
+}
+
 async function currentAdmin(request, env) {
   const token = cookieValue(request);
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
-  const session = await env.DB.prepare('SELECT username FROM admin_sessions WHERE token_hash = ? AND expires_at > ?')
+  await ensureInitialOwner(env);
+  const session = await env.DB.prepare(`SELECT u.username,u.role FROM admin_sessions s
+    JOIN admin_users u ON u.username=s.username AND u.active=1
+    WHERE s.token_hash=? AND s.expires_at>?`)
     .bind(await hash(token), Date.now()).first();
-  return session?.username || null;
+  return session || null;
 }
 
 async function login(request, env, origin) {
-  if (!env.ADMIN_USERNAME || !env.ADMIN_PASSWORD_HASH || !env.ADMIN_PASSWORD_SALT || !env.DB) {
+  if (!env.DB) {
     return fail('Painel administrativo não configurado.', 503, origin);
   }
   let data;
@@ -183,17 +199,86 @@ async function login(request, env, origin) {
   const limit = await env.DB.prepare('SELECT hits FROM login_limits WHERE ip = ? AND window_start = ?')
     .bind(ip, windowStart).first();
   if (limit.hits > 8) return fail('Muitas tentativas. Aguarde 15 minutos.', 429, origin);
-  const username = normalize(data.username);
+  await ensureInitialOwner(env);
+  const username = normalize(data.username).toLowerCase();
   const password = String(data.password || '');
-  const passwordValid = password.length <= 300 && await verifyPassword(password, env.ADMIN_PASSWORD_SALT, env.ADMIN_PASSWORD_HASH);
-  if (!safeEqual(username, env.ADMIN_USERNAME) || !passwordValid) {
+  const user = await env.DB.prepare('SELECT username,password_hash,password_salt,role,active FROM admin_users WHERE username=?')
+    .bind(username).first();
+  const passwordValid = user?.active === 1 && password.length <= 128 &&
+    await verifyPassword(password, user.password_salt, user.password_hash);
+  if (!passwordValid) {
     return fail('Credenciais inválidas.', 401, origin);
   }
   const token = randomToken();
   const expires = Date.now() + 8 * 60 * 60_000;
   await env.DB.prepare('INSERT INTO admin_sessions (token_hash, username, expires_at, created_at) VALUES (?, ?, ?, ?)')
-    .bind(await hash(token), username, expires, Date.now()).run();
-  return reply({ ok: true, username }, 200, origin, { 'Set-Cookie': adminCookie(token, 8 * 3600) });
+    .bind(await hash(token), user.username, expires, Date.now()).run();
+  return reply({ ok: true, username: user.username, role: user.role }, 200, origin,
+    { 'Set-Cookie': adminCookie(token, 8 * 3600) });
+}
+
+async function adminUsersRoute(request, env, origin, url, actor) {
+  const path = url.pathname;
+  const match = /^\/api\/admin\/users(?:\/([a-z0-9._-]{3,40}))?$/.exec(path);
+  if (!match) return null;
+  if (actor.role !== 'owner') return fail('Somente o proprietário pode gerenciar usuários.', 403, origin);
+  const target = match[1] || '';
+  if (request.method === 'GET' && !target) {
+    const users = (await env.DB.prepare(`SELECT username,role,active,created_at,updated_at
+      FROM admin_users ORDER BY role='owner' DESC, username`).all()).results;
+    return reply({ users }, 200, origin);
+  }
+  if (!['POST', 'PUT'].includes(request.method) || (request.method === 'POST' && target) ||
+      (request.method === 'PUT' && !target)) return fail('Método não permitido.', 405, origin);
+  let data;
+  try { data = await limitedJson(request, 3000); } catch { return fail('Dados inválidos.', 400, origin); }
+  const username = normalize(data.username).toLowerCase();
+  if (!validUsername(username)) return fail('Usuário deve ter 3 a 40 caracteres: letras, números, ponto, hífen ou sublinhado.', 422, origin);
+  if (request.method === 'POST') {
+    if (!validNewPassword(data.password)) return fail('A senha deve ter de 12 a 128 caracteres.', 422, origin);
+    const salt = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
+    const digest = pbkdf2Sync(data.password, salt, 100000, 32, 'sha256').toString('hex');
+    try {
+      await env.DB.prepare(`INSERT INTO admin_users(username,password_hash,password_salt,role)
+        VALUES(?,?,?,'staff')`).bind(username, digest, salt).run();
+    } catch { return fail('Esse nome de usuário já está em uso.', 409, origin); }
+    await audit(env, actor.username, 'USER_CREATED', username);
+    return reply({ ok: true, username }, 201, origin);
+  }
+  const old = await env.DB.prepare('SELECT username,password_hash,password_salt,role,active FROM admin_users WHERE username=?')
+    .bind(target).first();
+  if (!old) return fail('Usuário não encontrado.', 404, origin);
+  if (old.role === 'owner') {
+    if (old.username !== actor.username) return fail('Conta de proprietário protegida.', 403, origin);
+    if (typeof data.currentPassword !== 'string' || !data.currentPassword)
+      return fail('Informe sua senha atual.', 422, origin);
+    if (!await verifyPassword(data.currentPassword, old.password_salt, old.password_hash))
+      return fail('Senha atual incorreta.', 403, origin);
+  }
+  const changingPassword = data.password !== undefined && data.password !== '';
+  if (changingPassword && !validNewPassword(data.password))
+    return fail('A nova senha deve ter de 12 a 128 caracteres.', 422, origin);
+  const active = old.role === 'owner' ? 1 : data.active === false ? 0 : 1;
+  const salt = changingPassword
+    ? [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('')
+    : old.password_salt;
+  const digest = changingPassword ? pbkdf2Sync(data.password, salt, 100000, 32, 'sha256').toString('hex') : old.password_hash;
+  try {
+    await env.DB.prepare(`UPDATE admin_users SET username=?,password_hash=?,password_salt=?,
+      active=?,updated_at=CURRENT_TIMESTAMP WHERE username=?`)
+      .bind(username, digest, salt, active, old.username).run();
+  } catch { return fail('Esse nome de usuário já está em uso.', 409, origin); }
+  const tokenHash = await hash(cookieValue(request));
+  if (old.username === actor.username) {
+    await env.DB.prepare('DELETE FROM admin_sessions WHERE username=? AND token_hash<>?')
+      .bind(old.username, tokenHash).run();
+    await env.DB.prepare('UPDATE admin_sessions SET username=? WHERE token_hash=?')
+      .bind(username, tokenHash).run();
+  } else {
+    await env.DB.prepare('DELETE FROM admin_sessions WHERE username=?').bind(old.username).run();
+  }
+  await audit(env, actor.username, 'USER_UPDATED', username, `previous:${old.username} active:${active}`);
+  return reply({ ok: true, username, active: Boolean(active) }, 200, origin);
 }
 
 async function audit(env, actor, action, subject, details = '') {
@@ -361,14 +446,20 @@ export async function handleAdmin(request, env, origin, url) {
   if (url.pathname === '/api/auth/login' && request.method === 'POST') return login(request, env, origin);
   if (url.pathname === '/api/auth/session' && request.method === 'GET') {
     const actor = await currentAdmin(request, env);
-    return reply({ authenticated: Boolean(actor), username: actor || null }, 200, origin);
+    return reply({ authenticated: Boolean(actor), username: actor?.username || null,
+      role: actor?.role || null }, 200, origin);
   }
-  const actor = await currentAdmin(request, env);
-  if (!actor) return fail('Sessão inválida. Entre novamente.', 401, origin);
+  const identity = await currentAdmin(request, env);
+  if (!identity) return fail('Sessão inválida. Entre novamente.', 401, origin);
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
     await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').bind(await hash(cookieValue(request))).run();
     return reply({ ok: true }, 200, origin, { 'Set-Cookie': adminCookie('', 0) });
   }
+  const userResult = await adminUsersRoute(request, env, origin, url, identity);
+  if (userResult) return userResult;
+  const actor = identity.username;
+  if (url.pathname === '/api/admin/settings' && identity.role !== 'owner')
+    return fail('Somente o proprietário pode alterar as configurações do restaurante.', 403, origin);
   if (url.pathname === '/api/admin/catalog' && request.method === 'GET') {
     return reply(await getCatalog(env, true), 200, origin);
   }

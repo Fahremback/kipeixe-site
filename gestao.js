@@ -21,6 +21,7 @@
   };
   const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   let orders = [], categories = [], products = [], settings = null, lastPendingIds = new Set();
+  let users = [], currentUsername = '', currentRole = '';
   let firstPoll = true, pollBusy = false, activeTab = 'orders', soundArmed = false;
 
   async function api(path, options = {}) {
@@ -42,14 +43,32 @@
     box.className = 'notice' + (error ? ' error' : '');
     box.hidden = false;
   }
+  function resetPanelView() {
+    activeTab = 'orders';
+    $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === 'orders'));
+    $$('.view').forEach(view => view.hidden = view.id !== 'orders-view');
+    $('#view-title').textContent = 'Pedidos recebidos';
+    $('#edit-user-form').reset();
+    $('#edit-user-form').hidden = true;
+  }
   function showLogin() {
     $('#dashboard-view').hidden = true;
     $('#login-view').hidden = false;
+    users = [];
+    currentUsername = '';
+    currentRole = '';
+    $('#users-list').textContent = '';
+    resetPanelView();
   }
-  function showDashboard(username) {
+  function showDashboard(username, role = 'staff') {
+    resetPanelView();
     $('#login-view').hidden = true;
     $('#dashboard-view').hidden = false;
+    currentUsername = username;
+    currentRole = role;
     $('#operator-name').textContent = username;
+    $('.main-nav [data-tab="users"]').hidden = role !== 'owner';
+    $('.main-nav [data-tab="settings"]').hidden = role !== 'owner';
   }
   function armAudio() {
     soundArmed = true;
@@ -432,16 +451,107 @@
     } catch (error) { notify(error.message, true); }
   });
 
+  async function loadUsers() {
+    const result = await api('/api/admin/users');
+    users = result.users || [];
+    $('#users-list').innerHTML = users.map(user => `
+      <div class="user-row ${user.active ? '' : 'inactive'}">
+        <div><strong>${esc(user.username)}</strong>
+          <small>${user.role === 'owner' ? 'Proprietário' : 'Equipe'} ·
+            ${user.active ? 'Ativo' : 'Desativado'}${user.username === currentUsername ? ' · Seu login' : ''}</small>
+        </div>
+        <button type="button" data-edit-user="${esc(user.username)}">Editar</button>
+      </div>`).join('') || '<p>Nenhum usuário cadastrado.</p>';
+  }
+
+  $('#users-list').addEventListener('click', event => {
+    const button = event.target.closest('[data-edit-user]');
+    if (!button) return;
+    const user = users.find(item => item.username === button.dataset.editUser);
+    if (!user) return;
+    const form = $('#edit-user-form');
+    form.hidden = false;
+    form.reset();
+    form.elements.originalUsername.value = user.username;
+    form.elements.username.value = user.username;
+    form.elements.active.checked = Boolean(user.active);
+    $('#edit-user-title').textContent = user.username;
+    const isOwner = user.role === 'owner';
+    $('#current-password-row').hidden = !isOwner;
+    form.elements.currentPassword.required = isOwner;
+    $('#user-active-row').hidden = isOwner;
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  $('#cancel-edit-user').addEventListener('click', () => {
+    $('#edit-user-form').reset();
+    $('#edit-user-form').hidden = true;
+  });
+
+  $('#new-user-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await api('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: form.elements.username.value,
+          password: form.elements.password.value,
+        }),
+      });
+      form.reset();
+      notify('Usuário criado. A conta já pode acessar o painel.');
+      await loadUsers();
+    } catch (error) { notify(error.message, true); }
+    finally { button.disabled = false; }
+  });
+
+  $('#edit-user-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const before = form.elements.originalUsername.value;
+    const user = users.find(item => item.username === before);
+    if (!user) return;
+    if (user.role !== 'owner' && !form.elements.active.checked &&
+        !confirm('Desativar esta conta e encerrar suas sessões?')) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const result = await api('/api/admin/users/' + encodeURIComponent(before), {
+        method: 'PUT',
+        body: JSON.stringify({
+          username: form.elements.username.value,
+          password: form.elements.password.value || undefined,
+          currentPassword: user.role === 'owner' ? form.elements.currentPassword.value : undefined,
+          active: form.elements.active.checked,
+        }),
+      });
+      if (before === currentUsername) {
+        currentUsername = result.username;
+        $('#operator-name').textContent = currentUsername;
+      }
+      form.reset();
+      form.hidden = true;
+      notify('Acesso atualizado com sucesso.');
+      await loadUsers();
+    } catch (error) { notify(error.message, true); }
+    finally { button.disabled = false; }
+  });
+
   async function switchTab(tab) {
+    if (tab === 'users' && currentRole !== 'owner') return;
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
     $('#view-title').textContent = ({ orders: 'Pedidos recebidos', products: 'Controle do cardápio',
-      settings: 'Funcionamento do restaurante' })[tab];
+      settings: 'Funcionamento do restaurante', users: 'Usuários e acessos' })[tab];
     try {
       if (tab === 'products') await loadCatalog();
       if (tab === 'settings') await loadSettings();
       if (tab === 'orders') await loadOrders();
+      if (tab === 'users') await loadUsers();
     } catch (error) { notify(error.message, true); }
   }
   $$('.main-nav button').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
@@ -457,7 +567,7 @@
         }),
       });
       form.elements.password.value = '';
-      showDashboard(data.username);
+      showDashboard(data.username, data.role);
       armAudio(); firstPoll = true; await loadOrders();
     } catch (error) {
       $('#login-error').textContent = error.message;
@@ -474,7 +584,7 @@
       if (!session.authenticated) {
         showLogin();
       } else {
-        showDashboard(session.username);
+        showDashboard(session.username, session.role);
         await loadOrders();
       }
     } catch { showLogin(); }

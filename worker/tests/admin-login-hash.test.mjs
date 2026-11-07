@@ -12,6 +12,13 @@ async function attemptLogin(rounds, suppliedPassword = password) {
   const digest = pbkdf2Sync(password, salt, rounds, 32, 'sha256').toString('hex');
   const db = {
     prepare(sql) {
+      if (/SELECT username FROM admin_users/.test(sql)) return { first: async () => null };
+      if (/INSERT INTO admin_users/.test(sql)) return { bind() { return { run: async () => ({ success: true }) }; } };
+      if (/SELECT username,password_hash,password_salt,role,active FROM admin_users/.test(sql)) {
+        return { bind() { return { first: async () => ({
+          username, password_hash: digest, password_salt: salt, role: 'owner', active: 1,
+        }) }; } };
+      }
       return {
         bind() {
           if (/SELECT hits FROM login_limits/.test(sql)) return { first: async () => ({ hits: 1 }) };
