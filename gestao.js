@@ -23,6 +23,7 @@
   let orders = [], categories = [], products = [], settings = null, lastPendingIds = new Set();
   let users = [], currentUsername = '', currentRole = '';
   let firstPoll = true, pollBusy = false, activeTab = 'orders', soundArmed = false;
+  let historyPage = 1, historyPages = 1, historySelected = null;
 
   async function api(path, options = {}) {
     const response = await fetch(API + path, {
@@ -540,18 +541,182 @@
     finally { button.disabled = false; }
   });
 
+  const statusOf = order => order.payment_status === 'PAID' ? order.fulfillment_status :
+    ({ EXPIRED: 'PAYMENT_EXPIRED', CANCELED: 'PAYMENT_CANCELED',
+      REVIEW: 'PAYMENT_REVIEW' }[order.payment_status] || 'AWAITING_PAYMENT');
+
+  async function loadHistory() {
+    if ($('#dashboard-view').hidden) return;
+    const form = $('#history-filters');
+    const params = new URLSearchParams({ page: String(historyPage) });
+    for (const field of ['q', 'status', 'from', 'to']) {
+      const value = form.elements[field].value.trim();
+      if (value && !(field === 'status' && value === 'ALL')) params.set(field, value);
+    }
+    const data = await api('/api/admin/history?' + params);
+    historyPages = Math.max(1, data.pages || 1);
+    const list = data.orders || [];
+    $('#history-summary').textContent = `${data.total} pedido(s) encontrado(s).`;
+    $('#history-list').innerHTML = list.map(order => `
+      <article class="history-row">
+        <div><strong>#${esc(order.id.slice(0, 8).toUpperCase())} · ${esc(order.name)}</strong>
+          <small>${formatDate(order.created_at)} · ${esc(order.order_type)} ·
+            ${order.asaas_environment === 'production' ? 'Produção' : 'Sandbox'} ·
+            ${order.items.map(item => esc(item.qty + '× ' + item.name)).join(' • ')}</small>
+        </div>
+        <div class="history-row-right">
+          <strong>${money(order.total_cents)}</strong>
+          <span class="status-tag">${esc(LABELS[statusOf(order)] || statusOf(order))}</span>
+          <button type="button" data-history-id="${esc(order.id)}">Ver histórico</button>
+        </div>
+      </article>`).join('') || '<div class="empty-state">Nenhum pedido encontrado para esses filtros.</div>';
+    $('#history-page').textContent = `Página ${historyPage} de ${historyPages}`;
+    $('#history-prev').disabled = historyPage <= 1;
+    $('#history-next').disabled = historyPage >= historyPages;
+  }
+
+  function allowedHistoryCorrection(order) {
+    if (order.payment_status !== 'PAID' || order.refund_status !== 'NOT_REQUIRED' ||
+        order.uber_delivery_id || order.ifood_order_id ||
+        ['REQUESTING','REVIEW','REQUESTED','PENDING','pickup','dropoff','delivered','completed']
+          .includes(order.uber_status) ||
+        ['REQUESTING','REVIEW','REQUESTED','PENDING','DELIVERED','COMPLETED']
+          .includes(order.ifood_status)) return [];
+    if (order.fulfillment_status === 'READY' && order.order_type !== 'Entrega')
+      return ['PREPARING'];
+    if (order.fulfillment_status === 'COMPLETED' && order.order_type !== 'Entrega') return ['READY'];
+    if (order.fulfillment_status === 'PREPARING' &&
+        order.acceptance_deadline && new Date(order.acceptance_deadline).getTime() > Date.now())
+      return [order.scheduled_for ? 'SCHEDULED' : 'AWAITING_ACCEPTANCE'];
+    return [];
+  }
+
+  async function openHistory(id) {
+    const data = await api('/api/admin/orders/' + encodeURIComponent(id) + '/history');
+    historySelected = data.order;
+    const state = statusOf(data.order);
+    $('#history-detail-title').textContent = '#' + id.slice(0, 8).toUpperCase() +
+      ' · ' + data.order.name;
+    $('#history-current-state').textContent =
+      `Criado em ${formatDate(data.order.created_at)} · ${LABELS[state] || state} · ` +
+      `Pagamento: ${data.order.payment_status} · Estorno: ${data.order.refund_status}`;
+    const actionLabels = {
+      ACCEPT: 'Pedido aceito', REJECT: 'Pedido recusado',
+      READY: 'Marcado como pronto', COMPLETE: 'Pedido concluído',
+      AUTO_REJECTED: 'Recusa automática', CANCEL_DELIVERY: 'Entrega cancelada',
+      REFUND_REQUESTED: 'Estorno solicitado', REFUND_RETRY: 'Nova tentativa de estorno',
+      ORDER_STATUS_CORRECTED: 'Marcação corrigida',
+      IFOOD_DISPATCH_RETRY: 'Nova tentativa de despacho iFood',
+      UBER_DISPATCH_RETRY: 'Nova tentativa de despacho Uber',
+    };
+    $('#history-events').innerHTML = `
+      <div class="history-event"><strong>Pedido registrado</strong>
+        <small>${formatDate(data.order.created_at)} · Site</small></div>
+      ${data.order.paid_at ? `<div class="history-event"><strong>Pagamento confirmado</strong>
+        <small>${formatDate(data.order.paid_at)} · Asaas</small></div>` : ''}
+      ${data.events.map(event => {
+        let info = event.details || '';
+        try {
+          const details = JSON.parse(info);
+          if (details && typeof details === 'object') {
+            info = (details.from && details.to
+              ? `${LABELS[details.from] || details.from} → ${LABELS[details.to] || details.to}`
+              : '') + (details.reason ? ' · Motivo: ' + details.reason : '');
+          }
+        } catch {}
+        return `<div class="history-event"><strong>${esc(actionLabels[event.action] || event.action)}</strong>
+          <small>${formatDate(event.created_at)} · ${esc(event.actor)}</small>
+          ${info ? `<p>${esc(info)}</p>` : ''}</div>`;
+      }).join('')}`;
+    const targets = data.canCorrect ? allowedHistoryCorrection(data.order) : [];
+    const form = $('#history-correction');
+    form.reset();
+    form.hidden = targets.length === 0;
+    $('#history-correction-note').textContent = !data.canCorrect
+      ? 'Somente o proprietário pode corrigir marcações.'
+      : targets.length ? 'A correção registra o operador, o horário e o motivo.'
+      : 'Não há correção operacional segura para esse pedido. Pagamentos, estornos e entregas solicitadas não podem ser revertidos por esta tela.';
+    if (targets.length) {
+      form.elements.id.value = id;
+      form.elements.expectedStatus.value = data.order.fulfillment_status;
+      form.elements.targetStatus.innerHTML = targets.map(target =>
+        `<option value="${esc(target)}">${esc(LABELS[target] || target)}</option>`).join('');
+    }
+    $('#history-detail').hidden = false;
+    $('#history-detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $('#history-filters').addEventListener('submit', async event => {
+    event.preventDefault();
+    historyPage = 1;
+    $('#history-detail').hidden = true;
+    try { await loadHistory(); } catch (error) { notify(error.message, true); }
+  });
+  $('#history-clear').addEventListener('click', async () => {
+    $('#history-filters').reset();
+    historyPage = 1;
+    $('#history-detail').hidden = true;
+    try { await loadHistory(); } catch (error) { notify(error.message, true); }
+  });
+  $('#history-prev').addEventListener('click', async () => {
+    if (historyPage <= 1) return;
+    historyPage--;
+    try { await loadHistory(); } catch (error) { notify(error.message, true); }
+  });
+  $('#history-next').addEventListener('click', async () => {
+    if (historyPage >= historyPages) return;
+    historyPage++;
+    try { await loadHistory(); } catch (error) { notify(error.message, true); }
+  });
+  $('#history-list').addEventListener('click', async event => {
+    const button = event.target.closest('[data-history-id]');
+    if (!button) return;
+    try { await openHistory(button.dataset.historyId); }
+    catch (error) { notify(error.message, true); }
+  });
+  $('#history-close-detail').addEventListener('click', () => {
+    $('#history-detail').hidden = true;
+    historySelected = null;
+  });
+  $('#history-correction').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!historySelected || currentRole !== 'owner') return;
+    const to = form.elements.targetStatus.value;
+    const from = form.elements.expectedStatus.value;
+    const question = `Corrigir o pedido #${historySelected.id.slice(0, 8).toUpperCase()}:
+      ${LABELS[from] || from} → ${LABELS[to] || to}? Esta alteração ficará no histórico.`;
+    if (!confirm(question)) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await api('/api/admin/orders/' + encodeURIComponent(historySelected.id) + '/correct', {
+        method: 'POST',
+        body: JSON.stringify({ expectedStatus: from, targetStatus: to,
+          reason: form.elements.reason.value }),
+      });
+      notify('Marcação corrigida e registrada no histórico.');
+      await loadHistory();
+      await openHistory(historySelected.id);
+      await loadOrders();
+    } catch (error) { notify(error.message, true); }
+    finally { button.disabled = false; }
+  });
+
   async function switchTab(tab) {
     if (tab === 'users' && currentRole !== 'owner') return;
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
     $('#view-title').textContent = ({ orders: 'Pedidos recebidos', products: 'Controle do cardápio',
-      settings: 'Funcionamento do restaurante', users: 'Usuários e acessos' })[tab];
+      settings: 'Funcionamento do restaurante', users: 'Usuários e acessos',
+      history: 'Histórico de pedidos' })[tab];
     try {
       if (tab === 'products') await loadCatalog();
       if (tab === 'settings') await loadSettings();
       if (tab === 'orders') await loadOrders();
       if (tab === 'users') await loadUsers();
+      if (tab === 'history') await loadHistory();
     } catch (error) { notify(error.message, true); }
   }
   $$('.main-nav button').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));

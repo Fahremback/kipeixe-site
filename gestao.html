@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
-  <link rel="stylesheet" href="gestao.css?v=20261107-account-management">
-  <script src="gestao.js?v=20261107-account-management" defer></script>
+  <link rel="stylesheet" href="gestao.css?v=20261107-order-history">
+  <script src="gestao.js?v=20261107-order-history" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -40,6 +40,7 @@
       <p class="sidebar-label">OPERAÇÃO</p>
       <nav class="main-nav" aria-label="Painel">
         <button type="button" data-tab="orders" class="active"><span>◫</span> Pedidos <b id="pending-count">0</b></button>
+        <button type="button" data-tab="history"><span>◷</span> Histórico de pedidos</button>
         <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
         <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
         <button type="button" data-tab="users" hidden><span>♙</span> Usuários e acessos</button>
@@ -63,6 +64,68 @@
           <div class="header-actions"><label class="switch-line"><input id="sound-toggle" type="checkbox" checked> Aviso sonoro</label><button id="refresh-orders" type="button" class="subtle-btn">Atualizar</button></div>
         </div>
         <div id="orders-list" class="order-grid"><div class="empty-state">Carregando pedidos...</div></div>
+      </section>
+
+      <section id="history-view" class="view" hidden>
+        <div class="section-heading"><div>
+          <span class="eyebrow">REGISTROS E CORREÇÕES</span>
+          <h2>Histórico de pedidos</h2>
+        </div></div>
+        <form id="history-filters" class="history-filters">
+          <label>Buscar pedido ou cliente
+            <input name="q" type="search" maxlength="100" placeholder="Número, nome ou telefone">
+          </label>
+          <label>Situação
+            <select name="status">
+              <option value="ALL">Todas as situações</option>
+              <option value="AWAITING_PAYMENT">Aguardando pagamento</option>
+              <option value="PAYMENT_EXPIRED">Pagamento expirado</option>
+              <option value="PAYMENT_CANCELED">Pagamento cancelado</option>
+              <option value="PAYMENT_REVIEW">Verificar pagamento</option>
+              <option value="AWAITING_ACCEPTANCE">Aguardando aceite</option>
+              <option value="SCHEDULED">Agendado</option>
+              <option value="PREPARING">Em preparação</option>
+              <option value="READY">Pronto</option>
+              <option value="COMPLETED">Concluído</option>
+              <option value="REJECTED">Recusado</option>
+              <option value="AUTO_REJECTED">Recusa automática</option>
+            </select>
+          </label>
+          <label>De <input name="from" type="date"></label>
+          <label>Até <input name="to" type="date"></label>
+          <button type="submit" class="primary-btn small">Filtrar</button>
+          <button id="history-clear" type="button" class="subtle-btn">Limpar</button>
+        </form>
+        <p id="history-summary" class="history-summary" role="status"></p>
+        <div id="history-list" class="history-list"></div>
+        <div class="history-pages">
+          <button id="history-prev" type="button" class="subtle-btn">Anterior</button>
+          <span id="history-page">Página 1</span>
+          <button id="history-next" type="button" class="subtle-btn">Próxima</button>
+        </div>
+        <section id="history-detail" class="history-detail" hidden>
+          <div class="section-heading"><div><span class="eyebrow">RASTREABILIDADE</span>
+            <h3 id="history-detail-title">Movimentações do pedido</h3></div>
+            <button id="history-close-detail" class="subtle-btn" type="button">Fechar</button>
+          </div>
+          <p id="history-current-state"></p>
+          <div id="history-events" class="history-events"></div>
+          <form id="history-correction" class="settings-card" hidden>
+            <h3>Corrigir uma marcação errada</h3>
+            <p>Somente o proprietário pode corrigir o andamento. O pagamento, estornos e entregadores não são alterados.</p>
+            <input type="hidden" name="id">
+            <input type="hidden" name="expectedStatus">
+            <label>Voltar para
+              <select name="targetStatus" required></select>
+            </label>
+            <label>Motivo da correção
+              <textarea name="reason" required minlength="8" maxlength="300" rows="3"
+                placeholder="Descreva o que foi marcado incorretamente."></textarea>
+            </label>
+            <button class="primary-btn" type="submit">Confirmar correção</button>
+          </form>
+          <p id="history-correction-note" class="environment-note"></p>
+        </section>
       </section>
 
       <section id="products-view" class="view" hidden>

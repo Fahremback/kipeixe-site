@@ -286,6 +286,130 @@ async function audit(env, actor, action, subject, details = '') {
     .bind(actor, action, subject, details).run();
 }
 
+// Corrections never change the Asaas payment/refund state, and cannot undo
+// a delivered courier request. They only fix a mistaken operational click.
+export function canCorrectOrder(row, target, now = new Date()) {
+  if (!row || row.payment_status !== 'PAID' || row.refund_status !== 'NOT_REQUIRED' ||
+      row.uber_delivery_id || row.ifood_order_id ||
+      ['REQUESTING', 'REVIEW', 'REQUESTED', 'PENDING', 'pickup', 'dropoff', 'delivered', 'completed']
+        .includes(row.uber_status) ||
+      ['REQUESTING', 'REVIEW', 'REQUESTED', 'PENDING', 'DELIVERED', 'COMPLETED']
+        .includes(row.ifood_status)) return false;
+  const from = row.fulfillment_status;
+  if (from === 'PREPARING' && target === 'AWAITING_ACCEPTANCE')
+    return !row.scheduled_for && Boolean(row.acceptance_deadline) &&
+      row.acceptance_deadline > now.toISOString();
+  if (from === 'PREPARING' && target === 'SCHEDULED')
+    return Boolean(row.scheduled_for) && Boolean(row.acceptance_deadline) &&
+      row.acceptance_deadline > now.toISOString();
+  // READY on delivery starts an external courier workflow; never undo it
+  // through an ordinary status correction even when no courier ID is stored.
+  if (from === 'READY' && target === 'PREPARING')
+    return row.order_type !== 'Entrega';
+  if (from === 'COMPLETED' && target === 'READY')
+    return row.order_type !== 'Entrega';
+  return false;
+}
+
+const ORDER_HISTORY_STATUSES = new Set([
+  'ALL', 'AWAITING_PAYMENT', 'AWAITING_ACCEPTANCE', 'SCHEDULED',
+  'PREPARING', 'READY', 'COMPLETED', 'REJECTED', 'AUTO_REJECTED',
+  'PAYMENT_EXPIRED', 'PAYMENT_CANCELED', 'PAYMENT_REVIEW',
+]);
+
+async function orderHistoryRoute(request, env, origin, url, actor) {
+  if (url.pathname === '/api/admin/history' && request.method === 'GET') {
+    const page = Number(url.searchParams.get('page') || 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
+      return fail('Página inválida.', 422, origin);
+    const status = url.searchParams.get('status') || 'ALL';
+    if (!ORDER_HISTORY_STATUSES.has(status)) return fail('Filtro inválido.', 422, origin);
+    const query = (url.searchParams.get('q') || '').trim();
+    if (query.length > 100) return fail('Busca muito longa.', 422, origin);
+    const where = [], values = [];
+    if (query) {
+      where.push("(id LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\')");
+      const like = '%' + query.replace(/[\\%_]/g, '\\$&') + '%';
+      values.push(like, like, like);
+    }
+    if (status !== 'ALL') {
+      if (status.startsWith('PAYMENT_') || status === 'AWAITING_PAYMENT') {
+        const payment = ({ PAYMENT_EXPIRED: 'EXPIRED', PAYMENT_CANCELED: 'CANCELED',
+          PAYMENT_REVIEW: 'REVIEW' })[status];
+        if (payment) { where.push('payment_status = ?'); values.push(payment); }
+        else { where.push("payment_status != 'PAID' AND payment_status NOT IN ('EXPIRED','CANCELED','REVIEW')"); }
+      } else {
+        where.push("payment_status = 'PAID' AND fulfillment_status = ?");
+        values.push(status);
+      }
+    }
+    const dateFrom = url.searchParams.get('from');
+    const dateTo = url.searchParams.get('to');
+    for (const date of [dateFrom, dateTo]) {
+      if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+          !Number.isFinite(Date.parse(date + 'T00:00:00Z')) ||
+          new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) !== date))
+        return fail('Data inválida.', 422, origin);
+    }
+    if (dateFrom) { where.push('created_at >= ?'); values.push(dateFrom + ' 00:00:00'); }
+    if (dateTo) { where.push("created_at < datetime(?, '+1 day')"); values.push(dateTo + ' 00:00:00'); }
+    const filter = where.length ? ' WHERE ' + where.join(' AND ') : '';
+    const total = (await env.DB.prepare('SELECT COUNT(*) AS total FROM orders' + filter)
+      .bind(...values).first()).total;
+    const rows = (await env.DB.prepare(`SELECT id,name,phone,order_type,address,notes,items_json,
+      subtotal_cents,delivery_cents,total_cents,payment_status,fulfillment_status,created_at,
+      paid_at,scheduled_for,acceptance_deadline,closed_reason,refund_status,asaas_environment,
+      uber_status,uber_delivery_id,ifood_status,ifood_order_id,delivery_provider
+      FROM orders ${filter} ORDER BY created_at DESC,id DESC LIMIT 50 OFFSET ?`)
+      .bind(...values, (page - 1) * 50).all()).results;
+    return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })),
+      total, page, pages: Math.ceil(total / 50) }, 200, origin);
+  }
+  const timeline = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/history$/i.exec(url.pathname);
+  if (timeline && request.method === 'GET') {
+    const order = await env.DB.prepare(`SELECT id,name,payment_status,fulfillment_status,
+      created_at,paid_at,refund_status,closed_reason,order_type,scheduled_for,
+      acceptance_deadline,uber_delivery_id,ifood_order_id,uber_status,ifood_status
+      FROM orders WHERE id=?`).bind(timeline[1]).first();
+    if (!order) return fail('Pedido não encontrado.', 404, origin);
+    const events = (await env.DB.prepare(`SELECT actor,action,details,created_at
+      FROM audit_log WHERE subject=? ORDER BY id DESC LIMIT 100`).bind(timeline[1]).all()).results;
+    return reply({ order, events, canCorrect: actor.role === 'owner' }, 200, origin);
+  }
+  const correction = /^\/api\/admin\/orders\/([0-9a-f-]{36})\/correct$/i.exec(url.pathname);
+  if (correction && request.method === 'POST') {
+    if (actor.role !== 'owner') return fail('Apenas o proprietário pode corrigir estados de pedidos.', 403, origin);
+    let data;
+    try { data = await limitedJson(request, 3000); } catch { return fail('Dados inválidos.', 400, origin); }
+    if (typeof data.reason !== 'string' || data.reason.trim().length < 8 ||
+        data.reason.trim().length > 300) return fail('Informe o motivo (8 a 300 caracteres).', 422, origin);
+    if (typeof data.expectedStatus !== 'string' || typeof data.targetStatus !== 'string')
+      return fail('Estado inválido.', 422, origin);
+    const row = await env.DB.prepare(`SELECT id,order_type,payment_status,fulfillment_status,
+      refund_status,scheduled_for,acceptance_deadline,uber_delivery_id,ifood_order_id,
+      uber_status,ifood_status FROM orders WHERE id=?`).bind(correction[1]).first();
+    if (!row) return fail('Pedido não encontrado.', 404, origin);
+    if (row.fulfillment_status !== data.expectedStatus)
+      return fail('Pedido mudou de estado. Atualize antes de corrigir.', 409, origin);
+    if (!canCorrectOrder(row, data.targetStatus))
+      return fail('Correção indisponível: pagamento, estorno, prazo ou entrega impedem esta alteração.', 409, origin);
+    const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status=?,
+      updated_at=CURRENT_TIMESTAMP WHERE id=? AND fulfillment_status=? AND payment_status='PAID'
+      AND refund_status='NOT_REQUIRED' AND uber_delivery_id IS NULL AND ifood_order_id IS NULL
+      AND COALESCE(uber_status,'') NOT IN ('REQUESTING','REVIEW','REQUESTED','PENDING','pickup','dropoff','delivered','completed')
+      AND COALESCE(ifood_status,'') NOT IN ('REQUESTING','REVIEW','REQUESTED','PENDING','DELIVERED','COMPLETED')
+      AND (? NOT IN ('AWAITING_ACCEPTANCE','SCHEDULED') OR acceptance_deadline > ?)`)
+      .bind(data.targetStatus, correction[1], data.expectedStatus, data.targetStatus,
+        new Date().toISOString()).run();
+    if (!result.meta.changes) return fail('Pedido alterado por outro operador.', 409, origin);
+    await audit(env, actor.username, 'ORDER_STATUS_CORRECTED', correction[1],
+      JSON.stringify({ from: data.expectedStatus, to: data.targetStatus,
+        reason: data.reason.trim() }));
+    return reply({ ok: true, status: data.targetStatus }, 200, origin);
+  }
+  return null;
+}
+
 async function asaas(env, mode, path, method = 'GET') {
   const account = paymentConfig(env, mode);
   if (!account.key) throw new Error('Credencial Asaas não configurada.');
@@ -460,6 +584,8 @@ export async function handleAdmin(request, env, origin, url) {
   const actor = identity.username;
   if (url.pathname === '/api/admin/settings' && identity.role !== 'owner')
     return fail('Somente o proprietário pode alterar as configurações do restaurante.', 403, origin);
+  const historyResult = await orderHistoryRoute(request, env, origin, url, identity);
+  if (historyResult) return historyResult;
   if (url.pathname === '/api/admin/catalog' && request.method === 'GET') {
     return reply(await getCatalog(env, true), 200, origin);
   }
@@ -553,7 +679,8 @@ export async function handleAdmin(request, env, origin, url) {
         "AND (ifood_status IS NULL OR ifood_status NOT IN ('REQUESTING','REVIEW'))")
         .bind(action[1]).run();
       if (!changed.meta.changes) return fail('Pedido alterado por outro operador.', 409, origin);
-      await audit(env, actor, 'CANCEL_DELIVERY', action[1]);
+    await audit(env, actor, 'CANCEL_DELIVERY', action[1],
+      JSON.stringify({ from: row.fulfillment_status, to: 'REJECTED' }));
       await refundOrder(env, action[1]);
       return reply({ ok: true, status: 'REJECTED' }, 200, origin);
     }
@@ -572,7 +699,8 @@ export async function handleAdmin(request, env, origin, url) {
       AND (fulfillment_status NOT IN ('AWAITING_ACCEPTANCE','SCHEDULED') OR acceptance_deadline > ?)`)
       .bind(target, rejecting && row.checkout_id ? 1 : 0, rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
     if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
-    await audit(env, actor, data.action, action[1]);
+    await audit(env, actor, data.action, action[1],
+      JSON.stringify({ from: row.fulfillment_status, to: target }));
     if (rejecting && row.checkout_id) await refundOrder(env, action[1]);
     const uber = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider !== 'ifood'
       ? await dispatchDelivery(env, action[1]) : null;
