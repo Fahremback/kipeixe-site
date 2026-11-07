@@ -1,4 +1,5 @@
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
+import { pbkdf2Sync } from 'node:crypto';
 import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
@@ -41,7 +42,6 @@ export async function hash(value) {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)));
   return [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
 }
-const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
 const randomToken = () => [...crypto.getRandomValues(new Uint8Array(32))].map(b => b.toString(16).padStart(2, '0')).join('');
 const cookieValue = request => (request.headers.get('Cookie') || '').split(';')
   .map(x => x.trim()).find(x => x.startsWith('kipeixe_session='))?.slice('kipeixe_session='.length) || '';
@@ -149,12 +149,15 @@ export async function priceCart(env, raw) {
 
 async function verifyPassword(password, salt, expected) {
   if (!password || !salt || !expected) return false;
-  const base = await crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({
-    // Cloudflare Workers caps PBKDF2 iterations at 100000 per call.
-    name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 100000,
-  }, base, 256);
-  return safeEqual(hex(bits), expected);
+  if (typeof expected !== 'string' || !/^[0-9a-f]{64}$/i.test(expected) || salt.length > 256) return false;
+  // New administrative credentials use 100k PBKDF2 rounds. Earlier installations
+  // used 210k rounds; accept both without changing production secrets.
+  // node:crypto is supported by the Worker's 2026-11 compatibility date.
+  for (const rounds of [100000, 210000]) {
+    const derived = pbkdf2Sync(password, salt, rounds, 32, 'sha256').toString('hex');
+    if (safeEqual(derived, expected)) return true;
+  }
+  return false;
 }
 
 async function currentAdmin(request, env) {

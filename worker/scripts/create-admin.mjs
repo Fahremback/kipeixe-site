@@ -13,7 +13,7 @@ if (existsSync(credentialsPath) || existsSync(varsPath)) {
 const username = 'gestor-kipeixe-' + randomBytes(4).toString('hex');
 const password = randomBytes(24).toString('base64url');
 const salt = randomBytes(24).toString('hex');
-const hashed = pbkdf2Sync(password, salt, 210000, 32, 'sha256').toString('hex');
+const hashed = pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex');
 const localWebhook = randomBytes(32).toString('hex');
 const productionWebhook = randomBytes(32).toString('hex');
 writeFileSync(credentialsPath, `ACESSO ADMINISTRATIVO KIPEIXE\nUsuário: ${username}\nSenha: ${password}\n\nGuarde estes dados em local seguro. Não publique este arquivo.\n`, { flag: 'wx', mode: 0o600 });
