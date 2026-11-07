@@ -356,7 +356,7 @@ export default {
       }
       if (pathname.startsWith('/api/admin/') || pathname.startsWith('/api/auth/')) {
         if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem administrativa não autorizada.', 403, origin);
-        return handleAdmin(request, env, origin, url);
+        return await handleAdmin(request, env, origin, url);
       }
       if (pathname === '/api/orders' && request.method === 'POST') {
         if (!ALLOWED_ORIGINS.has(origin)) return fail('Origem não autorizada.', 403, origin);

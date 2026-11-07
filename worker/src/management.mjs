@@ -1,5 +1,7 @@
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
 import { pbkdf2Sync } from 'node:crypto';
+import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
@@ -151,13 +153,13 @@ async function verifyPassword(password, salt, expected) {
   if (!password || !salt || !expected) return false;
   if (typeof expected !== 'string' || !/^[0-9a-f]{64}$/i.test(expected) || salt.length > 256) return false;
   // New administrative credentials use 100k PBKDF2 rounds. Earlier installations
-  // used 210k rounds; accept both without changing production secrets.
-  // node:crypto is supported by the Worker's 2026-11 compatibility date.
-  for (const rounds of [100000, 210000]) {
-    const derived = pbkdf2Sync(password, salt, rounds, 32, 'sha256').toString('hex');
-    if (safeEqual(derived, expected)) return true;
-  }
-  return false;
+  // used 210k rounds, above the Worker native PBKDF2 hard limit of 100k.
+  // Fall back to a portable implementation only for legacy password hashes.
+  const current = pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex');
+  if (safeEqual(current, expected)) return true;
+  const legacy = [...pbkdf2(sha256, password, salt, { c: 210000, dkLen: 32 })]
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  return safeEqual(legacy, expected);
 }
 
 async function currentAdmin(request, env) {

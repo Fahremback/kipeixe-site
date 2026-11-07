@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleAdmin } from '../src/management.mjs';
+import app from '../src/app.mjs';
 
 const origin = 'https://restaurantekipeixe.com.br';
 const url = path => new URL('https://api.restaurantekipeixe.com.br' + path);
@@ -36,4 +37,37 @@ test('session probe keeps a valid session authenticated', async () => {
     { DB: db }, origin, target);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { authenticated: true, username: 'gestor' });
+});
+
+test('login preflight advertises the permitted site origin and POST headers', async () => {
+  const target = url('/api/auth/login');
+  const response = await app.fetch(new Request(target, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: origin,
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type',
+    },
+  }), {}, {});
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), origin);
+  assert.equal(response.headers.get('Access-Control-Allow-Credentials'), 'true');
+  assert.match(response.headers.get('Access-Control-Allow-Headers'), /Content-Type/);
+});
+
+test('login failures return a CORS-enabled JSON error, not an uncaught exception', async () => {
+  const target = url('/api/auth/login');
+  const response = await app.fetch(new Request(target, {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'test', password: 'invalid' }),
+  }), {
+    ADMIN_USERNAME: 'test',
+    ADMIN_PASSWORD_HASH: 'a'.repeat(64),
+    ADMIN_PASSWORD_SALT: 'tests',
+    DB: { prepare() { throw Error('DB temporarily unavailable'); } },
+  }, {});
+  assert.equal(response.status, 500);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), origin);
+  assert.deepEqual(await response.json(), { error: 'Falha temporária no serviço.' });
 });
