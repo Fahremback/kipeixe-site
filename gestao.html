@@ -7,8 +7,9 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="assets/logo.webp" type="image/webp">
-  <link rel="stylesheet" href="gestao.css?v=20261107-720p-queue">
-  <script src="gestao.js?v=20261107-720p-queue" defer></script>
+  <link rel="stylesheet" href="gestao.css?v=20261109-training">
+  <script src="training-engine.js?v=20261109-training" defer></script>
+  <script src="gestao.js?v=20261109-training" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -54,6 +55,12 @@
       <div id="notice" class="notice" role="status" hidden></div>
 
       <section id="orders-view" class="view">
+        <div id="training-banner" class="training-banner" role="status" hidden>
+          <div><strong>MODO TREINAMENTO — APENAS PEDIDOS FICTÍCIOS</strong>
+            <span>Pedidos reais ficam ocultos neste navegador. Sem cobrança ou entregador; etapas de 5 segundos.</span></div>
+          <button type="button" id="training-add-order" class="subtle-btn">+ Pedido fictício</button>
+          <button type="button" id="training-stop" class="subtle-btn">Voltar ao real</button>
+        </div>
         <div class="stats-row" aria-label="Resumo dos pedidos em andamento">
           <div class="stat-card" data-stat="pending"><strong id="stat-pending">0</strong><small>Aceitar agora</small></div>
           <div class="stat-card" data-stat="preparing"><strong id="stat-preparing">0</strong><small>Preparando</small></div>
@@ -164,6 +171,17 @@
 
       <section id="settings-view" class="view" hidden>
         <div class="section-heading"><div><span class="eyebrow">CONFIGURAÇÕES DA CASA</span><h2>Horários e operação</h2></div></div>
+        <section class="settings-card training-settings">
+          <h3>Modo treinamento</h3>
+          <label class="check-line"><input id="training-toggle" type="checkbox"> Ativar pedidos fictícios neste navegador</label>
+          <p>Os pedidos simulados chegam automaticamente a cada 12 segundos e aguardam aceite sem expirar. Depois de aceitar, passam por <strong>Preparando (5s) → Pronto (5s) → Concluído</strong>.</p>
+          <p>Não gera cobrança, não solicita entregador nem muda pedidos reais. Enquanto ativo, oculta a fila real apenas neste navegador; outros computadores continuam funcionando normalmente. Não aparece no histórico financeiro.</p>
+          <div class="editor-actions">
+            <button type="button" id="training-go" class="primary-btn small">Abrir fila de treinamento</button>
+            <button type="button" id="training-reset" class="subtle-btn">Reiniciar simulação</button>
+          </div>
+          <p id="training-settings-status" class="environment-status">Desativado</p>
+        </section>
         <form id="settings-form" class="settings-grid">
           <div class="settings-card"><h3>Recebimento de pedidos</h3><label class="check-line"><input name="ordersEnabled" type="checkbox"> Permitir novos pedidos no site</label>
             <p>Fora do horário de abertura, o cliente precisa escolher um horário futuro.</p>

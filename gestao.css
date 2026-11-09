@@ -131,3 +131,19 @@
   #orders-view .stats-row{margin:5px 0 6px}
   #orders-view .section-heading.order-queue-heading{margin:5px 0 6px}
 }
+/* Training is deliberately conspicuous and isolated from genuine orders. */
+.training-settings { margin: 0 0 18px; border: 2px solid #cf9d55; background: #fffaf0; }
+.training-settings h3 { margin: 0; }
+.training-settings .editor-actions { flex-wrap: wrap; justify-content: flex-start; }
+.training-settings .environment-status { margin: 0; }
+.training-banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  margin: 0 0 8px; border-radius: 10px; background: #ffe4ad; border: 1px solid #bf8637;
+  color: #653b14; font-size: 11px; }
+.training-banner>div { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.training-banner strong { font-size: 12px; letter-spacing: .035em; }
+.training-banner span { color: #754c28; }
+.training-banner button { padding: 6px 9px; font-size: 11px; white-space: nowrap; }
+#orders-view.training-active .compact-order { border: 1px solid #d7a76e; background: #fffdf6; }
+#orders-view.training-active .compact-order.urgent { box-shadow: inset 3px 0 #a97327; }
+#orders-view.training-active .stat-card[data-stat="pending"] { background: #fff5e3; }
+@media(max-width:740px) { .training-banner { flex-wrap: wrap; } .training-banner>div { flex-basis: 100%; } }

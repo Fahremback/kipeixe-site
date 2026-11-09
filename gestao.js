@@ -26,6 +26,24 @@
   let historyPage = 1, historyPages = 1, historySelected = null;
   let ordersRenderSignature = '', expandedOrderIds = new Set();
   let noticeHideTimer = null;
+  const training = window.KipeixeTraining;
+  const trainingOn = () => Boolean(training?.isEnabled());
+
+  function updateTrainingUi() {
+    const enabled = trainingOn();
+    $('#training-toggle').checked = enabled;
+    $('#training-settings-status').textContent = enabled
+      ? 'Ativo neste navegador. Pedidos reais permanecem inalterados.'
+      : 'Desativado — exibindo pedidos reais.';
+    $('#training-settings-status').classList.toggle('is-ready', enabled);
+    $('#training-banner').hidden = !enabled;
+    $('#orders-view').classList.toggle('training-active', enabled);
+    $('#training-go').disabled = !enabled;
+    $('#training-add-order').disabled = !enabled;
+    $('#view-title').textContent = enabled && activeTab === 'orders'
+      ? 'Pedidos · Treinamento' : activeTab === 'orders' ? 'Pedidos recebidos'
+      : $('#view-title').textContent;
+  }
 
   async function api(path, options = {}) {
     const response = await fetch(API + path, {
@@ -66,6 +84,7 @@
     ordersRenderSignature = '';
     $('#users-list').textContent = '';
     resetPanelView();
+    updateTrainingUi();
   }
   function showDashboard(username, role = 'staff') {
     resetPanelView();
@@ -77,6 +96,7 @@
     $('#operator-name').textContent = username;
     $('.main-nav [data-tab="users"]').hidden = role !== 'owner';
     $('.main-nav [data-tab="settings"]').hidden = role !== 'owner';
+    updateTrainingUi();
   }
   function armAudio() {
     soundArmed = true;
@@ -114,6 +134,7 @@
     return Number.isFinite(time) && time - Date.now() <= 45 * 60000;
   };
   const needsAttention = order => {
+    if (order.training === true) return ['AWAITING_ACCEPTANCE', 'PREPARING', 'READY'].includes(order.fulfillment_status);
     // Sandbox orders (including demonstrations) must never compete for the
     // team's attention or trigger an operational notification.
     if (order.asaas_environment === 'sandbox' || order.name.startsWith('[DEMO]')) return false;
@@ -122,7 +143,9 @@
     if (['AWAITING_ACCEPTANCE', 'PREPARING', 'READY'].includes(order.fulfillment_status)) return true;
     return order.fulfillment_status === 'SCHEDULED' && isSoonScheduled(order);
   };
-  const decisionDue = order => order.asaas_environment !== 'sandbox' &&
+  const decisionDue = order => order.training === true
+    ? order.fulfillment_status === 'AWAITING_ACCEPTANCE'
+    : order.asaas_environment !== 'sandbox' &&
     !order.name.startsWith('[DEMO]') && order.payment_status === 'PAID' &&
     (order.fulfillment_status === 'AWAITING_ACCEPTANCE' ||
       (order.fulfillment_status === 'SCHEDULED' && isSoonScheduled(order)));
@@ -150,7 +173,8 @@
     const paymentExpiration = order.payment_status === 'PENDING' && orderTimestamp(order)
       ? new Date(orderTimestamp(order) + 60 * 60000).toISOString() : '';
     const createdTime = formatDate(order.created_at);
-    const environment = order.asaas_environment === 'production' ? '' : ' · Sandbox';
+    const environment = order.training ? ' · TREINO' :
+      order.asaas_environment === 'production' ? '' : ' · Sandbox';
     const items = (order.items || []).map(item =>
       `<li><strong>${esc(item.qty)}×</strong> ${esc(item.name)}${item.variant ? ` · ${esc(item.variant)}` : ''}</li>`);
     const isIFood = order.delivery_provider === 'ifood';
@@ -170,18 +194,22 @@
           '" target="_blank" rel="noopener noreferrer">Acompanhar entregador</a>' : '') + '</p>' : '';
     const actions = [];
     if (waiting) actions.push(`<button class="accept" data-action="ACCEPT" data-id="${esc(order.id)}">Aceitar</button><button class="reject" data-action="REJECT" data-id="${esc(order.id)}">Recusar</button>`);
-    if (status === 'PREPARING') actions.push(`<button data-action="READY" data-id="${order.id}">Marcar pronto</button>`);
-    if (status === 'READY' && order.order_type !== 'Entrega') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
-    if (status === 'READY' && order.order_type === 'Entrega' && !isIFood && order.uber_status === 'FAILED')
+    if (!order.training && status === 'PREPARING') actions.push(`<button data-action="READY" data-id="${order.id}">Marcar pronto</button>`);
+    if (!order.training && status === 'READY' && order.order_type !== 'Entrega') actions.push(`<button data-action="COMPLETE" data-id="${order.id}">Finalizar</button>`);
+    if (!order.training && status === 'READY' && order.order_type === 'Entrega' && !isIFood && order.uber_status === 'FAILED')
       actions.push(`<button data-uber-dispatch="${order.id}">Tentar solicitar Uber</button>`);
-    if (status === 'READY' && order.order_type === 'Entrega' && isIFood && order.ifood_status === 'FAILED')
+    if (!order.training && status === 'READY' && order.order_type === 'Entrega' && isIFood && order.ifood_status === 'FAILED')
       actions.push(`<button data-ifood-dispatch="${order.id}">Tentar solicitar iFood</button>`);
-    if (status === 'READY' && order.order_type === 'Entrega' && !order.uber_delivery_id &&
+    if (!order.training && status === 'READY' && order.order_type === 'Entrega' && !order.uber_delivery_id &&
         !order.ifood_order_id && !['REQUESTING', 'REVIEW'].includes(logisticsStatus))
       actions.push(`<button class="reject" data-action="CANCEL_DELIVERY" data-id="${order.id}">Cancelar entrega e estornar</button>`);
     if (reviewing) actions.push(`<button class="reject" data-refund="${order.id}">Revisar estorno</button>`);
     const totalItems = items.length;
     const moreItems = totalItems > 3 ? `<span class="extra-items">+${totalItems - 3} item(ns) · abrir detalhes</span>` : '';
+    const stageDeadline = order.training && order.accepted_at &&
+      ['PREPARING', 'READY'].includes(status)
+      ? new Date(Date.parse(order.accepted_at) + (status === 'PREPARING' ? 5000 : 10000)).toISOString()
+      : '';
     return `<article class="order-card compact-order ${decisionDue(order) ? 'urgent' : ''} ${reviewing || order.payment_status === 'REVIEW' ? 'review' : ''} ${demo ? 'demo-order' : ''}">
       <div class="order-top">
         <span class="order-id">#${esc(order.id.slice(0, 8).toUpperCase())}</span>
@@ -189,20 +217,24 @@
       </div>
       <div class="order-meta"><span>${esc(createdTime)}${environment}</span><span>${esc(order.order_type)}</span></div>
       <div class="order-customer">${esc(order.name)}</div>
-      ${demo ? '<p class="order-demo-note">TESTE · NÃO PREPARAR / NÃO CONTABILIZAR</p>' : ''}
+      ${order.training ? '<p class="order-demo-note">SIMULAÇÃO · NENHUMA VENDA REAL</p>' :
+        demo ? '<p class="order-demo-note">TESTE · NÃO PREPARAR / NÃO CONTABILIZAR</p>' : ''}
       ${order.notes ? `<p class="order-note"><strong>Obs:</strong> ${esc(order.notes)}</p>` : ''}
       <ul class="order-items">${items.slice(0, 3).join('')}${moreItems ? `<li>${moreItems}</li>` : ''}</ul>
       <div class="order-footer">
         <strong class="order-total">${money(order.total_cents)}</strong>
-        ${waiting ? `<span class="order-deadline">Aceite <span class="timer" data-deadline="${esc(order.acceptance_deadline || '')}">${deadlineRemaining(order.acceptance_deadline)}</span></span>` : ''}
-        ${order.payment_status === 'PAID' && !waiting ? '<span class="paid-indicator">✓ Pago</span>' : ''}
+        ${waiting ? order.training ? '<span class="order-deadline">Sem prazo</span>' :
+          `<span class="order-deadline">Aceite <span class="timer" data-deadline="${esc(order.acceptance_deadline || '')}">${deadlineRemaining(order.acceptance_deadline)}</span></span>` : ''}
+        ${stageDeadline ? `<span class="order-deadline">Próxima etapa <span class="timer" data-deadline="${esc(stageDeadline)}">${deadlineRemaining(stageDeadline)}</span></span>` : ''}
+        ${!order.training && order.payment_status === 'PAID' && !waiting ? '<span class="paid-indicator">✓ Pago</span>' : ''}
       </div>
       ${actions.length ? `<div class="order-actions">${actions.join('')}</div>` : ''}
       <details class="order-details" data-order-details="${esc(order.id)}" ${expandedOrderIds.has(order.id) ? 'open' : ''}>
         <summary>Detalhes ${moreItems ? `· ${totalItems} itens` : ''}</summary>
         <div class="order-details-content">
           <p><strong>Telefone:</strong> ${esc(order.phone)}</p>
-          <p><strong>Pagamento:</strong> ${esc(order.payment_status)}${order.asaas_environment === 'sandbox' ? ' · Sandbox, sem cobrança real' : ''}</p>
+          <p><strong>Pagamento:</strong> ${order.training ? 'Fictício — nenhum valor cobrado' :
+            esc(order.payment_status) + (order.asaas_environment === 'sandbox' ? ' · Sandbox, sem cobrança real' : '')}</p>
           ${paymentExpiration ? `<p><strong>Expira em:</strong> <span class="timer" data-deadline="${esc(paymentExpiration)}">${deadlineRemaining(paymentExpiration)}</span></p>` : ''}
           ${order.scheduled_for ? `<p><strong>Agendado:</strong> ${esc(formatDate(order.scheduled_for))}</p>` : ''}
           ${order.address ? `<p><strong>Endereço:</strong> ${esc(order.address)}</p>` : ''}
@@ -271,7 +303,10 @@
     if (pollBusy || $('#dashboard-view').hidden) return;
     pollBusy = true;
     try {
-      orders = (await api('/api/admin/orders')).orders || [];
+      const inTraining = trainingOn();
+      const loaded = inTraining ? training.list() : (await api('/api/admin/orders')).orders || [];
+      if (inTraining !== trainingOn()) return;
+      orders = loaded;
       if (activeTab === 'orders') renderOrders();
       else $('#pending-count').textContent = orders.filter(decisionDue).length;
     } catch (error) {
@@ -287,6 +322,18 @@
     if (!action && !refund && !dispatch && !ifoodDispatch) return;
     const id = action?.dataset.id || refund?.dataset.refund || dispatch?.dataset.uberDispatch ||
       ifoodDispatch?.dataset.ifoodDispatch;
+    if (trainingOn()) {
+      if (!id?.startsWith('TRN-') || !action ||
+          !['ACCEPT', 'REJECT'].includes(action.dataset.action)) return;
+      if (!training.act(id, action.dataset.action)) return;
+      orders = training.list();
+      renderOrders();
+      notify(action.dataset.action === 'ACCEPT'
+        ? 'Treinamento: pedido aceito. As próximas etapas avançam a cada 5 segundos.'
+        : 'Treinamento: pedido recusado (sem estorno real).');
+      return;
+    }
+    if (id?.startsWith('TRN-')) return; // never send training IDs to the API
     if (action?.dataset.action === 'REJECT' &&
       !confirm('Recusar este pedido pago e solicitar estorno pelo Asaas?')) return;
     if (action?.dataset.action === 'CANCEL_DELIVERY' &&
@@ -333,6 +380,15 @@
     $$('[data-deadline]').forEach(node => node.textContent = deadlineRemaining(node.dataset.deadline));
   }
   setInterval(updateClock, 1000);
+  setInterval(() => {
+    if (!trainingOn() || $('#dashboard-view').hidden) return;
+    const result = training.tick();
+    if (result.changed) {
+      orders = training.list();
+      if (activeTab === 'orders') renderOrders();
+      else $('#pending-count').textContent = training.pending();
+    }
+  }, 1000);
   setInterval(loadOrders, 8000);
 
   function renderProducts() {
@@ -512,6 +568,44 @@
       : 'ATENÇÃO: Produção realiza cobranças reais na conta vinculada à chave de produção.';
   }
   $('#settings-form').elements.paymentMode.addEventListener('change', updatePaymentEnvironment);
+  async function changeTrainingMode(enabled) {
+    if (!training) { notify('Não foi possível carregar o simulador.', true); return; }
+    if (enabled) training.activate();
+    else training.deactivate();
+    firstPoll = true;
+    lastPendingIds = new Set();
+    ordersRenderSignature = '';
+    updateTrainingUi();
+    notify(enabled ? 'Treinamento ativado neste navegador. Nenhum pedido real foi alterado.' :
+      'Treinamento desativado. Retornando à fila de pedidos reais.');
+    await switchTab('orders');
+  }
+  $('#training-toggle').addEventListener('change', event => {
+    changeTrainingMode(event.target.checked).catch(error => notify(error.message, true));
+  });
+  $('#training-stop').addEventListener('click', () => {
+    changeTrainingMode(false).catch(error => notify(error.message, true));
+  });
+  $('#training-go').addEventListener('click', () => switchTab('orders'));
+  $('#training-add-order').addEventListener('click', () => {
+    if (!trainingOn()) return;
+    if (!training.spawnNow()) {
+      notify('Há seis pedidos aguardando aceite. Aceite ou recuse um antes de gerar outro.', true);
+      return;
+    }
+    orders = training.list();
+    renderOrders();
+  });
+  $('#training-reset').addEventListener('click', async () => {
+    if (!trainingOn()) return;
+    if (!confirm('Reiniciar apenas os pedidos fictícios deste navegador?')) return;
+    training.reset();
+    firstPoll = true;
+    lastPendingIds = new Set();
+    ordersRenderSignature = '';
+    notify('Simulação reiniciada. Pedidos reais preservados.');
+    await switchTab('orders');
+  });
   $('#settings-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -795,7 +889,7 @@
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
-    $('#view-title').textContent = ({ orders: 'Pedidos recebidos', products: 'Controle do cardápio',
+    $('#view-title').textContent = ({ orders: trainingOn() ? 'Pedidos · Treinamento' : 'Pedidos recebidos', products: 'Controle do cardápio',
       settings: 'Funcionamento do restaurante', users: 'Usuários e acessos',
       history: 'Histórico de pedidos' })[tab];
     try {
