@@ -1,3 +1,4 @@
+import { getAppearance } from './appearance.mjs';
 import {
   ALLOWED_ORIGINS, reply, fail, safeEqual, hash, isPaymentsReady, storeSettings,
   clientConfig, getCatalog, priceCart, handleAdmin, sweepExpired, refundOrder,
@@ -351,6 +352,7 @@ export default {
         return createDeliveryQuote(request, env, origin);
       }
       if (pathname === '/api/config' && request.method === 'GET') return reply(await clientConfig(env), 200, origin);
+      if (pathname === '/api/appearance' && request.method === 'GET') return reply(await getAppearance(env), 200, origin);
       if (pathname === '/api/catalog' && request.method === 'GET') {
         return reply(await getCatalog(env), 200, origin);
       }

@@ -9,8 +9,10 @@
   <link rel="icon" href="assets/logo.webp" type="image/webp">
   <link rel="stylesheet" href="gestao.css?v=20261109-training">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
+  <link rel="stylesheet" href="appearance-admin.css?v=20261109-editor">
   <script src="training-engine.js?v=20261109-training" defer></script>
   <script src="gestao.js?v=20261109-training" defer></script>
+  <script type="module" src="appearance-admin.mjs?v=20261109-editor"></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -45,6 +47,7 @@
         <button type="button" data-tab="history"><span>◷</span> Histórico de pedidos</button>
         <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
         <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
+        <button type="button" data-tab="appearance" hidden><span>◈</span> Cores do site</button>
         <button type="button" data-tab="users" hidden><span>♙</span> Usuários e acessos</button>
       </nav>
       <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Ver site público ↗</a><button type="button" id="logout">Sair da central</button></div>
@@ -237,6 +240,51 @@
           <button type="submit" class="primary-btn save-settings">Salvar alterações</button>
         </form>
       </section>
+      <section id="appearance-view" class="view" hidden>
+  <div class="section-heading">
+    <div><span class="eyebrow">EXCLUSIVO DO PROPRIETÁRIO</span><h2>Editor visual de cores</h2></div>
+    <div class="appearance-actions">
+      <button type="button" class="subtle-btn" id="appearance-discard">Descartar alterações</button>
+      <button type="button" class="primary-btn small" id="appearance-save">Publicar cores no site</button>
+    </div>
+  </div>
+  <p class="appearance-description">Escolha uma página e altere cada cor com prévia imediata. Use <strong>Selecionar elemento</strong> para mudar o texto, fundo ou borda de qualquer item. Só os ajustes publicados aparecem aos clientes.</p>
+  <div id="appearance-status" class="appearance-status" role="status">Carregando configurações…</div>
+  <div class="appearance-workspace">
+    <div class="appearance-controls">
+      <label class="appearance-page-label" for="appearance-page">Página do site</label>
+      <select id="appearance-page" aria-label="Página para editar"></select>
+      <div class="appearance-section-top"><h3>Paleta desta página</h3><button type="button" class="subtle-btn" id="appearance-reset-page">Restaurar página</button></div>
+      <div class="appearance-swatches" id="appearance-page-swatches"></div>
+      <details class="appearance-details">
+        <summary>Áreas compartilhadas (cabeçalho, rodapé e carrinho)</summary>
+        <div class="appearance-swatches" id="appearance-global-swatches"></div>
+      </details>
+      <div class="appearance-section-top"><h3>Elementos individuais</h3><button type="button" class="subtle-btn" id="appearance-pick">Selecionar elemento</button></div>
+      <p class="appearance-help">Clique em um elemento na prévia para ajustar as cores dele separadamente. Os ajustes ficam vinculados à página selecionada.</p>
+      <div id="appearance-picked" hidden>
+        <strong id="appearance-picked-name"></strong>
+        <div class="appearance-swatches" id="appearance-element-swatches"></div>
+        <button type="button" class="subtle-btn" id="appearance-remove-element">Remover ajustes deste elemento</button>
+      </div>
+      <p id="appearance-element-summary" class="appearance-help"></p>
+    </div>
+    <div class="appearance-preview-column">
+      <div class="appearance-preview-toolbar">
+        <span>PRÉVIA AO VIVO · CLIENTES NÃO VEEM ATÉ PUBLICAR</span>
+        <div class="appearance-device-buttons">
+          <button type="button" class="subtle-btn is-selected" data-appearance-device="desktop">Computador</button>
+          <button type="button" class="subtle-btn" data-appearance-device="mobile">Celular</button>
+        </div>
+      </div>
+      <div class="appearance-viewport" id="appearance-viewport">
+        <iframe id="appearance-preview" title="Prévia do site Kipeixe" src="/?theme_editor=1#cardapio" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+      </div>
+      <p class="appearance-help">A prévia mostra o site real e usa os mesmos tamanhos de tela. É possível ajustar todas as cinco páginas independentemente.</p>
+    </div>
+  </div>
+</section>
+
       <section id="users-view" class="view" hidden>
         <div class="section-heading"><div><span class="eyebrow">ACESSO RESTRITO AO PROPRIETÁRIO</span>
           <h2>Usuários e acessos</h2></div></div>

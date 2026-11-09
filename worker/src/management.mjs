@@ -1,3 +1,4 @@
+import { getAppearance, saveAppearance } from './appearance.mjs';
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
 import { pbkdf2Sync } from 'node:crypto';
 import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
@@ -582,6 +583,19 @@ export async function handleAdmin(request, env, origin, url) {
   const userResult = await adminUsersRoute(request, env, origin, url, identity);
   if (userResult) return userResult;
   const actor = identity.username;
+  if (url.pathname === '/api/admin/appearance') {
+    if (identity.role !== 'owner') return fail('Somente o proprietário pode editar as cores.', 403, origin);
+    if (request.method === 'GET') return reply(await getAppearance(env), 200, origin);
+    if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
+    let data;
+    try { data = await limitedJson(request, 45000); }
+    catch { return fail('Configuração de cores inválida.', 400, origin); }
+    try {
+      const saved = await saveAppearance(env, data);
+      await audit(env, actor, 'APPEARANCE_CHANGED', 'site');
+      return reply({ ok:true, appearance:saved }, 200, origin);
+    } catch(error) { return fail(error.message, 422, origin); }
+  }
   if (url.pathname === '/api/admin/settings' && identity.role !== 'owner')
     return fail('Somente o proprietário pode alterar as configurações do restaurante.', 403, origin);
   const historyResult = await orderHistoryRoute(request, env, origin, url, identity);

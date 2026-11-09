@@ -96,6 +96,7 @@
     $('#operator-name').textContent = username;
     $('.main-nav [data-tab="users"]').hidden = role !== 'owner';
     $('.main-nav [data-tab="settings"]').hidden = role !== 'owner';
+    $('.main-nav [data-tab="appearance"]').hidden = role !== 'owner';
     updateTrainingUi();
   }
   function armAudio() {
@@ -885,19 +886,20 @@
   });
 
   async function switchTab(tab) {
-    if (tab === 'users' && currentRole !== 'owner') return;
+    if (['users', 'appearance', 'settings'].includes(tab) && currentRole !== 'owner') return;
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
     $('#view-title').textContent = ({ orders: trainingOn() ? 'Pedidos · Treinamento' : 'Pedidos recebidos', products: 'Controle do cardápio',
       settings: 'Funcionamento do restaurante', users: 'Usuários e acessos',
-      history: 'Histórico de pedidos' })[tab];
+      history: 'Histórico de pedidos', appearance: 'Aparência e cores do site' })[tab];
     try {
       if (tab === 'products') await loadCatalog();
       if (tab === 'settings') await loadSettings();
       if (tab === 'orders') await loadOrders();
       if (tab === 'users') await loadUsers();
       if (tab === 'history') await loadHistory();
+      if (tab === 'appearance') document.dispatchEvent(new CustomEvent('kipeixe:appearance-open'));
     } catch (error) { notify(error.message, true); }
   }
   $$('.main-nav button').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
