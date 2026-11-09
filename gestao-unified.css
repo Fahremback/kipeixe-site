@@ -1,0 +1,67 @@
+/* Keep the same compact desktop scale on every management tab.
+   Orders already uses these dimensions; do not enlarge the shell on tab changes. */
+@media (min-width: 741px) {
+  .dashboard { grid-template-columns: 192px minmax(0, 1fr); }
+  .dashboard .sidebar { padding: 18px 12px; gap: 17px; }
+  .dashboard .sidebar .brand-lockup { font-size: 14px; letter-spacing: .11em; }
+  .dashboard .sidebar .brand-lockup img { width: 33px; height: 33px; }
+  .dashboard .sidebar .sidebar-label { font-size: 9px; margin: 10px 9px -12px; }
+  .dashboard .sidebar .main-nav { gap: 6px; }
+  .dashboard .sidebar .main-nav button { padding: 9px 10px; font-size: 12px; gap: 8px; }
+  .dashboard .sidebar .main-nav button span { font-size: 16px; }
+  .dashboard .sidebar .sidebar-footer { padding: 7px; gap: 10px; font-size: 11px; }
+  .dashboard .main-panel { padding: 8px 18px 28px; }
+  .dashboard .topbar { padding-bottom: 6px; gap: 10px; }
+  .dashboard .topbar h1 { font-size: 21px; margin-top: 0; }
+  .dashboard .topbar .eyebrow { font-size: 9px; }
+  .dashboard .topbar-right { font-size: 11px; gap: 8px; }
+
+  /* Keep secondary pages compact without reducing actionable order controls. */
+  .dashboard .view:not(#orders-view) .section-heading { margin: 10px 0 8px; gap: 9px; }
+  .dashboard .view:not(#orders-view) .section-heading h2 { font-size: 19px; margin-top: 2px; }
+  .dashboard .view:not(#orders-view) .section-heading h3 { font-size: 16px; }
+  .dashboard .view:not(#orders-view) .eyebrow { font-size: 9px; }
+  .dashboard .view:not(#orders-view) .settings-card h3,
+  .dashboard .view:not(#orders-view) .editor-card h3 { font-size: 16px; }
+  .dashboard .view:not(#orders-view) label { font-size: 12px; gap: 5px; }
+  .dashboard .view:not(#orders-view) input:not([type="checkbox"]),
+  .dashboard .view:not(#orders-view) select,
+  .dashboard .view:not(#orders-view) textarea { padding: 8px 10px; font-size: 12px; border-radius: 8px; }
+  .dashboard .view:not(#orders-view) .primary-btn { padding: 9px 12px; font-size: 12px; border-radius: 9px; }
+  .dashboard .view:not(#orders-view) .primary-btn.small { padding: 8px 11px; }
+  .dashboard .view:not(#orders-view) .subtle-btn { padding: 7px 11px; font-size: 12px; border-radius: 8px; }
+  .dashboard .view:not(#orders-view) .settings-card,
+  .dashboard .view:not(#orders-view) .catalog-list,
+  .dashboard .view:not(#orders-view) .editor-card,
+  .dashboard .view:not(#orders-view) .categories-box { padding: 12px; border-radius: 12px; }
+  .dashboard .view:not(#orders-view) .settings-grid,
+  .dashboard .view:not(#orders-view) .catalog-layout,
+  .dashboard .view:not(#orders-view) .users-layout { gap: 12px; }
+  .dashboard .view:not(#orders-view) .settings-card,
+  .dashboard .view:not(#orders-view) .editor-card { gap: 9px; }
+
+  /* History: show more records at once at 1280x720 without cramped text. */
+  .dashboard #history-view .history-filters { gap: 8px; margin: 10px 0 9px; padding: 12px; border-radius: 11px; }
+  .dashboard #history-view .history-filters label { min-width: 120px; flex: 1 1 140px; }
+  .dashboard #history-view .history-filters label:first-child { flex: 2 1 190px; }
+  .dashboard #history-view .history-filters button { min-height: 34px; }
+  .dashboard #history-view .history-summary { margin: 8px 0; font-size: 12px; }
+  .dashboard #history-view .history-list { gap: 7px; }
+  .dashboard #history-view .history-row { padding: 10px 12px; gap: 10px; border-radius: 11px; }
+  .dashboard #history-view .history-row strong { font-size: 12px; }
+  .dashboard #history-view .history-row small { margin-top: 3px; font-size: 11px; }
+  .dashboard #history-view .history-row-right { gap: 9px; }
+  .dashboard #history-view .history-row button { padding: 7px 10px; font-size: 12px; }
+  .dashboard #history-view .history-pages { margin: 12px 0; }
+  .dashboard #history-view .history-detail { padding: 13px; margin: 13px 0; }
+
+  .dashboard #products-view .toolbar { grid-template-columns: minmax(0, 1fr) 175px; gap: 7px; }
+  .dashboard #products-view .product-row { padding: 9px 3px; gap: 8px; }
+  .dashboard #products-view .product-row button { padding: 6px 9px; font-size: 12px; }
+  .dashboard #settings-view .hour-row { margin-bottom: 6px; }
+  .dashboard #users-view .users-layout { margin-top: 10px; }
+  .dashboard #users-view .user-row { padding: 9px; gap: 10px; }
+}
+@media (min-width: 741px) and (max-height: 760px) {
+  .dashboard .main-panel { padding-top: 7px; }
+}
