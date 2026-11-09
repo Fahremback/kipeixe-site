@@ -29,6 +29,8 @@ try {
     'index.html', 'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css',
     'training-engine.js', 'styles.css', 'script.js', 'store-hours.js',
     'menu-data.js', 'meta-pixel.js', 'webmcp.js', 'favicon.ico',
+    'appearance-config.mjs', 'appearance-site.mjs', 'appearance-theme.css',
+    'appearance-admin.mjs', 'appearance-admin.css',
     'robots.txt', 'sitemap.xml', 'llms.txt', 'llms-full.txt'
   )
   foreach ($name in $publicFiles) {
@@ -55,6 +57,9 @@ try {
   if (-not (Test-Path (Join-Path $public 'gestao-unified.css'))) {
     throw 'O estilo compacto compartilhado nao foi incluido no pacote.'
   }
+  foreach ($name in @('appearance-config.mjs', 'appearance-site.mjs', 'appearance-admin.mjs', 'appearance-theme.css', 'appearance-admin.css')) {
+    if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo de aparencia ausente: ' + $name) }
+  }
   Write-Output ('Publicando commit ' + $commit.Substring(0, 7) + ' no Cloudflare Pages...')
   Push-Location $public
   try {
@@ -62,7 +67,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Falha na publicacao Cloudflare Pages.' }
   } finally { Pop-Location }
 
-  foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/gestao-unified.css')) {
+  foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/gestao-unified.css',
+      '/appearance-config.mjs', '/appearance-site.mjs', '/appearance-admin.mjs',
+      '/appearance-theme.css', '/appearance-admin.css')) {
     $url = 'https://' + $Project + '.pages.dev' + $path + '?rev=' + $commit.Substring(0, 12)
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
     if ([int]$response.StatusCode -ne 200) { throw ('Verificacao HTTP falhou: ' + $url) }
