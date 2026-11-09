@@ -9,6 +9,23 @@ let hoverTarget = null;
 const preview = window.parent !== window && new URLSearchParams(location.search).has('theme_editor');
 const allowedPage = page => Object.hasOwn(PAGE_NAMES, page);
 
+// Visual preview is read-only: never create real orders, payments or delivery requests.
+if (preview) {
+  const browserFetch = window.fetch.bind(window);
+  window.fetch = (input, options) => {
+    const method = String(options?.method || input?.method || 'GET').toUpperCase();
+    if (!['GET','HEAD','OPTIONS'].includes(method))
+      return Promise.reject(new Error('Prévia visual: operações de escrita desativadas.'));
+    return browserFetch(input, options);
+  };
+  document.addEventListener('click', event => {
+    if (pickerEnabled) return;
+    const link = event.target.closest?.('a[href]');
+    if (link && (link.origin !== location.origin || !link.hash.startsWith('#'))) event.preventDefault();
+  }, true);
+}
+
+
 function render(data) {
   try { appearance = validateAppearance(data); } catch { return; }
   stylesheet.textContent = makeAppearanceCss(appearance);
