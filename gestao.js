@@ -558,11 +558,23 @@
     if (!settings) return;
     const form = $('#settings-form');
     const mode = form.elements.paymentMode.value;
-    const ready = Boolean(settings.asaasEnvironments?.[mode]?.configured && settings.paymentSystemAvailable);
+    const credentials = settings.asaasEnvironments?.[mode] || {};
+    const ready = Boolean(credentials.configured && settings.paymentSystemAvailable);
     const status = $('#asaas-environment-status');
-    status.textContent = ready
-      ? 'Chave e webhook cadastrados — ambiente pronto para ativação.'
-      : 'Ambiente ainda não configurado. Cadastre a API Key e o webhook no servidor antes de ativar.';
+    if (credentials.apiKeyConfigured === false && credentials.webhookConfigured === true) {
+      status.textContent = 'API Key ausente. Token do webhook já cadastrado. Falta apenas cadastrar a chave de ' +
+        (mode === 'production' ? 'produção' : 'sandbox') + ' no servidor.';
+    } else if (credentials.apiKeyConfigured === true && credentials.webhookConfigured === false) {
+      status.textContent = 'API Key cadastrada. Token do webhook ausente neste ambiente.';
+    } else if (credentials.apiKeyConfigured === false && credentials.webhookConfigured === false) {
+      status.textContent = 'API Key e token do webhook ausentes neste ambiente.';
+    } else if (!settings.paymentSystemAvailable) {
+      status.textContent = 'Credenciais presentes, mas a integração está desabilitada no servidor.';
+    } else if (ready) {
+      status.textContent = 'API Key e webhook cadastrados. A conexão com o Asaas ainda precisa ser validada.';
+    } else {
+      status.textContent = 'Configuração incompleta. Confira as credenciais do ambiente no servidor.';
+    }
     status.classList.toggle('is-ready', ready);
     $('#asaas-risk-note').textContent = mode === 'sandbox'
       ? 'MODO TESTE: pedidos e pagamentos simulados, sem transferência real de dinheiro.'

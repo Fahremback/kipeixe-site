@@ -3,7 +3,7 @@ import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DE
 import { pbkdf2Sync } from 'node:crypto';
 import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
+import { paymentConfig, paymentConfigured, paymentCredentialStatus, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
 
@@ -607,8 +607,8 @@ export async function handleAdmin(request, env, origin, url) {
     if (request.method === 'GET') return reply({
       ...(await storeSettings(env)),
       asaasEnvironments: {
-        sandbox: { configured: paymentConfigured(env, 'sandbox') },
-        production: { configured: paymentConfigured(env, 'production') },
+        sandbox: paymentCredentialStatus(env, 'sandbox'),
+        production: paymentCredentialStatus(env, 'production'),
       },
       paymentSystemAvailable: env.PAYMENTS_ENABLED === 'true',
       uberDirectConfigured: uberConfigured(env),

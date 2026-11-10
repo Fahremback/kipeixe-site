@@ -11,10 +11,22 @@ export function paymentConfig(env, mode) {
   };
 }
 
-export function paymentConfigured(env, mode) {
+// Read-only readiness flags. Credential values never leave the Worker.
+export function paymentCredentialStatus(env, mode) {
   const cfg = paymentConfig(env, mode);
-  return Boolean(cfg.key && cfg.webhookToken &&
-    !cfg.key.includes('NAO_CONFIGURADA') && cfg.webhookToken.length >= 32);
+  const apiKeyConfigured = typeof cfg.key === 'string' &&
+    cfg.key.length > 0 && !cfg.key.includes('NAO_CONFIGURADA');
+  const webhookConfigured = typeof cfg.webhookToken === 'string' &&
+    cfg.webhookToken.length >= 32;
+  return {
+    apiKeyConfigured,
+    webhookConfigured,
+    configured: apiKeyConfigured && webhookConfigured,
+  };
+}
+
+export function paymentConfigured(env, mode) {
+  return paymentCredentialStatus(env, mode).configured;
 }
 
 export function paymentReady(env, mode) {
