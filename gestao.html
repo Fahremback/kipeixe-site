@@ -9,7 +9,7 @@
   <link rel="icon" href="favicon.ico?v=20261110-transparent" type="image/x-icon">
   <link rel="stylesheet" href="gestao.css?v=20261109-training">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
-  <link rel="stylesheet" href="appearance-admin.css?v=20261109-editor">
+  <link rel="stylesheet" href="appearance-admin.css?v=20261110-aligned">
   <script src="training-engine.js?v=20261109-training" defer></script>
   <script src="gestao.js?v=20261109-training" defer></script>
   <script type="module" src="appearance-admin.mjs?v=20261109-editor"></script>
@@ -251,7 +251,9 @@
   <p class="appearance-description">Escolha uma página e altere cada cor com prévia imediata. Use <strong>Selecionar elemento</strong> para mudar o texto, fundo ou borda de qualquer item. Só os ajustes publicados aparecem aos clientes.</p>
   <div id="appearance-status" class="appearance-status" role="status">Carregando configurações…</div>
   <div class="appearance-workspace">
-    <div class="appearance-controls">
+      <div class="appearance-controls-column">
+        <div class="appearance-column-heading">CORES DA PÁGINA</div>
+        <div class="appearance-controls">
       <label class="appearance-page-label" for="appearance-page">Página do site</label>
       <select id="appearance-page" aria-label="Página para editar"></select>
       <div class="appearance-section-top"><h3>Paleta desta página</h3><button type="button" class="subtle-btn" id="appearance-reset-page">Restaurar página</button></div>
@@ -268,6 +270,7 @@
         <button type="button" class="subtle-btn" id="appearance-remove-element">Remover ajustes deste elemento</button>
       </div>
       <p id="appearance-element-summary" class="appearance-help"></p>
+        </div>
     </div>
     <div class="appearance-preview-column">
       <div class="appearance-preview-toolbar">
