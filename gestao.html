@@ -9,10 +9,10 @@
   <link rel="icon" href="favicon.ico?v=20261110-transparent" type="image/x-icon">
   <link rel="stylesheet" href="gestao.css?v=20261109-training">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
-  <link rel="stylesheet" href="appearance-admin.css?v=20261110-aligned">
+  <link rel="stylesheet" href="appearance-admin.css?v=20261110-direct-edit">
   <script src="training-engine.js?v=20261109-training" defer></script>
   <script src="gestao.js?v=20261110-asaas-readiness" defer></script>
-  <script type="module" src="appearance-admin.mjs?v=20261109-editor"></script>
+  <script type="module" src="appearance-admin.mjs?v=20261110-direct-edit"></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -248,33 +248,38 @@
       <button type="button" class="primary-btn small" id="appearance-save">Publicar cores no site</button>
     </div>
   </div>
-  <p class="appearance-description">Escolha uma página e altere cada cor com prévia imediata. Use <strong>Selecionar elemento</strong> para mudar o texto, fundo ou borda de qualquer item. Só os ajustes publicados aparecem aos clientes.</p>
+  <p class="appearance-description">Clique diretamente no que deseja mudar na prévia. Os controles de cor aparecem junto do item e você vê o resultado na hora. Os clientes só veem as alterações depois de publicar.</p>
   <div id="appearance-status" class="appearance-status" role="status">Carregando configurações…</div>
   <div class="appearance-workspace">
       <div class="appearance-controls-column">
-        <div class="appearance-column-heading">CORES DA PÁGINA</div>
+        <div class="appearance-column-heading">EDITAR DIRETAMENTE NA PRÉVIA</div>
         <div class="appearance-controls">
       <label class="appearance-page-label" for="appearance-page">Página do site</label>
       <select id="appearance-page" aria-label="Página para editar"></select>
-      <div class="appearance-section-top"><h3>Paleta desta página</h3><button type="button" class="subtle-btn" id="appearance-reset-page">Restaurar página</button></div>
-      <div class="appearance-swatches" id="appearance-page-swatches"></div>
-      <details class="appearance-details">
-        <summary>Áreas compartilhadas (cabeçalho, rodapé e carrinho)</summary>
-        <div class="appearance-swatches" id="appearance-global-swatches"></div>
-      </details>
-      <div class="appearance-section-top"><h3>Elementos individuais</h3><button type="button" class="subtle-btn" id="appearance-pick">Selecionar elemento</button></div>
-      <p class="appearance-help">Clique em um elemento na prévia para ajustar as cores dele separadamente. Os ajustes ficam vinculados à página selecionada.</p>
+      <div class="appearance-visual-hint"><span class="appearance-visual-hint-icon" aria-hidden="true">↖</span><div><strong>Clique no que quer colorir</strong><p>Botão, texto, fundo, cartão ou borda: escolha na prévia e mude ali mesmo.</p></div></div>
+      <div class="appearance-section-top"><h3>Item escolhido</h3><button type="button" class="subtle-btn" id="appearance-pick">Pausar seleção</button></div>
+      <p class="appearance-help" id="appearance-selection-help">Aponte para um elemento da prévia e clique. Ele será destacado automaticamente.</p>
       <div id="appearance-picked" hidden>
         <strong id="appearance-picked-name"></strong>
         <div class="appearance-swatches" id="appearance-element-swatches"></div>
         <button type="button" class="subtle-btn" id="appearance-remove-element">Remover ajustes deste elemento</button>
       </div>
       <p id="appearance-element-summary" class="appearance-help"></p>
+      <details class="appearance-details appearance-advanced">
+        <summary>Mais opções: cores de toda a página</summary>
+        <div class="appearance-section-top"><h3>Paleta da página</h3><button type="button" class="subtle-btn" id="appearance-reset-page">Restaurar página</button></div>
+        <div class="appearance-swatches" id="appearance-page-swatches"></div>
+      </details>
+      <details class="appearance-details appearance-advanced">
+        <summary>Áreas compartilhadas (cabeçalho, rodapé e carrinho)</summary>
+        <div class="appearance-swatches" id="appearance-global-swatches"></div>
+      </details>
         </div>
     </div>
     <div class="appearance-preview-column">
       <div class="appearance-preview-toolbar">
-        <span>PRÉVIA AO VIVO · CLIENTES NÃO VEEM ATÉ PUBLICAR</span>
+        <span>CLIQUE PARA EDITAR</span>
+        <label class="appearance-preview-page" for="appearance-page-shortcut">Página <select id="appearance-page-shortcut" aria-label="Página da prévia"></select></label>
         <div class="appearance-device-buttons">
           <button type="button" class="subtle-btn is-selected" data-appearance-device="desktop">Computador</button>
           <button type="button" class="subtle-btn" data-appearance-device="mobile">Celular</button>
@@ -283,7 +288,7 @@
       <div class="appearance-viewport" id="appearance-viewport">
         <iframe id="appearance-preview" title="Prévia do site Kipeixe" src="/?theme_editor=1#cardapio" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
       </div>
-      <p class="appearance-help">A prévia mostra o site real e usa os mesmos tamanhos de tela. É possível ajustar todas as cinco páginas independentemente.</p>
+      <p class="appearance-help">Clique no elemento desejado e use a paleta que aparece junto dele. Role dentro da prévia para alcançar outras áreas do site.</p>
     </div>
   </div>
 </section>

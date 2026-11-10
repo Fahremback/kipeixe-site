@@ -9,7 +9,7 @@ let saved = emptyAppearance();
 let page = 'cardapio';
 let loaded = false;
 let picked = null;
-let picking = false;
+let picking = true;
 const copy = value => JSON.parse(JSON.stringify(value));
 const changed = () => JSON.stringify(draft) !== JSON.stringify(saved);
 const validHex = value => /^#[0-9a-f]{6}$/i.test(value);
@@ -31,6 +31,67 @@ function sendLive() {
   status(changed() ? 'Alterações em prévia — clique em “Publicar cores no site” para salvar.' : 'As cores estão salvas no site.');
   $('appearance-element-summary').textContent = `${draft.elements[page]?.length || 0} elemento(s) personalizado(s) nesta página.`;
 }
+const PAGE_PICK_SWATCHES = Object.freeze({
+  background:['Fundo','#fff9f1'],text:['Texto','#2c241d'],border:['Borda','#d4c6b7'],
+});
+const GLOBAL_PICK_SWATCHES = Object.freeze({
+  header: {header:['Fundo','#173527'],headerText:['Texto','#ffffff']},
+  footer: {footer:['Fundo','#2b2019'],footerText:['Texto','#ffffff']},
+});
+function pickedDefinition(selection) {
+  if (selection?.scope==='element' && isSafeElementSelector(selection.selector)) return ELEMENT_SWATCHES;
+  if (selection?.scope==='page') return PAGE_PICK_SWATCHES;
+  if (selection?.scope==='global') return GLOBAL_PICK_SWATCHES[selection.region];
+  return null;
+}
+function changePicked(key,value) {
+  if (!picked || !validHex(value) || !Object.hasOwn(pickedDefinition(picked)||{},key)) return;
+  if (picked.scope==='page') {
+    (draft.pages[page] ||= {})[key]=value;
+  } else if (picked.scope==='global') {
+    draft.global[key]=value;
+  } else {
+    const items=(draft.elements[page] ||= []);
+    let entry=items.find(item=>item.selector===picked.selector);
+    if (!entry) {
+      if (items.length>=80) {status('Limite de 80 elementos por página.',true);return;}
+      entry={selector:picked.selector,colors:{}};items.push(entry);
+    }
+    entry.colors[key]=value;
+  }
+  const source=picked.scope==='page'?'appearance-page-swatches':
+    picked.scope==='global'?'appearance-global-swatches':null;
+  if (source) {
+    const field=document.getElementById(`appearance-${source}-${key}`);
+    if (field) {
+      field.value=value;
+      const code=field.closest('.appearance-swatch')?.querySelector('code');
+      if (code) code.textContent=value;
+    }
+  }
+  sendLive();
+}
+function removePicked() {
+  if (!picked) return;
+  if (picked.scope==='element') {
+    draft.elements[page]=(draft.elements[page]||[]).filter(item=>item.selector!==picked.selector);
+    if (!draft.elements[page].length) delete draft.elements[page];
+  } else if (picked.scope==='page') {
+    for (const key of Object.keys(PAGE_PICK_SWATCHES)) delete draft.pages[page]?.[key];
+    swatches($('appearance-page-swatches'),PAGE_SWATCHES,draft.pages[page]||{},(key,value)=>{
+      (draft.pages[page] ||= {})[key]=value;
+    });
+  } else if (picked.scope==='global') {
+    for (const key of Object.keys(GLOBAL_PICK_SWATCHES[picked.region]||{})) delete draft.global[key];
+    swatches($('appearance-global-swatches'),GLOBAL_SWATCHES,draft.global,(key,value)=>{
+      draft.global[key]=value;
+    });
+  }
+  picked=null;
+  $('appearance-picked').hidden=true;
+  preview.contentWindow?.postMessage({type:'kipeixe:appearance-clear-selection'},location.origin);
+  sendLive();
+}
 function swatches(container, definition, values, change) {
   container.replaceChildren();
   for (const [key, [label, defaultColor]] of Object.entries(definition)) {
@@ -48,30 +109,33 @@ function swatches(container, definition, values, change) {
   }
 }
 function drawPage() {
+  $('appearance-page-shortcut').value=page;
   const colors=draft.pages[page]||{};
   swatches($('appearance-page-swatches'),PAGE_SWATCHES,colors,(key,value)=>{
     (draft.pages[page] ||= {})[key]=value;
   });
   picked=null;
   $('appearance-picked').hidden=true;
-  $('appearance-pick').textContent='Selecionar elemento';
-  picking=false;
-  preview.contentWindow?.postMessage({type:'kipeixe:appearance-pick-mode',enabled:false},location.origin);
+  picking=true;
+  $('appearance-pick').textContent='Pausar seleção';
+  $('appearance-pick').setAttribute('aria-pressed','true');
+  $('appearance-selection-help').textContent='Clique em qualquer elemento da prévia. A paleta aparece ao lado do item selecionado.';
+  preview.contentWindow?.postMessage({type:'kipeixe:appearance-clear-selection'},location.origin);
+  preview.contentWindow?.postMessage({type:'kipeixe:appearance-pick-mode',enabled:true},location.origin);
   sendLive();
 }
-function showPicked(name, selector, computed={}) {
-  if (!isSafeElementSelector(selector)) { status('Não foi possível selecionar esse elemento.',true);return; }
-  picked={selector,name,computed};
-  const existing=(draft.elements[page]||[]).find(e=>e.selector===selector);
+function showPicked(selection) {
+  const definition=pickedDefinition(selection);
+  if (!definition) {status('Não foi possível selecionar esse elemento.',true);return;}
+  const {scope,selector='',region='',label='Elemento',colors={}}=selection;
+  picked={scope,selector,region,label,computed:colors};
   $('appearance-picked').hidden=false;
-  $('appearance-picked-name').textContent=`Selecionado: ${name}`;
-  const base={...computed,...existing?.colors};
-  swatches($('appearance-element-swatches'),ELEMENT_SWATCHES,base,(key,value)=>{
-    const items=(draft.elements[page] ||= []);
-    let entry=items.find(item=>item.selector===selector);
-    if (!entry) {if (items.length>=80) {status('Limite de 80 elementos por página.',true);return;} entry={selector,colors:{}};items.push(entry);}
-    entry.colors[key]=value;
-  });
+  $('appearance-picked-name').textContent=`Selecionado na prévia: ${label}`;
+  $('appearance-selection-help').textContent='Mude as cores na paleta sobre o item, ou ajuste os mesmos controles abaixo.';
+  const stored=scope==='element' ? (draft.elements[page]||[]).find(e=>e.selector===selector)?.colors :
+    scope==='page' ? draft.pages[page] : draft.global;
+  swatches($('appearance-element-swatches'),definition,{...colors,...stored},changePicked);
+  $('appearance-remove-element').textContent=scope==='element'?'Restaurar cores deste elemento':'Restaurar estas cores';
 }
 async function load() {
   if (loaded) return;
@@ -86,25 +150,31 @@ async function load() {
 $('appearance-page').replaceChildren(...Object.entries(PAGE_NAMES).map(([id,name])=>{
   const option=document.createElement('option');option.value=id;option.textContent=name;return option;
 }));
+$('appearance-page-shortcut').replaceChildren(...[...$('appearance-page').options].map(option=>option.cloneNode(true)));
 $('appearance-page').value=page;
+$('appearance-page-shortcut').value=page;
 $('appearance-page').addEventListener('change',event=>{
   if (!(event.target.value in PAGE_NAMES)) return;
   page=event.target.value;drawPage();
 });
+$('appearance-page-shortcut').addEventListener('change',event=>{
+  if (!(event.target.value in PAGE_NAMES)) return;
+  page=event.target.value;
+  $('appearance-page').value=page;
+  drawPage();
+});
 $('appearance-pick').addEventListener('click',()=>{
   picking=!picking;
-  $('appearance-pick').textContent=picking?'Cancelar seleção':'Selecionar elemento';
+  $('appearance-pick').textContent=picking?'Pausar seleção':'Ativar seleção';
+  $('appearance-pick').setAttribute('aria-pressed',String(picking));
   preview.contentWindow?.postMessage({type:'kipeixe:appearance-pick-mode',enabled:picking},location.origin);
-  status(picking?'Clique no elemento desejado na prévia.':'Seleção cancelada.');
+  status(picking?'Clique no elemento desejado na prévia.':'Seleção pausada. Clique em “Ativar seleção” para editar de novo.');
 });
 $('appearance-reset-page').addEventListener('click',()=>{
   delete draft.pages[page];delete draft.elements[page];drawPage();
 });
 $('appearance-remove-element').addEventListener('click',()=>{
-  if (!picked) return;
-  draft.elements[page]=(draft.elements[page]||[]).filter(item=>item.selector!==picked.selector);
-  if (!draft.elements[page].length) delete draft.elements[page];
-  picked=null;$('appearance-picked').hidden=true;sendLive();
+  removePicked();
 });
 $('appearance-discard').addEventListener('click',()=>{
   draft=copy(saved);
@@ -129,18 +199,36 @@ for (const btn of document.querySelectorAll('[data-appearance-device]')) {
     document.querySelectorAll('[data-appearance-device]').forEach(b=>b.classList.toggle('is-selected',b===btn));
   });
 }
-preview.addEventListener('load',()=>{if (loaded) sendLive();});
+preview.addEventListener('load',()=>{
+  if (!loaded) return;
+  sendLive();
+  preview.contentWindow?.postMessage({type:'kipeixe:appearance-pick-mode',enabled:picking},location.origin);
+});
 window.addEventListener('message',event=>{
   if (event.origin!==location.origin || event.source!==preview.contentWindow) return;
-  if (event.data?.type==='kipeixe:appearance-ready' && loaded) sendLive();
+  if (event.data?.type==='kipeixe:appearance-ready' && loaded) {
+    sendLive();
+    preview.contentWindow?.postMessage({type:'kipeixe:appearance-pick-mode',enabled:picking},location.origin);
+  }
   if (event.data?.type==='kipeixe:appearance-picked') {
-    if (!(event.data.page in PAGE_NAMES)) return;
-    if (page!==event.data.page) {
+    if (event.data.scope!=='global' && !(event.data.page in PAGE_NAMES)) return;
+    if (event.data.scope!=='global' && page!==event.data.page) {
       page=event.data.page;$('appearance-page').value=page;drawPage();
     }
-    picking=false;$('appearance-pick').textContent='Selecionar elemento';
-    showPicked(event.data.label||'Elemento',event.data.selector,event.data.colors||{});
-    status('Elemento selecionado. Altere uma das três cores e veja a prévia.');
+    showPicked(event.data);
+    status('Elemento selecionado. Escolha uma cor na paleta que apareceu sobre a prévia.');
+  }
+  if (event.data?.type==='kipeixe:appearance-quick-color') {
+    if (!picked || event.data.scope!==picked.scope || (event.data.selector||'')!==picked.selector ||
+        (event.data.region||'')!==picked.region || (picked.scope!=='global' && event.data.page!==page)) return;
+    if (!validHex(event.data.color) || !Object.hasOwn(pickedDefinition(picked)||{},event.data.key)) return;
+    changePicked(event.data.key,event.data.color);
+    showPicked({...picked,colors:{...picked.computed,[event.data.key]:event.data.color}});
+  }
+  if (event.data?.type==='kipeixe:appearance-quick-reset') {
+    if (!picked || event.data.scope!==picked.scope || (event.data.selector||'')!==picked.selector ||
+        (event.data.region||'')!==picked.region || (picked.scope!=='global' && event.data.page!==page)) return;
+    removePicked();
   }
 });
 document.addEventListener('kipeixe:appearance-open',load);
