@@ -347,3 +347,139 @@
 @media(prefers-reduced-motion:reduce) {
   .menu-page .book-index button,.menu-page .menu-entry { transition: none; }
 }
+
+/* Horizontal discovery: each category is a compact row with its own sideways rail.
+   This keeps all categories visible in sequence instead of creating long product lists. */
+.menu-page .menu-items[data-menu-layout="rails"] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.menu-page .book-page:has(.menu-items[data-menu-layout="rails"]) > .page-heading { display: none; }
+.menu-page .menu-category-section {
+  min-width: 0;
+  max-width: 100%;
+  scroll-margin-top: 210px;
+}
+.menu-page .menu-category-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 7px;
+}
+.menu-page .menu-category-copy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.menu-page .menu-category-copy h3 {
+  margin: 0;
+  font: 850 20px/1.25 var(--sans,system-ui,sans-serif);
+  letter-spacing: -.035em;
+  color: var(--order-ink);
+}
+.menu-page .menu-category-copy span {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--order-muted);
+}
+.menu-page .menu-rail-controls { display: flex; gap: 6px; flex: none; }
+.menu-page .menu-rail-controls button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--order-border);
+  border-radius: 9px;
+  background: var(--order-card);
+  color: var(--order-ink);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.menu-page .menu-rail-controls button:disabled { opacity: .28; cursor: default; }
+.menu-page .menu-rail-controls button:not(:disabled):hover { border-color: var(--order-accent); color: var(--order-accent); }
+.menu-page .menu-category-rail {
+  display: flex;
+  gap: 11px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #d5c5b7 transparent;
+  padding: 2px 2px 8px;
+  min-width: 0;
+  max-width: 100%;
+  cursor: grab;
+}
+.menu-page .menu-category-rail.is-dragging,
+.menu-page .menu-category-rail.is-dragging * { cursor: grabbing !important; user-select: none !important; }
+.menu-page .menu-category-rail > .menu-entry,
+.menu-page .menu-category-rail > .menu-entry.has-photo {
+  flex: 0 0 clamp(295px, 30vw, 375px);
+  width: clamp(295px, 30vw, 375px);
+  max-width: calc(100vw - 65px);
+  min-height: 161px;
+  scroll-snap-align: start;
+  padding: 12px;
+  gap: 6px 11px;
+  grid-template-columns: minmax(0,1fr) 110px;
+}
+.menu-page .menu-category-rail .menu-entry-photo-button,
+.menu-page .menu-category-rail .menu-entry-photo-placeholder {
+  width: 110px;
+  height: 130px;
+}
+.menu-page .menu-items[data-menu-layout="search"] {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
+.menu-page .menu-items[data-menu-layout="search"] .menu-no-results { grid-column: 1/-1; }
+@media(max-width:950px) {
+  .menu-page .menu-items[data-menu-layout="search"] { grid-template-columns: 1fr; }
+}
+@media(max-width:760px) {
+  .menu-page .menu-items[data-menu-layout="rails"] { gap: 12px; }
+  .menu-page .menu-category-section { scroll-margin-top: 185px; }
+  .menu-page .menu-category-copy h3 { font-size: 18px; }
+  .menu-page .menu-category-rail { gap: 9px; padding-bottom: 6px; }
+  .menu-page .menu-category-rail > .menu-entry,
+  .menu-page .menu-category-rail > .menu-entry.has-photo {
+    flex-basis: min(83vw,310px);
+    width: min(83vw,310px);
+    max-width: none;
+    min-height: 151px;
+    padding: 10px;
+    grid-template-columns: minmax(0,1fr) 103px;
+  }
+  .menu-page .menu-category-rail .menu-entry-photo-button,
+  .menu-page .menu-category-rail .menu-entry-photo-placeholder {
+    width: 103px;
+    height: 125px;
+  }
+}
+@media(max-width:380px) {
+  .menu-page .menu-category-rail > .menu-entry,
+  .menu-page .menu-category-rail > .menu-entry.has-photo {
+    flex-basis: 82vw;
+    width: 82vw;
+    grid-template-columns: minmax(0,1fr) 86px;
+  }
+  .menu-page .menu-category-rail .menu-entry-photo-button,
+  .menu-page .menu-category-rail .menu-entry-photo-placeholder {
+    width: 86px;
+    height: 115px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .menu-page .menu-category-rail { scroll-behavior: auto; }
+}

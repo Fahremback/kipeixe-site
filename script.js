@@ -8,6 +8,7 @@
   }
 
   let MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
+  let lastCatalogSignature = null;
   const API = location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:8787'
     : 'https://api.restaurantekipeixe.com.br';
@@ -228,42 +229,128 @@
     `;
   };
 
-  const renderCategory = (index, animate = true) => {
+  const updateRailButtons = (rail) => {
+    const section = rail.closest('[data-category-section]');
+    if (!section) return;
+    const left = section.querySelector('[data-rail-prev]');
+    const right = section.querySelector('[data-rail-next]');
+    const remaining = rail.scrollWidth - rail.clientWidth;
+    if (left) left.disabled = rail.scrollLeft < 3;
+    if (right) right.disabled = remaining < 3 || rail.scrollLeft >= remaining - 3;
+  };
+
+  const prepareRails = () => {
+    qsa('[data-menu-rail]', menuItems).forEach((rail) => {
+      let drag = null;
+      let ignoreClickUntil = 0;
+      rail.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'mouse' || event.button !== 0) return;
+        drag = { x: event.clientX, start: rail.scrollLeft, active: false, pointerId: event.pointerId };
+      });
+      rail.addEventListener('pointermove', (event) => {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        const dx = event.clientX - drag.x;
+        if (!drag.active && Math.abs(dx) > 7) {
+          drag.active = true;
+          rail.classList.add('is-dragging');
+          rail.setPointerCapture(event.pointerId);
+        }
+        if (!drag.active) return;
+        rail.scrollLeft = drag.start - dx;
+        ignoreClickUntil = Date.now() + 350;
+        event.preventDefault();
+      });
+      const finishDrag = () => {
+        if (!drag) return;
+        if (drag.active) ignoreClickUntil = Date.now() + 350;
+        rail.classList.remove('is-dragging');
+        drag = null;
+      };
+      rail.addEventListener('pointerup', finishDrag);
+      rail.addEventListener('pointercancel', finishDrag);
+      rail.addEventListener('lostpointercapture', finishDrag);
+      rail.addEventListener('click', (event) => {
+        if (Date.now() < ignoreClickUntil) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+      rail.addEventListener('scroll', () => updateRailButtons(rail), { passive: true });
+      updateRailButtons(rail);
+    });
+  };
+
+  const renderAllCategories = () => {
+    menuItems.dataset.menuLayout = 'rails';
+    menuItems.innerHTML = MENU.map((category, index) => `
+      <section class="menu-category-section" data-category-section="${index}"
+        aria-labelledby="menu-category-title-${index}">
+        <div class="menu-category-head">
+          <div class="menu-category-copy">
+            <h3 id="menu-category-title-${index}">${escapeHtml(category.title)}</h3>
+            <span>${category.items.length} ${category.items.length === 1 ? 'opção' : 'opções'}</span>
+          </div>
+          <div class="menu-rail-controls" aria-label="Navegar nos pratos de ${escapeHtml(category.title)}">
+            <button type="button" data-rail-prev aria-label="Voltar pratos de ${escapeHtml(category.title)}">‹</button>
+            <button type="button" data-rail-next aria-label="Ver mais pratos de ${escapeHtml(category.title)}">›</button>
+          </div>
+        </div>
+        <div class="menu-category-rail" data-menu-rail tabindex="0"
+          aria-label="Pratos de ${escapeHtml(category.title)}. Deslize para o lado para ver mais.">
+          ${category.items.map((item) => renderMenuItem(item, category)).join('')}
+        </div>
+      </section>
+    `).join('');
+    prepareRails();
+    syncMenuControls();
+  };
+
+  const renderCategory = (index, scroll = true, rebuild = false) => {
     if (!MENU.length || !menuItems) return;
     if (menuSearch) menuSearch.value = '';
     if (menuSearchClear) menuSearchClear.hidden = true;
     if (menuSearchStatus) menuSearchStatus.textContent = '';
-    if (pageTurner) pageTurner.hidden = false;
+    if (pageTurner) pageTurner.hidden = true;
     currentCategory = Math.max(0, Math.min(MENU.length - 1, index));
     const category = MENU[currentCategory];
-
     categoryTitle.textContent = category.title;
     categoryEyebrow.textContent = category.eyebrow || 'Cardápio Kipeixe';
     pageNumber.textContent = String(currentCategory + 1).padStart(2, '0');
     categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
-    menuItems.innerHTML = category.items.map((item) => renderMenuItem(item, category)).join('');
-
+    if (rebuild || menuItems.dataset.menuLayout !== 'rails') renderAllCategories();
     prevCategory.disabled = currentCategory === 0;
     nextCategory.disabled = currentCategory === MENU.length - 1;
     renderMenuTabs();
-    syncMenuControls();
-
-    if (animate && bookPage && bookPage.animate) {
-      bookPage.animate(
-        [
-          { opacity: .35, transform: 'translateX(10px)' },
-          { opacity: 1, transform: 'translateX(0)' }
-        ],
-        { duration: 210, easing: 'ease-out' }
-      );
-    }
-
-    if (window.innerWidth < 761) {
+    if (scroll) {
+      qs(`[data-category-section="${currentCategory}"]`, menuItems)?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        block: 'start', inline: 'nearest'
+      });
       const active = qs('[data-category-index].is-active', categoryTabs);
       active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
-    if (animate) bookPage?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // The sticky category chips reflect the row currently visible while scrolling down.
+  let categoryScrollFrame = 0;
+  window.addEventListener('scroll', () => {
+    if (categoryScrollFrame || menuItems?.dataset.menuLayout !== 'rails') return;
+    categoryScrollFrame = requestAnimationFrame(() => {
+      categoryScrollFrame = 0;
+      const cutoff = window.innerWidth < 761 ? 205 : 216;
+      let visible = 0;
+      qsa('[data-category-section]', menuItems).forEach((section, index) => {
+        if (section.getBoundingClientRect().top <= cutoff) visible = index;
+      });
+      if (visible === currentCategory) return;
+      currentCategory = visible;
+      qsa('[data-category-index]', categoryTabs).forEach((button) => {
+        const active = Number(button.dataset.categoryIndex) === visible;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    });
+  }, { passive: true });
 
   const renderSearch = () => {
     if (!menuSearch || !menuItems) return;
@@ -286,6 +373,7 @@
     menuSearchStatus.textContent = label;
     menuSearchClear.hidden = false;
     if (pageTurner) pageTurner.hidden = true;
+    menuItems.dataset.menuLayout = 'search';
     menuItems.innerHTML = results.length
       ? results.map(({ item, category }) => renderMenuItem(item, category, true)).join('')
       : '<div class="menu-no-results" data-menu-no-results>Nenhum produto encontrado. Tente outro nome ou escolha uma categoria.</div>';
@@ -328,6 +416,14 @@
     const button = event.target.closest('[data-category-index]');
     if (!button) return;
     renderCategory(Number(button.dataset.categoryIndex));
+  });
+  menuItems?.addEventListener('click', (event) => {
+    const control = event.target.closest('[data-rail-prev], [data-rail-next]');
+    if (!control) return;
+    const rail = control.closest('[data-category-section]')?.querySelector('[data-menu-rail]');
+    if (!rail) return;
+    const distance = Math.max(rail.clientWidth * .8, 270);
+    rail.scrollBy({left: control.hasAttribute('data-rail-next') ? distance : -distance, behavior: 'smooth'});
   });
   qsa('[data-category-scroll]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -614,7 +710,7 @@
 
     if (!added.length) return;
     setPage('cardapio');
-    renderCategory(added[0].categoryIndex, false);
+    renderCategory(added[0].categoryIndex, true);
     for (const { item, price, variant } of added) {
       track('ViewContent', {
         content_name: item.name, content_ids: [makeItemId(item.name, variant)],
@@ -937,6 +1033,13 @@
 
   function updateMenuFromApi(categories) {
     if (!Array.isArray(categories) || categories.length === 0) return;
+    const signature = JSON.stringify(categories);
+    const needsRedraw = signature !== lastCatalogSignature;
+    lastCatalogSignature = signature;
+    const railPositions = needsRedraw
+      ? qsa('[data-category-section]', menuItems).map(section =>
+          section.querySelector('[data-menu-rail]')?.scrollLeft || 0)
+      : [];
     MENU = categories;
     const prices = new Map(MENU.flatMap(category => category.items.flatMap(item =>
       item.variants?.length
@@ -947,7 +1050,19 @@
       ...entry, ...prices.get(entry.id)
     }));
     currentCategory = Math.min(currentCategory, MENU.length - 1);
-    renderCategory(currentCategory, false);
+    if (needsRedraw) {
+      if (menuSearch?.value.trim()) {
+        renderSearch();
+      } else {
+        renderCategory(currentCategory, false, true);
+        qsa('[data-category-section]', menuItems).forEach((section, index) => {
+          const rail = section.querySelector('[data-menu-rail]');
+          if (!rail) return;
+          rail.scrollLeft = railPositions[index] || 0;
+          updateRailButtons(rail);
+        });
+      }
+    }
     renderCart();
   }
 
