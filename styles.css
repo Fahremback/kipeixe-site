@@ -135,7 +135,6 @@ img { display: block; max-width: 100%; }
 }
 
 .header-order b,
-.mini-cart b,
 .mobile-tabs b {
   display: grid;
   place-items: center;
@@ -278,7 +277,7 @@ img { display: block; max-width: 100%; }
 
 /* Menu book */
 .menu-page {
-  padding: 46px 24px 80px;
+  padding: 12px 24px 80px;
   background:
     radial-gradient(circle at 18% 8%, rgba(185,69,33,.10), transparent 28%),
     linear-gradient(135deg, #eee6d5, #f9f5ec 42%, #efe6d4);
@@ -340,30 +339,30 @@ img { display: block; max-width: 100%; }
   to { opacity: 1; transform: none; }
 }
 
-.menu-inside-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 24px;
-  margin-bottom: 22px;
-  padding-inline: 6px;
+.menu-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
-.menu-inside-head h2 { margin: 5px 0 0; font-family: var(--serif); font-size: clamp(38px,4vw,58px); font-weight: 500; line-height: 1; }
-.menu-inside-head h1 { margin: 6px 0 0; font-family: var(--serif); font-size: clamp(34px,4.5vw,56px); font-weight: 500; line-height: 1.06; letter-spacing: -.035em; }
-.menu-sales-copy { margin: 9px 0 0; max-width: 640px; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .menu-search {
-  margin-bottom: 18px;
-  padding: 17px 20px 12px;
+  margin-bottom: 12px;
+  padding: 9px 12px;
   border: 1px solid rgba(67,54,33,.12);
   border-radius: 14px;
   background: rgba(255,255,255,.85);
 }
-.menu-search > label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 850; color: var(--forest-950); }
+.menu-search > label:not(.menu-visually-hidden) { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 850; color: var(--forest-950); }
 .menu-search-controls { display: flex; gap: 10px; align-items: center; }
 .menu-search-controls input {
   width: 100%;
   min-width: 0;
-  min-height: 46px;
+  min-height: 42px;
   border: 1px solid rgba(67,54,33,.22);
   border-radius: 9px;
   padding: 12px 14px;
@@ -389,9 +388,7 @@ img { display: block; max-width: 100%; }
 .menu-entry-category { display: block; margin-bottom: 5px; font-size: 10px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; color: var(--red, #a85a2b); }
 .menu-no-results { grid-column: 1 / -1; padding: 34px 20px; text-align: center; color: var(--muted); line-height: 1.5; }
 .page-turner[hidden] { display: none; }
-.menu-head-actions { display: flex; align-items: center; gap: 10px; }
 .text-button { border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
-.mini-cart { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; padding: 8px 9px 8px 14px; background: var(--forest-950); color: #fff; font-weight: 850; }
 
 .book {
   position: relative;
@@ -1106,7 +1103,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .choice-card img { width: 130px; height: 122px; aspect-ratio: auto; }
   .choice-card > span { padding: 16px; }
 
-  .menu-page { padding: 18px 14px 56px; }
+  .menu-page { padding: 8px 14px 56px; }
   .menu-cover { min-height: calc(100vh - 122px); grid-template-columns: 1fr; border-radius: 8px 16px 16px 8px; }
   .cover-photo { min-height: 260px; max-height: 36vh; }
   .cover-body { padding: 38px 30px 46px; }
@@ -1114,11 +1111,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .cover-body h2 { font-size: 67px; }
   .cover-body > p:not(.eyebrow) { font-size: 14px; }
 
-  .menu-inside-head { align-items: center; margin-bottom: 14px; }
-  .menu-inside-head h1 { font-size: clamp(32px, 9vw, 42px); }
-  .menu-sales-copy { font-size: 13px; }
-  .menu-head-actions { display: none; }
-  .menu-search { padding: 13px 12px 9px; margin-bottom: 12px; }
+  .menu-search { padding: 8px 10px; margin-bottom: 9px; }
   .menu-search-controls input { min-height: 44px; font-size: 14px; }
   .text-button { display: none; }
   .book { display: block; min-height: 0; overflow: visible; border-radius: 9px; }
