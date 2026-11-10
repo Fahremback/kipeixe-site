@@ -269,50 +269,70 @@
 
   const renderMenuItem = (item, category, showCategory = false) => {
     let actions = '';
+    const photoSrc = itemImage(item.name, category.id);
+    const photo = photoSrc
+      ? `<button type="button" class="menu-entry-photo-button" data-photo-zoom
+          data-photo-src="${escapeHtml(versionAsset(photoSrc))}"
+          data-photo-name="${escapeHtml(item.name)}"
+          aria-label="Ampliar foto de ${escapeHtml(item.name)}">
+          <img class="menu-entry-photo" src="${escapeHtml(versionAsset(photoSrc))}"
+            alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+        </button>`
+      : '<div class="menu-entry-photo-placeholder" aria-hidden="true"><span>KIPEIXE</span></div>';
 
     if (Array.isArray(item.variants) && item.variants.length) {
+      const startingPrice = Math.min(...item.variants.map((variant) => Number(variant.price)));
       actions = `
-        <div class="variant-list">
-          ${item.variants.map((variant) => `
-            <button
-              type="button"
-              class="variant-button"
-              data-add-item
-              data-product-id="${escapeHtml(item.id || '')}"
-              data-name="${escapeHtml(item.name)}"
-              data-variant="${escapeHtml(variant.label || 'Opção')}"
-              data-price="${variant.price}"
-            >${escapeHtml(variant.label || 'Opção')} · ${currency.format(variant.price)}</button>
-          `).join('')}
+        <div class="menu-entry-actions">
+          <strong class="menu-entry-price">A partir de ${currency.format(startingPrice)}</strong>
+          <div class="variant-list" aria-label="Escolha o tamanho">
+            ${item.variants.map((variant) => `
+              <button type="button" class="variant-button" data-add-item
+                data-product-id="${escapeHtml(item.id || '')}"
+                data-name="${escapeHtml(item.name)}"
+                data-variant="${escapeHtml(variant.label || 'Opção')}"
+                data-price="${variant.price}"
+                aria-label="Adicionar ${escapeHtml(item.name)} ${escapeHtml(variant.label || 'Opção')} por ${currency.format(variant.price)}"
+              >${escapeHtml(variant.label || 'Opção')} · ${currency.format(variant.price)}</button>
+            `).join('')}
+          </div>
         </div>
       `;
     } else if (Number.isFinite(item.price)) {
       actions = `
         <div class="menu-entry-actions">
-          <span class="menu-entry-price">${currency.format(item.price)}</span>
-          <button
-            type="button"
-            class="add-button"
-            data-add-item
-            data-product-id="${escapeHtml(item.id || '')}"
-            data-name="${escapeHtml(item.name)}"
-            data-variant=""
-            data-price="${item.price}"
-          >+ Adicionar</button>
+          <strong class="menu-entry-price">${currency.format(item.price)}</strong>
+          <div class="menu-entry-control">
+            <button type="button" class="add-button" data-add-item
+              data-product-id="${escapeHtml(item.id || '')}"
+              data-name="${escapeHtml(item.name)}" data-variant="" data-price="${item.price}"
+              aria-label="Adicionar ${escapeHtml(item.name)} ao pedido"
+            >Adicionar <span aria-hidden="true">+</span></button>
+            <div class="menu-qty-controls" data-menu-qty-controls
+              data-cart-id="${escapeHtml(makeItemId(item.name))}" hidden>
+              <button type="button" data-menu-qty-minus aria-label="Diminuir ${escapeHtml(item.name)}">−</button>
+              <strong data-menu-qty-value>1</strong>
+              <button type="button" data-add-item
+                data-product-id="${escapeHtml(item.id || '')}"
+                data-name="${escapeHtml(item.name)}" data-variant="" data-price="${item.price}"
+                aria-label="Adicionar mais um ${escapeHtml(item.name)}">+</button>
+            </div>
+          </div>
         </div>
       `;
     } else {
-      actions = '<span class="consult-price">Consulte</span>';
+      actions = '<div class="menu-entry-actions"><span class="consult-price">Consulte o preço</span></div>';
     }
 
     return `
-      <article class="menu-entry">
+      <article class="menu-entry${photoSrc ? ' has-photo' : ''}">
         <div class="menu-entry-main">
           ${showCategory ? `<span class="menu-entry-category">${escapeHtml(category.title)}</span>` : ''}
           <h4>${escapeHtml(item.name)}</h4>
           ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
         </div>
         ${actions}
+        ${photo}
       </article>
     `;
   };
@@ -335,6 +355,7 @@
     prevCategory.disabled = currentCategory === 0;
     nextCategory.disabled = currentCategory === MENU.length - 1;
     renderMenuTabs();
+    syncMenuControls();
 
     if (animate && bookPage && bookPage.animate) {
       bookPage.animate(
@@ -350,6 +371,7 @@
       const active = qs('[data-category-index].is-active', categoryTabs);
       active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
+    if (animate) bookPage?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const renderSearch = () => {
@@ -377,6 +399,7 @@
       ? results.map(({ item, category }) => renderMenuItem(item, category, true)).join('')
       : '<div class="menu-no-results" data-menu-no-results>Nenhum produto encontrado. Tente outro nome ou escolha uma categoria.</div>';
     renderMenuTabs();
+    syncMenuControls();
   };
 
   menuSearch?.addEventListener('input', renderSearch);
@@ -393,6 +416,15 @@
     if (image.dataset.fallbackApplied === 'true') return;
 
     image.dataset.fallbackApplied = 'true';
+    if (image.matches('.menu-entry-photo')) {
+      const trigger = image.closest('[data-photo-zoom]');
+      const placeholder = document.createElement('div');
+      placeholder.className = 'menu-entry-photo-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      placeholder.innerHTML = '<span>KIPEIXE</span>';
+      trigger?.replaceWith(placeholder);
+      return;
+    }
     const fallbackSrc = versionAsset(FALLBACK_DISH_IMAGE);
     image.src = fallbackSrc;
 
@@ -405,6 +437,14 @@
     const button = event.target.closest('[data-category-index]');
     if (!button) return;
     renderCategory(Number(button.dataset.categoryIndex));
+  });
+  qsa('[data-category-scroll]').forEach((button) => {
+    button.addEventListener('click', () => {
+      categoryTabs?.scrollBy({
+        left: Number(button.dataset.categoryScroll) * Math.max(220, categoryTabs.clientWidth * .75),
+        behavior: 'smooth'
+      });
+    });
   });
   prevCategory?.addEventListener('click', () => renderCategory(currentCategory - 1));
   nextCategory?.addEventListener('click', () => renderCategory(currentCategory + 1));
@@ -565,6 +605,17 @@
   const cartCount = () => cart.reduce((sum, item) => sum + item.qty, 0);
   const cartValue = () => cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
+  const syncMenuControls = () => {
+    qsa('[data-menu-qty-controls]', menuItems).forEach((control) => {
+      const qty = cart.find((item) => item.id === control.dataset.cartId)?.qty || 0;
+      const addButton = control.parentElement?.querySelector('.add-button');
+      if (addButton) addButton.hidden = qty > 0;
+      control.hidden = qty === 0;
+      const amount = qs('[data-menu-qty-value]', control);
+      if (amount) amount.textContent = qty;
+    });
+  };
+
   const renderCart = () => {
     const count = cartCount();
     qsa('[data-cart-count]').forEach((node) => { node.textContent = count; });
@@ -578,6 +629,7 @@
       quickCheckout.setAttribute('aria-label', `Finalizar pedido. ${itemLabel}. Total ${totalLabel}`);
     }
     safeStorage.set('kipeixe_cart_v1', cart);
+    syncMenuControls();
 
     if (!cartItems || !cartEmpty || !cartCheckout) return;
     cartEmpty.hidden = count > 0;
@@ -683,12 +735,25 @@
   }
 
   menuItems?.addEventListener('click', (event) => {
+    const minus = event.target.closest('[data-menu-qty-minus]');
+    if (minus) {
+      const id = minus.closest('[data-menu-qty-controls]')?.dataset.cartId;
+      const entry = cart.find((item) => item.id === id);
+      if (entry) {
+        entry.qty -= 1;
+        cart = cart.filter((item) => item.qty > 0);
+        renderCart();
+      }
+      return;
+    }
     const button = event.target.closest('[data-add-item]');
     if (!button) return;
     addItem(button.dataset.name, button.dataset.variant, button.dataset.price, button.dataset.productId);
-    const original = button.textContent;
-    button.textContent = 'Adicionado ✓';
-    setTimeout(() => { button.textContent = original; }, 850);
+    if (button.matches('.variant-button')) {
+      const original = button.textContent;
+      button.textContent = 'Adicionado ✓';
+      setTimeout(() => { if (button.isConnected) button.textContent = original; }, 850);
+    }
   });
 
   qsa('[data-cart-open]').forEach((button) => button.addEventListener('click', openCart));
