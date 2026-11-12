@@ -90,7 +90,13 @@ export function asaasCheckoutItems(order) {
   return items;
 }
 
-async function createAsaasCheckout(order, env, mode) {
+export function asaasCheckoutBillingTypes(paymentMethod) {
+  if (paymentMethod == null || paymentMethod === '') return ['PIX', 'CREDIT_CARD'];
+  if (paymentMethod === 'PIX' || paymentMethod === 'CREDIT_CARD') return [paymentMethod];
+  throw new Error('Forma de pagamento inválida.');
+}
+
+async function createAsaasCheckout(order, env, mode, billingTypes) {
   const account = paymentConfig(env, mode);
   const callback = {
     successUrl: `${SITE}?pedido=${order.id}&retorno=pagamento#cardapio`,
@@ -103,7 +109,7 @@ async function createAsaasCheckout(order, env, mode) {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json',
       'User-Agent': 'Kipeixe-Orders/2.0', access_token: account.key },
     body: JSON.stringify({
-      billingTypes: ['PIX', 'CREDIT_CARD'], chargeTypes: ['DETACHED'], minutesToExpire: 60,
+      billingTypes, chargeTypes: ['DETACHED'], minutesToExpire: 60,
       externalReference: order.id, callback, items,
     }),
   });
@@ -136,13 +142,14 @@ async function createOrder(request, env, origin, ctx) {
   if (!isPaymentsReady(env, settings.paymentMode) || !settings.paymentsEnabled || !settings.ordersEnabled) {
     return fail('Pedidos online indisponíveis.', 503, origin);
   }
-  let body, buyer, schedule, priced;
+  let body, buyer, schedule, priced, billingTypes;
   try {
     if ((Number(request.headers.get('content-length')) || 0) > 25000) return fail('Pedido muito grande.', 413, origin);
     const text = await request.text();
     if (text.length > 25000) return fail('Pedido muito grande.', 413, origin);
     body = JSON.parse(text);
     buyer = validateBuyer(body, settings);
+    billingTypes = asaasCheckoutBillingTypes(body.paymentMethod);
     schedule = validateFulfillment(body.mode, body.scheduledAt, settings.hours);
     priced = await priceCart(env, body.items);
   } catch (error) {
@@ -218,7 +225,7 @@ async function createOrder(request, env, origin, ctx) {
     }
   }
   try {
-    const checkout = await createAsaasCheckout(order, env, settings.paymentMode);
+    const checkout = await createAsaasCheckout(order, env, settings.paymentMode, billingTypes);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
       updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
     if (settings.paymentMode === 'production' && env.META_CAPI_ACCESS_TOKEN) {

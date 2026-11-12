@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { asaasCheckoutItems } from '../src/app.mjs';
+import { asaasCheckoutItems, asaasCheckoutBillingTypes } from '../src/app.mjs';
 
 test('checkout items respect Asaas 30-character name limit', () => {
   const fullName = 'Filé de tilápia crocante ao molho especial (porção grande)';
@@ -29,4 +29,16 @@ test('short item names are preserved and description stays optional', () => {
   assert.equal(items[0].name, 'Tilápia');
   assert.equal(items[0].description, undefined);
   assert.equal(items[0].value, 55);
+});
+
+test('checkout accepts explicit Pix and credit-card selections', () => {
+  assert.deepEqual(asaasCheckoutBillingTypes('PIX'), ['PIX']);
+  assert.deepEqual(asaasCheckoutBillingTypes('CREDIT_CARD'), ['CREDIT_CARD']);
+});
+
+test('legacy checkout allows both; invalid methods are rejected', () => {
+  assert.deepEqual(asaasCheckoutBillingTypes(undefined), ['PIX', 'CREDIT_CARD']);
+  assert.deepEqual(asaasCheckoutBillingTypes(''), ['PIX', 'CREDIT_CARD']);
+  assert.throws(() => asaasCheckoutBillingTypes('BOLETO'), /Forma de pagamento/);
+  assert.throws(() => asaasCheckoutBillingTypes(['PIX']), /Forma de pagamento/);
 });

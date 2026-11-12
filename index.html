@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261110-direct-menu" />
+    <link rel="stylesheet" href="styles.css?v=20261112-payment-choice" />
     <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
     <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
@@ -373,11 +373,17 @@
                   <small>Confira seu pedido e finalize com segurança</small>
                 </div>
               </div>
-              <div class="checkout-payment-methods" aria-label="Formas de pagamento aceitas">
-                <span><b aria-hidden="true">◇</b> Pix</span>
-                <span><b aria-hidden="true">▣</b> Cartão de crédito</span>
+              <div class="checkout-payment-methods" role="radiogroup" aria-label="Escolha como pagar">
+                <label class="checkout-payment-option">
+                  <input type="radio" name="paymentMethod" value="PIX" checked />
+                  <span><b aria-hidden="true">◇</b> Pix</span>
+                </label>
+                <label class="checkout-payment-option">
+                  <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
+                  <span><b aria-hidden="true">▣</b> Cartão de crédito</span>
+                </label>
               </div>
-              <p class="checkout-payment-explainer">Escolha a forma de pagamento na próxima tela, no ambiente seguro do Asaas.</p>
+              <p class="checkout-payment-explainer">Escolha Pix ou cartão. O pagamento será concluído na página segura do Asaas.</p>
               <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
@@ -418,7 +424,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261110-horizontal-rails"></script>
+    <script src="script.js?v=20261112-payment-choice"></script>
     <script type="module" src="appearance-site.mjs?v=20261110-direct-edit"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.

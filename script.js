@@ -936,6 +936,15 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
+  function syncPaymentCaption() {
+    if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
+    const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
+    const caption = qs('small', onlineButton);
+    if (caption) caption.textContent = (method === 'CREDIT_CARD' ? 'Cartão de crédito' : 'Pix') +
+      (storeConfig.sandbox ? ' · Sandbox Asaas' : ' · Ambiente seguro Asaas');
+  }
+  qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
+    input.addEventListener('change', syncPaymentCaption));
   const hoursService = window.KIPEIXE_HOURS;
   const immediateInput = qs('input[name="mode"][value="immediate"]', orderForm);
   const scheduledInput = qs('input[name="mode"][value="scheduled"]', orderForm);
@@ -1109,6 +1118,7 @@
       if (checkoutDisclaimer) checkoutDisclaimer.textContent = storeConfig.sandbox
         ? 'AMBIENTE DE TESTES: cobrança simulada, sem dinheiro real. O restaurante só recebe o pedido após a confirmação do Asaas.'
         : 'Depois do pagamento, aguarde o aceite do Kipeixe. Pedidos imediatos sem resposta em 30 minutos são recusados, com solicitação de estorno.';
+      syncPaymentCaption();
       renderCart();
     } catch {
       // Falha fechada: checkout não envia pedidos por outro canal silenciosamente.
@@ -1219,10 +1229,24 @@
     const address = String(data.get('address') || '').trim();
     const mode = String(data.get('mode') || 'immediate');
     const dateInput = String(data.get('scheduledAt') || '');
+    const paymentMethod = String(data.get('paymentMethod') || '');
     setFieldError(nameInput, nameError, name.length < 2);
-    setFieldError(phoneInput, phoneError, phone.length < 10);
+    setFieldError(phoneInput, phoneError, phone.length < 10 || phone.length > 13);
     setFieldError(addressInput, addressError, type === 'Entrega' && !address);
-    if (!cart.length || name.length < 2 || phone.length < 10 || type === 'Entrega' && !address) return;
+    if (!cart.length || name.length < 2 || phone.length < 10 || phone.length > 13 || type === 'Entrega' && !address) {
+      showOrderStatus('Confira os dados', !cart.length
+        ? 'Adicione um produto antes de continuar.'
+        : 'Informe seu nome, telefone com DDD e endereço quando necessário.');
+      if (name.length < 2) nameInput?.focus();
+      else if (phone.length < 10 || phone.length > 13) phoneInput?.focus();
+      else if (type === 'Entrega' && !address) addressInput?.focus();
+      return;
+    }
+    if (!['PIX', 'CREDIT_CARD'].includes(paymentMethod)) {
+      showOrderStatus('Escolha como pagar', 'Selecione Pix ou cartão de crédito antes de continuar.');
+      qs('input[name="paymentMethod"]', orderForm)?.focus();
+      return;
+    }
     if (type === 'Entrega' && (!deliveryQuote || deliveryQuote.address !== address ||
         Date.parse(deliveryQuote.expiresAt) < Date.now() + 30000)) {
       deliveryQuoteStatus.textContent = 'Calcule ou atualize a taxa de entrega antes de pagar.';
@@ -1243,7 +1267,7 @@
     const attempt = {
       requestId: crypto.randomUUID(), accessToken: crypto.randomUUID(),
       customer: { name, phone, type, address, notes: String(data.get('notes') || '') },
-      mode, scheduledAt,
+      mode, scheduledAt, paymentMethod,
       items: cart.map(item => ({ productId: item.productId || undefined,
         name: item.name, variant: item.variant || '', qty: item.qty })),
       deliveryQuoteId: type === 'Entrega' ? deliveryQuote.quoteId : null,
