@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261112-inline-pix" />
+    <link rel="stylesheet" href="styles.css?v=20261112-payment-clean" />
     <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
     <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
@@ -370,45 +370,18 @@
               <div class="checkout-section-title">
                 <span>06</span>
                 <div>
-                  <strong id="checkout-payment-title">Pagamento</strong>
-                  <small>Confira seu pedido e finalize com segurança</small>
+                  <strong id="checkout-payment-title">Forma de pagamento</strong>
                 </div>
               </div>
               <div class="checkout-payment-methods" role="radiogroup" aria-label="Escolha como pagar">
                 <label class="checkout-payment-option">
                   <input type="radio" name="paymentMethod" value="PIX" checked />
-                  <span><b aria-hidden="true">◇</b><span>Pix<small>QR Code ou copia e cola</small></span></span>
+                  <span><b aria-hidden="true">◇</b><span>Pix</span></span>
                 </label>
                 <label class="checkout-payment-option">
                   <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
-                  <span><b aria-hidden="true">▣</b><span>Cartão<small>Crédito · Asaas seguro</small></span></span>
+                  <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
                 </label>
-              </div>
-              <div class="payment-method-preview" data-payment-pix-preview>
-                <div class="payment-qr-placeholder" aria-label="Espaço reservado para o QR Code Pix real após a confirmação do pedido">
-                  <span class="payment-qr-glyph" aria-hidden="true">▦</span>
-                  <strong>QR Code Pix</strong>
-                  <small>Seu código aparece aqui na próxima etapa</small>
-                </div>
-                <div class="payment-method-instructions">
-                  <strong>Pagou, confirmou.</strong>
-                  <p>Geramos um QR Code exclusivo do seu pedido. Você paga pelo aplicativo do banco, sem sair do Kipeixe.</p>
-                  <div class="payment-method-feature">✓ Pix copia e cola disponível</div>
-                  <div class="payment-method-feature">✓ Confirmação automática pelo Asaas</div>
-                </div>
-              </div>
-              <div class="payment-method-preview payment-card-preview" data-payment-card-preview hidden>
-                <div class="payment-visual-card" aria-hidden="true">
-                  <div class="payment-visual-card-top"><span>KIPEIXE</span><span>◈</span></div>
-                  <div class="payment-visual-card-chip"></div>
-                  <div class="payment-visual-card-bottom"><span>••••  ••••  ••••  ••••</span><span>▣</span></div>
-                </div>
-                <div class="payment-method-instructions">
-                  <strong>Cartão de crédito</strong>
-                  <p>Preencha os dados do cartão na página protegida do Asaas após confirmar seu pedido.</p>
-                  <div class="payment-method-feature">✓ Número e CVV protegidos pelo Asaas</div>
-                  <div class="payment-method-feature">✓ Sem salvar dados do cartão no Kipeixe</div>
-                </div>
               </div>
               <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
@@ -479,7 +452,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261112-inline-pix"></script>
+    <script src="script.js?v=20261112-payment-clean"></script>
     <script type="module" src="appearance-site.mjs?v=20261110-direct-edit"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.

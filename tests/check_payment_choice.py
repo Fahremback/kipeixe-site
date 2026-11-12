@@ -54,12 +54,14 @@ def run():
             page.locator('[data-quick-checkout]').click()
             page.locator('[data-online-checkout]').wait_for(state="visible")
             page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
+            assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com Pix'
+            assert 'Seu código aparece aqui na próxima etapa' not in page.content()
+            assert page.locator('[data-payment-pix-preview], [data-payment-card-preview]').count() == 0
             assert page.get_by_role("radio", name="Pix").is_checked()
             page.locator(".checkout-payment-option").nth(1).click()
             assert page.get_by_role("radio", name=re.compile("Cartão")).is_checked()
-            assert "Cartão seguro" in page.locator('[data-online-checkout]').inner_text()
-            assert page.locator('[data-payment-card-preview]').is_visible()
-            assert not page.locator('[data-payment-pix-preview]').is_visible()
+            assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com cartão'
+            assert page.locator('[data-online-hint]').is_hidden()
             page.locator('[data-online-checkout]').click()
             assert "Confira os dados" in page.locator('[data-online-status-title]').inner_text()
             assert api_calls == [], "Invalid form unexpectedly sent a real order"
@@ -111,7 +113,9 @@ def run():
             pix_page.get_by_role('button', name='Adicionar Água sem gás ao pedido').click()
             pix_page.locator('[data-quick-checkout]').click()
             pix_page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
-            assert pix_page.locator('[data-payment-pix-preview]').is_visible()
+            assert pix_page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com Pix'
+            assert pix_page.locator('[data-payment-pix-preview], [data-payment-card-preview]').count() == 0
+            assert not pix_page.locator('.pix-drawer').is_visible()
             pix_page.locator('[data-order-form] input[name="name"]').fill('Teste Pix')
             pix_page.locator('[data-order-form] input[name="phone"]').fill('45999999999')
             pix_page.locator('[data-online-checkout]').click()

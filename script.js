@@ -936,18 +936,13 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
-  const pixPreview = qs('[data-payment-pix-preview]');
-  const cardPreview = qs('[data-payment-card-preview]');
   function syncPaymentCaption() {
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
-    if (pixPreview) pixPreview.hidden = method === 'CREDIT_CARD';
-    if (cardPreview) cardPreview.hidden = method !== 'CREDIT_CARD';
     if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
     const caption = qs('small', onlineButton);
-    if (caption) caption.textContent = (method === 'CREDIT_CARD' ? 'Cartão seguro no Asaas' : 'QR Code Pix no Kipeixe') +
-      (storeConfig.sandbox ? ' · Sandbox Asaas' : ' · Ambiente seguro Asaas');
+    if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
     const title = qs('strong', onlineButton);
-    if (title) title.textContent = method === 'CREDIT_CARD' ? 'Continuar com cartão' : 'Gerar meu QR Code Pix';
+    if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
   }
   qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
     input.addEventListener('change', syncPaymentCaption));
@@ -1193,11 +1188,12 @@
       syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
       if (onlineButton) onlineButton.disabled = paymentBusy || !storeConfig.onlinePaymentEnabled;
-      if (onlineHint) onlineHint.textContent = storeConfig.onlinePaymentEnabled
-        ? (storeConfig.sandbox
+      if (onlineHint) {
+        onlineHint.hidden = storeConfig.onlinePaymentEnabled && !storeConfig.sandbox;
+        onlineHint.textContent = storeConfig.onlinePaymentEnabled
           ? 'Ambiente de testes: nenhum valor real será cobrado.'
-          : 'Pagamento protegido pelo Asaas. Seu pedido só segue após confirmação.')
-        : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+          : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+      }
       const deliveryChoice = qs('[data-order-choice="Entrega"]');
       if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
       if (deliveryQuoteButton) deliveryQuoteButton.textContent =
@@ -1210,14 +1206,12 @@
       const onlineLabel = qs('strong', onlineButton);
       const onlineCaption = qs('small', onlineButton);
       if (onlineLabel) onlineLabel.textContent = !storeConfig.onlinePaymentEnabled
-        ? 'Pagamento indisponível'
-        : storeConfig.sandbox ? 'Abrir pagamento de teste' : 'Continuar para pagamento';
+        ? 'Pagamento indisponível' : 'Pagar agora';
       if (onlineCaption) onlineCaption.textContent = storeConfig.sandbox
-        ? 'Pix ou cartão fictícios · Sandbox Asaas'
-        : 'Pix ou cartão · Ambiente seguro Asaas';
+        ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
       if (checkoutDisclaimer) checkoutDisclaimer.textContent = storeConfig.sandbox
         ? 'AMBIENTE DE TESTES: cobrança simulada, sem dinheiro real. O restaurante só recebe o pedido após a confirmação do Asaas.'
-        : 'Depois do pagamento, aguarde o aceite do Kipeixe. Pedidos imediatos sem resposta em 30 minutos são recusados, com solicitação de estorno.';
+        : 'Seu pedido será enviado ao Kipeixe após a confirmação do pagamento e ficará sujeito ao aceite do restaurante.';
       syncPaymentCaption();
       renderCart();
     } catch {
@@ -1229,6 +1223,7 @@
         qs('small', onlineButton).textContent = 'Falha ao conectar ao Asaas. Tente novamente.';
       }
       if (onlineHint) onlineHint.textContent = 'Não foi possível consultar o serviço de pagamento. Nenhum pedido foi realizado.';
+      if (onlineHint) onlineHint.hidden = false;
       syncSchedule();
     }
   }
