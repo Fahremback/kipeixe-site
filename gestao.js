@@ -802,6 +802,7 @@
       ORDER_STATUS_CORRECTED: 'Marcação corrigida',
       IFOOD_DISPATCH_RETRY: 'Nova tentativa de despacho iFood',
       UBER_DISPATCH_RETRY: 'Nova tentativa de despacho Uber',
+      ASAAS_CHECKOUT_FAILED: 'Falha ao iniciar pagamento Asaas',
     };
     $('#history-events').innerHTML = `
       <div class="history-event"><strong>Pedido registrado</strong>

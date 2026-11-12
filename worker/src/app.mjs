@@ -247,12 +247,19 @@ async function createOrder(request, env, origin, ctx) {
   } catch (error) {
     const providerStatus = Number.isInteger(error?.asaasHttpStatus) ? error.asaasHttpStatus : null;
     const providerCode = String(error?.asaasCode || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+    const reason = providerStatus
+      ? 'Asaas HTTP ' + providerStatus + (providerCode ? ' (' + providerCode + ')' : '')
+      : (error?.name === 'TimeoutError' ? 'Timeout ao chamar Asaas' : 'Falha de transporte ou resposta');
     console.error('Asaas checkout failed', JSON.stringify({
       orderId: order.id, httpStatus: providerStatus, apiCode: providerCode,
       failureKind: providerStatus ? 'provider' : error?.name === 'TimeoutError' ? 'timeout' : 'unknown'
     }));
+    // Store safe diagnostics for the authenticated administrative order timeline, never secrets.
+    await env.DB.prepare('INSERT INTO audit_log(actor,action,subject,details) VALUES (?,?,?,?)')
+      .bind('sistema', 'ASAAS_CHECKOUT_FAILED', order.id, JSON.stringify({ reason })).run()
+      .catch(e => console.warn('Asaas diagnostic logging failed:', e.name));
     // A creation may have reached Asaas even when the response was lost.
-    await env.DB.prepare("UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    await env.DB.prepare("UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=? AND checkout_id IS NULL AND payment_status='CREATING'")
       .bind(order.id).run();
     const message = providerStatus === 401
       ? 'Asaas recusou a API Key de produção (HTTP 401). O restaurante precisa revisar as credenciais.'
@@ -321,7 +328,13 @@ async function webhook(request, env, ctx, mode) {
   // A retry must still apply the state change if a prior attempt failed after this INSERT.
   await env.DB.prepare(`INSERT OR IGNORE INTO webhook_events(id,checkout_id,event) VALUES (?,?,?)`)
     .bind(payload.id, checkout.id, event).run();
-  if (event === 'CHECKOUT_PAID') {
+  if (event === 'CHECKOUT_CREATED') {
+    // Recover a checkout ID and URL when Asaas created it but the original HTTP response was lost.
+    await env.DB.prepare(
+      "UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING', updated_at=CURRENT_TIMESTAMP " +
+      "WHERE id=? AND checkout_id IS NULL AND payment_status IN ('CREATING','REVIEW') AND fulfillment_status='AWAITING_PAYMENT'"
+    ).bind(checkout.id, checkoutLink(checkout.id, mode), row.id).run();
+  } else if (event === 'CHECKOUT_PAID') {
     const paidAt = new Date().toISOString();
     const deadline = acceptanceDeadline(paidAt, row.scheduled_for);
     const late = deadline <= paidAt;
