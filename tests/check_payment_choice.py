@@ -1,5 +1,6 @@
 """Local checkout regression; all API/payment requests are mocked."""
 import json
+import base64
 import re
 import threading
 from functools import partial
@@ -55,8 +56,10 @@ def run():
             page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
             assert page.get_by_role("radio", name="Pix").is_checked()
             page.locator(".checkout-payment-option").nth(1).click()
-            assert page.get_by_role("radio", name="Cartão de crédito").is_checked()
-            assert "Cartão de crédito" in page.locator('[data-online-checkout]').inner_text()
+            assert page.get_by_role("radio", name=re.compile("Cartão")).is_checked()
+            assert "Cartão seguro" in page.locator('[data-online-checkout]').inner_text()
+            assert page.locator('[data-payment-card-preview]').is_visible()
+            assert not page.locator('[data-payment-pix-preview]').is_visible()
             page.locator('[data-online-checkout]').click()
             assert "Confira os dados" in page.locator('[data-online-status-title]').inner_text()
             assert api_calls == [], "Invalid form unexpectedly sent a real order"
@@ -68,6 +71,58 @@ def run():
             assert api_calls[0]["paymentMethod"] == "CREDIT_CARD"
             assert api_calls[0]["items"][0]["qty"] == 1
             assert api_calls[0]["expectedTotalCents"] == 600
+
+            # A real inline Pix page must only show a QR that came from Asaas.
+            pix_orders = []
+            png = base64.b64encode(bytes.fromhex(
+                '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489'
+                '0000000b49444154789c636000020000050001a5f645400000000049454e44ae426082'
+            )).decode()
+            pix_data = {
+                "payload": "000201" + "a" * 70, "image": png,
+                "expiresAt": "2027-12-31T23:59:59.000Z",
+            }
+            def pix_route(route):
+                path = route.request.url.split('?', 1)[0]
+                if path.endswith('/api/config'):
+                    data, status = cfg, 200
+                elif path.endswith('/api/catalog'):
+                    data, status = {"categories": []}, 200
+                elif path.endswith('/api/orders') and route.request.method == 'POST':
+                    pix_orders.append(route.request.post_data_json)
+                    data, status = {
+                        "orderId": "01234567-89ab-4cde-8f01-234567890abc",
+                        "paymentMode": "production", "paymentMethod": "PIX",
+                        "totalCents": 600, "pix": pix_data,
+                    }, 201
+                elif '/api/orders/' in path and route.request.method == 'GET':
+                    data, status = {
+                        "orderId": "01234567-89ab-4cde-8f01-234567890abc",
+                        "orderStatus": "AWAITING_PAYMENT", "paymentStatus": "PENDING",
+                        "paymentMethod": "PIX", "totalCents": 600, "pix": pix_data,
+                    }, 200
+                else:
+                    return route.fulfill(status=404, body='not found')
+                return route.fulfill(status=status, headers={"Access-Control-Allow-Origin": local_origin},
+                                     content_type='application/json', body=json.dumps(data))
+            pix_page = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=1)
+            pix_page.route('http://127.0.0.1:8787/**', pix_route)
+            pix_page.goto(local_origin + '/#cardapio', wait_until='domcontentloaded')
+            pix_page.get_by_role('button', name='Adicionar Água sem gás ao pedido').click()
+            pix_page.locator('[data-quick-checkout]').click()
+            pix_page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
+            assert pix_page.locator('[data-payment-pix-preview]').is_visible()
+            pix_page.locator('[data-order-form] input[name="name"]').fill('Teste Pix')
+            pix_page.locator('[data-order-form] input[name="phone"]').fill('45999999999')
+            pix_page.locator('[data-online-checkout]').click()
+            pix_page.locator('.pix-drawer.is-open').wait_for(state='visible')
+            assert len(pix_orders) == 1
+            assert pix_orders[0]['paymentMethod'] == 'PIX'
+            assert pix_page.locator('[data-pix-image]').get_attribute('src').startswith('data:image/png;base64,')
+            assert pix_page.locator('[data-pix-code]').input_value() == pix_data['payload']
+            assert 'R$ 6,00' in pix_page.locator('[data-pix-total]').inner_text().replace('\xa0', ' ')
+            pix_page.locator('[data-pix-close]').last.click()
+            assert not pix_page.locator('.pix-drawer').get_attribute('class').endswith('is-open')
 
             # Simulate an Asaas refusal without any external financial request.
             rejected_orders = []

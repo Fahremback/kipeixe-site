@@ -936,12 +936,18 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
+  const pixPreview = qs('[data-payment-pix-preview]');
+  const cardPreview = qs('[data-payment-card-preview]');
   function syncPaymentCaption() {
-    if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
+    if (pixPreview) pixPreview.hidden = method === 'CREDIT_CARD';
+    if (cardPreview) cardPreview.hidden = method !== 'CREDIT_CARD';
+    if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
     const caption = qs('small', onlineButton);
-    if (caption) caption.textContent = (method === 'CREDIT_CARD' ? 'Cartão de crédito' : 'Pix') +
+    if (caption) caption.textContent = (method === 'CREDIT_CARD' ? 'Cartão seguro no Asaas' : 'QR Code Pix no Kipeixe') +
       (storeConfig.sandbox ? ' · Sandbox Asaas' : ' · Ambiente seguro Asaas');
+    const title = qs('strong', onlineButton);
+    if (title) title.textContent = method === 'CREDIT_CARD' ? 'Continuar com cartão' : 'Gerar meu QR Code Pix';
   }
   qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
     input.addEventListener('change', syncPaymentCaption));
@@ -958,6 +964,7 @@
   const onlineStatusTitle = qs('[data-online-status-title]');
   const onlineStatusMessage = qs('[data-online-status-message]');
   const onlineStatusRefresh = qs('[data-online-status-refresh]');
+  const onlinePixOpen = qs('[data-online-pix-open]');
   const onlineStatusLink = qs('[data-online-status-link]');
   const uberTrackingLink = qs('[data-uber-tracking]');
   const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
@@ -966,6 +973,99 @@
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
   let paymentBusy = false;
   let statusInterval = null;
+  const pixDrawer = qs('[data-pix-drawer]');
+  const pixPanel = qs('.pix-panel', pixDrawer);
+  const pixImage = qs('[data-pix-image]', pixDrawer);
+  const pixCode = qs('[data-pix-code]', pixDrawer);
+  const pixExpiration = qs('[data-pix-expiration]', pixDrawer);
+  const pixTotal = qs('[data-pix-total]', pixDrawer);
+  const pixCopy = qs('[data-pix-copy]', pixDrawer);
+  const pixCheck = qs('[data-pix-check]', pixDrawer);
+  const pixProgress = qs('.pix-payment-progress', pixDrawer);
+  const pixProgressTitle = qs('[data-pix-progress-title]', pixDrawer);
+  const pixProgressNote = qs('[data-pix-progress-note]', pixDrawer);
+  let availablePix = null;
+
+  function closePix() {
+    pixDrawer?.classList.remove('is-open');
+    pixDrawer?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('pix-open');
+    onlinePixOpen?.focus({ preventScroll: true });
+  }
+
+  function displayPix(pix, totalCents) {
+    if (!pix || !/^[A-Za-z0-9+/=]{40,50000}$/.test(pix.image || '') ||
+        typeof pix.payload !== 'string' || pix.payload.length < 30 || pix.payload.length > 5000 ||
+        !Number.isFinite(Date.parse(pix.expiresAt))) return false;
+    availablePix = { ...pix, totalCents };
+    if (pixImage) pixImage.src = 'data:image/png;base64,' + pix.image;
+    if (pixCode) pixCode.value = pix.payload;
+    if (pixTotal) pixTotal.textContent = currency.format(totalCents / 100);
+    if (onlinePixOpen) onlinePixOpen.hidden = false;
+    updatePixExpiration();
+    return true;
+  }
+
+  function updatePixExpiration() {
+    if (!availablePix || !pixExpiration) return;
+    const remaining = Math.ceil((Date.parse(availablePix.expiresAt) - Date.now()) / 1000);
+    pixExpiration.textContent = remaining > 0
+      ? `Código válido por ${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
+      : 'Prazo de pagamento encerrado';
+    if (remaining <= 0 && !pixPanel?.classList.contains('is-complete')) {
+      pixCopy.disabled = true;
+      if (pixProgressTitle) pixProgressTitle.textContent = 'Prazo do QR Code encerrado';
+      if (pixProgressNote) pixProgressNote.textContent = 'Verifique o status antes de tentar fazer outro pedido.';
+    }
+  }
+
+  function updatePixProgress(status) {
+    if (!pixProgress) return;
+    const paid = status === 'PAID';
+    const expired = status === 'EXPIRED' || status === 'CANCELED';
+    pixPanel?.classList.toggle('is-complete', paid || expired);
+    pixProgress.classList.toggle('is-paid', paid);
+    pixProgress.classList.toggle('is-expired', expired);
+    if (pixProgressTitle) pixProgressTitle.textContent = paid ? 'Pagamento confirmado' :
+      expired ? 'Código Pix expirado' : 'Aguardando pagamento';
+    if (pixProgressNote) pixProgressNote.textContent = paid
+      ? 'Recebemos a confirmação do Asaas. O Kipeixe irá avaliar seu pedido.'
+      : expired ? 'O código não está mais disponível para pagamento.'
+      : 'A confirmação é automática. Você também pode verificar abaixo.';
+    if (pixCheck) pixCheck.hidden = paid || expired;
+    if (onlinePixOpen) onlinePixOpen.hidden = paid || expired || !availablePix;
+    if (pixCopy) pixCopy.disabled = paid || expired ||
+      (availablePix && Date.parse(availablePix.expiresAt) <= Date.now());
+  }
+
+  function openPix() {
+    if (!availablePix || !pixDrawer) return;
+    pixDrawer.classList.add('is-open');
+    pixDrawer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('pix-open');
+    pixPanel?.focus({ preventScroll: true });
+    if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
+    checkOrderStatus();
+  }
+
+  qsa('[data-pix-close]').forEach(button => button.addEventListener('click', closePix));
+  onlinePixOpen?.addEventListener('click', openPix);
+  pixCheck?.addEventListener('click', async () => {
+    pixCheck.disabled = true;
+    try { await checkOrderStatus(); } finally { pixCheck.disabled = false; }
+  });
+  pixCopy?.addEventListener('click', async () => {
+    if (!availablePix || Date.parse(availablePix.expiresAt) <= Date.now()) return;
+    try {
+      await navigator.clipboard.writeText(availablePix.payload);
+      pixCopy.textContent = '✓ Código Pix copiado';
+    } catch {
+      pixCode?.focus();
+      pixCode?.select();
+      pixCopy.textContent = 'Selecione e copie o código acima';
+    }
+  });
+  setInterval(updatePixExpiration, 1000);
   let fulfillmentTouched = false;
 
   const activeOpeningHours = () => storeConfig?.openingHours ||
@@ -1195,6 +1295,14 @@
           '. Para receber, confirme os últimos 4 dígitos do seu telefone com o entregador.' : '';
       showOrderStatus(title, description + paymentText + refundText + courierText + ifoodText,
         data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
+      if (data.paymentMethod === 'PIX') {
+        if (data.pix) displayPix(data.pix, data.totalCents);
+        updatePixProgress(data.paymentStatus);
+        if (currentOrder?.pixPending && ['PAID', 'EXPIRED', 'CANCELED'].includes(data.paymentStatus)) {
+          currentOrder.pixPending = false;
+          safeStorage.set('kipeixe_current_order_v2', currentOrder);
+        }
+      }
       if (uberTrackingLink) {
         let safeTracking = null;
         try {
@@ -1222,10 +1330,11 @@
 
   async function startOnlineCheckout() {
     if (paymentBusy) return;
-    if (currentOrder?.reviewUnresolved) {
+    if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
       showOrderStatus('Pedido aguardando conferência',
-        'Já existe um pedido sem pagamento confirmado. Consulte o restaurante antes de criar outra cobrança.');
+        'Já existe um pedido com pagamento pendente. Confira o Pix antes de criar outra cobrança.');
       await checkOrderStatus();
+      if (currentOrder?.pixPending && availablePix) openPix();
       return;
     }
     if (!storeConfig?.onlinePaymentEnabled) {
@@ -1304,6 +1413,7 @@
       }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
+      if (paymentMethod === 'PIX') { currentOrder.hasPix = true; currentOrder.pixPending = true; }
       safeStorage.set('kipeixe_current_order_v2', currentOrder);
       track('InitiateCheckout', {
         value: cartValue(), currency: 'BRL', num_items: cartCount(),
@@ -1311,6 +1421,14 @@
           id: item.id, quantity: item.qty, item_price: item.price
         }))
       });
+      if (paymentMethod === 'PIX') {
+        if (!displayPix(result.pix, result.totalCents)) throw Error('QR Code inválido retornado pelo Asaas. Consulte o pedido antes de tentar novamente.');
+        updatePixProgress('PENDING');
+        showOrderStatus('Aguardando Pix', 'Escaneie o QR Code ou copie o código Pix para pagar.');
+        paymentBusy = false;
+        openPix();
+        return;
+      }
       if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
       window.location.assign(result.checkoutUrl);
     } catch (error) {
@@ -1347,11 +1465,15 @@
       checkOrderStatus();
       if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
     }
+    if (currentOrder?.hasPix && !returned.has('retorno') && !returned.has('pedido')) {
+      checkOrderStatus();
+    }
     applyProductDeepLink();
   });
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+      if (pixDrawer?.classList.contains('is-open')) { closePix(); return; }
       closePhoto();
       closeCart();
     }

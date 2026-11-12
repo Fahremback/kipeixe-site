@@ -425,20 +425,24 @@ async function asaas(env, mode, path, method = 'GET') {
 }
 
 export async function refundOrder(env, id) {
-  const order = await env.DB.prepare('SELECT id, checkout_id, refund_status, asaas_environment FROM orders WHERE id = ?').bind(id).first();
-  if (!order || !order.checkout_id || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
+  const order = await env.DB.prepare('SELECT id, checkout_id, payment_id, refund_status, asaas_environment FROM orders WHERE id = ?').bind(id).first();
+  if (!order || (!order.checkout_id && !order.payment_id) || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
   const claim = await env.DB.prepare(`UPDATE orders SET refund_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND refund_status IN ('PENDING', 'REVIEW')`).bind(id).run();
   if (!claim.meta.changes) return false;
   try {
-    const listing = await asaas(env, order.asaas_environment, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
-    const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
-    if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
-    await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(eligible[0].id, id).run();
-    await asaas(env, order.asaas_environment, `/payments/${encodeURIComponent(eligible[0].id)}/refund`, 'POST');
+    let paymentId = order.payment_id;
+    if (!paymentId) {
+      const listing = await asaas(env, order.asaas_environment, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
+      const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
+      if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
+      paymentId = eligible[0].id;
+      await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(paymentId, id).run();
+    }
+    await asaas(env, order.asaas_environment, `/payments/${encodeURIComponent(paymentId)}/refund`, 'POST');
     await env.DB.prepare(`UPDATE orders SET refund_status = 'REQUESTED', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
       .bind(id).run();
-    await audit(env, 'system', 'REFUND_REQUESTED', id, eligible[0].id);
+    await audit(env, 'system', 'REFUND_REQUESTED', id, paymentId);
     return true;
   } catch {
     await env.DB.prepare(`UPDATE orders SET refund_status = 'REVIEW', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
@@ -450,20 +454,22 @@ export async function refundOrder(env, id) {
 export async function sweepExpired(env, now = new Date()) {
   if (!env.DB) return 0;
   const deadline = now.toISOString();
-  // Asaas checkouts are valid for 60 minutes. Keep the local queue in sync
+  // Checkouts and one-use Pix QR codes are valid for 60 minutes. Keep the local queue in sync
   // even if CHECKOUT_EXPIRED was not delivered by the payment webhook.
   // REVIEW is intentionally excluded: its charge outcome is uncertain.
   await env.DB.prepare(`UPDATE orders SET payment_status='EXPIRED', updated_at=CURRENT_TIMESTAMP
-    WHERE payment_status='PENDING' AND datetime(created_at, '+60 minutes') <= datetime(?)`)
-    .bind(deadline).run();
-  const rows = (await env.DB.prepare(`SELECT id, checkout_id FROM orders
+    WHERE payment_status='PENDING' AND (
+      (checkout_id IS NOT NULL AND datetime(created_at, '+60 minutes') <= datetime(?)) OR
+      (pix_qr_id IS NOT NULL AND datetime(pix_expires_at) <= datetime(?)))`)
+    .bind(deadline, deadline).run();
+  const rows = (await env.DB.prepare(`SELECT id, checkout_id, payment_id FROM orders
     WHERE payment_status = 'PAID' AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED')
     AND acceptance_deadline IS NOT NULL AND acceptance_deadline <= ? LIMIT 100`)
     .bind(deadline).all()).results;
   let closed = 0;
   for (const row of rows) {
     const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status = 'AUTO_REJECTED',
-      refund_status = CASE WHEN checkout_id IS NULL THEN 'NOT_REQUIRED' ELSE 'PENDING' END,
+      refund_status = CASE WHEN checkout_id IS NULL AND payment_id IS NULL THEN 'NOT_REQUIRED' ELSE 'PENDING' END,
       closed_reason = 'Prazo de aceitação esgotado', updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND payment_status = 'PAID'
       AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED') AND acceptance_deadline <= ?`)
@@ -471,7 +477,7 @@ export async function sweepExpired(env, now = new Date()) {
     if (result.meta.changes) {
       closed++;
       await audit(env, 'system', 'AUTO_REJECTED', row.id);
-      if (row.checkout_id) await refundOrder(env, row.id);
+      if (row.checkout_id || row.payment_id) await refundOrder(env, row.id);
     }
   }
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at < ?').bind(Date.now()).run();

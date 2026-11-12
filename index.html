@@ -28,7 +28,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261112-payment-choice" />
+    <link rel="stylesheet" href="styles.css?v=20261112-inline-pix" />
     <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
     <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
@@ -244,6 +244,7 @@
           <p data-online-status-message></p>
           <div class="online-order-actions">
             <button data-online-status-refresh type="button" hidden>Verificar pagamento</button>
+            <button data-online-pix-open type="button" hidden>Mostrar QR Code Pix</button>
             <a data-online-status-link href="https://asaas.com" target="_blank" rel="noopener noreferrer" hidden>Retomar pagamento</a>
             <a data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entregador Uber</a>
           </div>
@@ -376,14 +377,39 @@
               <div class="checkout-payment-methods" role="radiogroup" aria-label="Escolha como pagar">
                 <label class="checkout-payment-option">
                   <input type="radio" name="paymentMethod" value="PIX" checked />
-                  <span><b aria-hidden="true">◇</b> Pix</span>
+                  <span><b aria-hidden="true">◇</b><span>Pix<small>QR Code ou copia e cola</small></span></span>
                 </label>
                 <label class="checkout-payment-option">
                   <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
-                  <span><b aria-hidden="true">▣</b> Cartão de crédito</span>
+                  <span><b aria-hidden="true">▣</b><span>Cartão<small>Crédito · Asaas seguro</small></span></span>
                 </label>
               </div>
-              <p class="checkout-payment-explainer">Escolha Pix ou cartão. O pagamento será concluído na página segura do Asaas.</p>
+              <div class="payment-method-preview" data-payment-pix-preview>
+                <div class="payment-qr-placeholder" aria-label="Espaço reservado para o QR Code Pix real após a confirmação do pedido">
+                  <span class="payment-qr-glyph" aria-hidden="true">▦</span>
+                  <strong>QR Code Pix</strong>
+                  <small>Seu código aparece aqui na próxima etapa</small>
+                </div>
+                <div class="payment-method-instructions">
+                  <strong>Pagou, confirmou.</strong>
+                  <p>Geramos um QR Code exclusivo do seu pedido. Você paga pelo aplicativo do banco, sem sair do Kipeixe.</p>
+                  <div class="payment-method-feature">✓ Pix copia e cola disponível</div>
+                  <div class="payment-method-feature">✓ Confirmação automática pelo Asaas</div>
+                </div>
+              </div>
+              <div class="payment-method-preview payment-card-preview" data-payment-card-preview hidden>
+                <div class="payment-visual-card" aria-hidden="true">
+                  <div class="payment-visual-card-top"><span>KIPEIXE</span><span>◈</span></div>
+                  <div class="payment-visual-card-chip"></div>
+                  <div class="payment-visual-card-bottom"><span>••••  ••••  ••••  ••••</span><span>▣</span></div>
+                </div>
+                <div class="payment-method-instructions">
+                  <strong>Cartão de crédito</strong>
+                  <p>Preencha os dados do cartão na página protegida do Asaas após confirmar seu pedido.</p>
+                  <div class="payment-method-feature">✓ Número e CVV protegidos pelo Asaas</div>
+                  <div class="payment-method-feature">✓ Sem salvar dados do cartão no Kipeixe</div>
+                </div>
+              </div>
               <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
@@ -393,6 +419,35 @@
             <small class="checkout-online-hint" data-online-hint role="status">Consultando o serviço de pagamento.</small>
             <small class="checkout-disclaimer" data-checkout-disclaimer>Seu pedido só é encaminhado ao restaurante após a confirmação do pagamento. O restaurante ainda precisa aceitar o pedido.</small>
           </form>
+        </div>
+      </section>
+    </aside>
+
+    <aside class="pix-drawer" data-pix-drawer aria-hidden="true">
+      <div class="pix-backdrop" data-pix-close></div>
+      <section class="pix-panel" role="dialog" aria-modal="true" aria-labelledby="pix-title" tabindex="-1">
+        <header class="pix-panel-header">
+          <div><span class="pix-panel-kicker">PAGAMENTO SEGURO · ASAAS</span><h2 id="pix-title">Pague seu pedido com Pix</h2></div>
+          <button type="button" data-pix-close aria-label="Fechar pagamento Pix">×</button>
+        </header>
+        <div class="pix-panel-body">
+          <div class="pix-panel-total"><span>Total a pagar</span><strong data-pix-total>R$ 0,00</strong></div>
+          <div class="pix-panel-qr-area">
+            <div class="pix-qr-card"><img data-pix-image alt="QR Code Pix exclusivo deste pedido" width="224" height="224" /></div>
+            <strong>Escaneie com o aplicativo do seu banco</strong>
+            <span class="pix-expiration" data-pix-expiration></span>
+          </div>
+          <div class="pix-code-area">
+            <label for="pix-copy-code">Ou copie o código Pix</label>
+            <input id="pix-copy-code" data-pix-code readonly autocomplete="off" spellcheck="false" />
+            <button type="button" data-pix-copy><span aria-hidden="true">⧉</span> Copiar código Pix</button>
+          </div>
+          <div class="pix-payment-progress" role="status" aria-live="polite">
+            <span class="pix-progress-indicator"></span>
+            <div><strong data-pix-progress-title>Aguardando pagamento</strong><small data-pix-progress-note>Assim que o Asaas confirmar, o restaurante recebe seu pedido.</small></div>
+          </div>
+          <button class="pix-check-button" type="button" data-pix-check>Já paguei · Verificar agora</button>
+          <p class="pix-security-note">Pagamento processado pelo Asaas. O pedido segue para o restaurante somente após a confirmação e ainda depende de aceite.</p>
         </div>
       </section>
     </aside>
@@ -424,7 +479,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261112-asaas-error-details"></script>
+    <script src="script.js?v=20261112-inline-pix"></script>
     <script type="module" src="appearance-site.mjs?v=20261110-direct-edit"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
