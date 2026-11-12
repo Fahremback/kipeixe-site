@@ -107,22 +107,28 @@ export function asaasErrorDetails(payload) {
   };
 }
 
+export function asaasCheckoutPayload(order, billingTypes) {
+  return {
+    billingTypes,
+    chargeTypes: ['DETACHED'],
+    minutesToExpire: 60,
+    externalReference: order.id,
+    callback: {
+      successUrl: SITE + '?pedido=' + order.id + '&retorno=pagamento#cardapio',
+      cancelUrl: SITE + '?pedido=' + order.id + '&retorno=cancelado#cardapio',
+      expiredUrl: SITE + '?pedido=' + order.id + '&retorno=expirado#cardapio',
+    },
+    items: asaasCheckoutItems(order),
+  };
+}
+
 async function createAsaasCheckout(order, env, mode, billingTypes) {
   const account = paymentConfig(env, mode);
-  const callback = {
-    successUrl: `${SITE}?pedido=${order.id}&retorno=pagamento#cardapio`,
-    cancelUrl: `${SITE}?pedido=${order.id}&retorno=cancelado#cardapio`,
-    expiredUrl: `${SITE}?pedido=${order.id}&retorno=expirado#cardapio`,
-  };
-  const items = asaasCheckoutItems(order);
   const response = await fetch(`${account.url}/checkouts`, {
     method: 'POST', signal: AbortSignal.timeout(15000),
     headers: { 'Content-Type': 'application/json', Accept: 'application/json',
       'User-Agent': 'Kipeixe-Orders/2.0', access_token: account.key },
-    body: JSON.stringify({
-      billingTypes, chargeTypes: ['DETACHED'], minutesToExpire: 60,
-      externalReference: order.id, callback, items,
-    }),
+    body: JSON.stringify(asaasCheckoutPayload(order, billingTypes)),
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
@@ -264,14 +270,16 @@ async function createOrder(request, env, origin, ctx) {
       ? 'Asaas HTTP ' + providerStatus + (providerCode ? ' (' + providerCode + ')' : '') +
         (providerDescription ? ': ' + providerDescription : '')
       : (error?.name === 'TimeoutError' ? 'Timeout ao chamar Asaas' : 'Falha de transporte ou resposta');
+    const methodSummary = billingTypes?.join(',') || 'unknown';
     console.error('Asaas checkout failed', JSON.stringify({
       orderId: order.id, httpStatus: providerStatus, apiCode: providerCode,
-      providerDescription,
+      billingTypes: methodSummary, providerDescription,
       failureKind: providerStatus ? 'provider' : error?.name === 'TimeoutError' ? 'timeout' : 'unknown'
     }));
     // Store safe diagnostics for the authenticated administrative order timeline, never secrets.
     await env.DB.prepare('INSERT INTO audit_log(actor,action,subject,details) VALUES (?,?,?,?)')
-      .bind('sistema', 'ASAAS_CHECKOUT_FAILED', order.id, JSON.stringify({ reason })).run()
+      .bind('sistema', 'ASAAS_CHECKOUT_FAILED', order.id,
+        JSON.stringify({ reason, billingTypes: methodSummary, itemCount: order.items.length })).run()
       .catch(e => console.warn('Asaas diagnostic logging failed:', e.name));
     // A creation may have reached Asaas even when the response was lost.
     await env.DB.prepare("UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=? AND checkout_id IS NULL AND payment_status='CREATING'")
