@@ -1165,11 +1165,16 @@
       });
       if (!response.ok) throw Error('Não foi possível consultar o pedido.');
       const data = await response.json();
+      if (currentOrder?.reviewUnresolved && ['PAID', 'EXPIRED', 'CANCELED'].includes(data.paymentStatus)) {
+        currentOrder.reviewUnresolved = false;
+        safeStorage.set('kipeixe_current_order_v2', currentOrder);
+      }
       const [title, description] = orderMessages[data.orderStatus] ||
         ['Acompanhando pedido', 'O restaurante está atualizando a situação.'];
       const paymentText = data.paymentStatus === 'PAID' ? '' :
         data.paymentStatus === 'PENDING' ? ' Pagamento ainda não confirmado.' :
-        data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' : '';
+        data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' :
+        data.paymentStatus === 'REVIEW' ? ' Pagamento não confirmado. Aguarde conferência do restaurante.' : '';
       const refundText = data.refundStatus === 'REVIEW' ? ' Estorno precisa de conferência do restaurante.' :
         data.refundStatus === 'REQUESTED' ? ' Estorno solicitado.' :
         data.refundStatus === 'REFUNDED' ? ' Estorno confirmado.' : '';
@@ -1217,6 +1222,12 @@
 
   async function startOnlineCheckout() {
     if (paymentBusy) return;
+    if (currentOrder?.reviewUnresolved) {
+      showOrderStatus('Pedido aguardando conferência',
+        'Já existe um pedido sem pagamento confirmado. Consulte o restaurante antes de criar outra cobrança.');
+      await checkOrderStatus();
+      return;
+    }
     if (!storeConfig?.onlinePaymentEnabled) {
       showOrderStatus('Pagamento indisponível', 'O serviço de pagamento não está disponível. Nenhum pedido foi enviado.');
       return;
@@ -1284,7 +1295,13 @@
         body: JSON.stringify(attempt)
       });
       const result = await response.json();
-      if (!response.ok) throw Error(result.error || 'Falha ao iniciar pagamento.');
+      if (!response.ok) {
+        if (result?.paymentStatus === 'REVIEW' && /^[0-9a-f-]{36}$/i.test(result.orderId || '')) {
+          currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken, reviewUnresolved: true };
+          safeStorage.set('kipeixe_current_order_v2', currentOrder);
+        }
+        throw Error(result.error || 'Falha ao iniciar pagamento.');
+      }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
       safeStorage.set('kipeixe_current_order_v2', currentOrder);

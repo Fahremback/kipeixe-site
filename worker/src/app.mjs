@@ -113,7 +113,14 @@ async function createAsaasCheckout(order, env, mode, billingTypes) {
       externalReference: order.id, callback, items,
     }),
   });
-  if (!response.ok) throw new Error(`Asaas HTTP ${response.status}`);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const code = String(payload?.errors?.[0]?.code || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+    const error = new Error('Asaas checkout rejected');
+    error.asaasHttpStatus = response.status;
+    error.asaasCode = code;
+    throw error;
+  }
   const result = await response.json();
   if (!result?.id || !/^[a-z0-9-]{15,100}$/i.test(result.id)) throw new Error('Checkout inválido.');
   return { checkoutId: result.id, checkoutUrl: checkoutLink(result.id, mode) };
@@ -238,10 +245,23 @@ async function createOrder(request, env, origin, ctx) {
     return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, totalCents: order.totalCents,
       scheduledFor: schedule, paymentMode: settings.paymentMode }, 201, origin);
   } catch (error) {
-    // The provider may have created a payment even if the HTTP response was lost.
-    await env.DB.prepare(`UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+    const providerStatus = Number.isInteger(error?.asaasHttpStatus) ? error.asaasHttpStatus : null;
+    const providerCode = String(error?.asaasCode || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+    console.error('Asaas checkout failed', JSON.stringify({
+      orderId: order.id, httpStatus: providerStatus, apiCode: providerCode,
+      failureKind: providerStatus ? 'provider' : error?.name === 'TimeoutError' ? 'timeout' : 'unknown'
+    }));
+    // A creation may have reached Asaas even when the response was lost.
+    await env.DB.prepare("UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=?")
       .bind(order.id).run();
-    return fail('Pagamento não confirmado. Não faça outro pedido antes de consultar o restaurante.', 502, origin);
+    const message = providerStatus === 401
+      ? 'Asaas recusou a API Key de produção (HTTP 401). O restaurante precisa revisar as credenciais.'
+      : providerStatus === 403
+      ? 'Asaas recusou a permissão para criar o checkout (HTTP 403). O restaurante precisa revisar a autorização.'
+      : providerStatus === 400
+      ? 'Asaas recusou os dados do checkout (HTTP 400). O restaurante precisa verificar a configuração.'
+      : 'Pagamento não confirmado. Não faça outro pedido antes de consultar o restaurante.';
+    return reply({ error: message, orderId: order.id, paymentStatus: 'REVIEW' }, 502, origin);
   }
 }
 
