@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { asaasCheckoutItems, asaasCheckoutBillingTypes } from '../src/app.mjs';
+import { asaasCheckoutItems, asaasCheckoutBillingTypes, asaasErrorDetails } from '../src/app.mjs';
 
 test('checkout items respect Asaas 30-character name limit', () => {
   const fullName = 'Filé de tilápia crocante ao molho especial (porção grande)';
@@ -41,4 +41,24 @@ test('legacy checkout allows both; invalid methods are rejected', () => {
   assert.deepEqual(asaasCheckoutBillingTypes(''), ['PIX', 'CREDIT_CARD']);
   assert.throws(() => asaasCheckoutBillingTypes('BOLETO'), /Forma de pagamento/);
   assert.throws(() => asaasCheckoutBillingTypes(['PIX']), /Forma de pagamento/);
+});
+
+test('Asaas 400 invalid_object exposes the missing field instead of dropping the description', () => {
+  const result = asaasErrorDetails({
+    errors: [
+      { code: 'invalid_object', description: 'O campo items deve ser informado.' },
+      { code: 'invalid_object', description: 'billingTypes inválido.' },
+    ],
+  });
+  assert.equal(result.code, 'invalid_object');
+  assert.equal(result.description, 'O campo items deve ser informado. | billingTypes inválido.');
+});
+
+test('Asaas 400 diagnostic redacts credentials and limits untrusted descriptions', () => {
+  const result = asaasErrorDetails({
+    errors: [{code: 'invalid_object', description: '$aact_prod_SECRETVALUE ' + 'a'.repeat(2000)}],
+  });
+  assert.ok(!result.description.includes('$aact_prod_'));
+  assert.ok(result.description.length <= 600);
+  assert.equal(asaasErrorDetails(null).description, '');
 });

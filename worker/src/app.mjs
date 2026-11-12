@@ -96,6 +96,17 @@ export function asaasCheckoutBillingTypes(paymentMethod) {
   throw new Error('Forma de pagamento inválida.');
 }
 
+export function asaasErrorDetails(payload) {
+  const errors = Array.isArray(payload?.errors) ? payload.errors.slice(0, 4) : [];
+  const safe = value => String(value || '')
+    .replace(/\$aact_(?:prod|hmlg)_[^\s]+/gi, '[credential]')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240);
+  return {
+    code: safe(errors[0]?.code).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60),
+    description: errors.map(item => safe(item?.description)).filter(Boolean).join(' | ').slice(0, 600),
+  };
+}
+
 async function createAsaasCheckout(order, env, mode, billingTypes) {
   const account = paymentConfig(env, mode);
   const callback = {
@@ -115,10 +126,11 @@ async function createAsaasCheckout(order, env, mode, billingTypes) {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    const code = String(payload?.errors?.[0]?.code || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+    const { code, description } = asaasErrorDetails(payload);
     const error = new Error('Asaas checkout rejected');
     error.asaasHttpStatus = response.status;
     error.asaasCode = code;
+    error.asaasDescription = description;
     throw error;
   }
   const result = await response.json();
@@ -247,11 +259,14 @@ async function createOrder(request, env, origin, ctx) {
   } catch (error) {
     const providerStatus = Number.isInteger(error?.asaasHttpStatus) ? error.asaasHttpStatus : null;
     const providerCode = String(error?.asaasCode || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
+    const providerDescription = String(error?.asaasDescription || '').slice(0, 600);
     const reason = providerStatus
-      ? 'Asaas HTTP ' + providerStatus + (providerCode ? ' (' + providerCode + ')' : '')
+      ? 'Asaas HTTP ' + providerStatus + (providerCode ? ' (' + providerCode + ')' : '') +
+        (providerDescription ? ': ' + providerDescription : '')
       : (error?.name === 'TimeoutError' ? 'Timeout ao chamar Asaas' : 'Falha de transporte ou resposta');
     console.error('Asaas checkout failed', JSON.stringify({
       orderId: order.id, httpStatus: providerStatus, apiCode: providerCode,
+      providerDescription,
       failureKind: providerStatus ? 'provider' : error?.name === 'TimeoutError' ? 'timeout' : 'unknown'
     }));
     // Store safe diagnostics for the authenticated administrative order timeline, never secrets.
@@ -266,7 +281,8 @@ async function createOrder(request, env, origin, ctx) {
       : providerStatus === 403
       ? 'Asaas recusou a permissão para criar o checkout (HTTP 403). O restaurante precisa revisar a autorização.'
       : providerStatus === 400
-      ? 'Asaas recusou os dados do checkout (HTTP 400). O restaurante precisa verificar a configuração.'
+      ? 'Asaas recusou os dados do checkout (HTTP 400).' +
+        (providerDescription ? ' Motivo: ' + providerDescription : ' Confira os campos obrigatórios.')
       : 'Pagamento não confirmado. Não faça outro pedido antes de consultar o restaurante.';
     return reply({ error: message, orderId: order.id, paymentStatus: 'REVIEW' }, 502, origin);
   }
