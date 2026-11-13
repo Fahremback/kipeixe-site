@@ -20,6 +20,9 @@
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
+.visit-strip { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px 22px; background: #3c291e; color: #fff9f1; text-align: center; padding: 12px 18px; font-size: 14px; }
+.visit-strip a { background: #f5d9ad; color: #2b2019; padding: 8px 15px; font-weight: 750; border-radius: 22px; white-space: nowrap; }
+.visit-strip a:hover { background: #fff0d5; }
 
 body {
   margin: 0;

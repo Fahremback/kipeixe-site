@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#2b2019" />
+    <meta name="description" content="Reúna sua família ou os amigos no Kipeixe em Três Lagoas, Foz do Iguaçu. Veja o ambiente, escolha seu horário e consulte uma reserva de mesa pelo WhatsApp." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Reserve uma mesa no Kipeixe — Foz do Iguaçu" />
+    <meta property="og:description" content="Peixe, porções e mesas à beira do lago. Escolha uma data e consulte a disponibilidade pelo WhatsApp." />
+    <meta property="og:image" content="https://restaurantekipeixe.com.br/assets/kipeixe-compartilhar-20261012.jpg" />
+    <meta property="og:url" content="https://restaurantekipeixe.com.br/visite.html" />
+    <link rel="canonical" href="https://restaurantekipeixe.com.br/visite.html" />
+    <link rel="icon" href="favicon.ico?v=20261110-transparent" />
+    <link rel="stylesheet" href="visite.css?v=20261113" />
+    <title>Visite o Kipeixe | Mesa e almoço em Foz do Iguaçu</title>
+    <script type="module" src="reservas.mjs?v=20261113"></script>
+  </head>
+  <body>
+    <header class="visit-header">
+      <a class="brand" href="index.html#inicio" aria-label="Página inicial do Kipeixe">
+        <img src="assets/logo.webp" alt="" width="46" height="46" />
+        <span><b>KIPEIXE</b><small>restaurante & pesque-pague</small></span>
+      </a>
+      <nav aria-label="Navegação principal">
+        <a href="index.html#cardapio">Ver cardápio</a>
+        <a class="nav-book" href="#reservar">Consultar mesa</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="visit-hero" aria-labelledby="visit-title">
+        <img class="hero-image" src="assets/ambiente/lago-mesas.webp" alt="Mesas do Kipeixe junto ao lago" fetchpriority="high" />
+        <div class="hero-overlay"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">Três Lagoas • Foz do Iguaçu</p>
+          <h1 id="visit-title">Uma boa mesa<br /><em>merece companhia.</em></h1>
+          <p>Tilápia, porções, pratos completos e o nosso lago para aproveitar com a família ou os amigos.</p>
+          <a class="button light" href="#reservar">Consultar uma mesa <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+
+      <section class="moments" aria-labelledby="moments-title">
+        <p class="eyebrow brown">Venha aproveitar</p>
+        <h2 id="moments-title">O Kipeixe tem o seu lugar.</h2>
+        <div class="moment-grid">
+          <article class="moment-card">
+            <img src="assets/produtos/tilapia-milanesa.webp" alt="Tilápia à milanesa servida no Kipeixe" loading="lazy" />
+            <div><h3>Peixe bem servido</h3><p>Um almoço com pratos completos, porções e opções para dividir.</p></div>
+          </article>
+          <article class="moment-card">
+            <img src="assets/ambiente/salão-cheio.webp" alt="Mesas e ambiente interno do Kipeixe" loading="lazy" />
+            <div><h3>Almoço em grupo</h3><p>Reúna a família ou os colegas e consulte os horários da casa.</p></div>
+          </article>
+          <article class="moment-card">
+            <img src="assets/ambiente/externo.webp" alt="Área externa junto ao lago" loading="lazy" />
+            <div><h3>Um lugar para ficar</h3><p>Restaurante, espaço ao ar livre e pesque-pague no mesmo endereço.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="reservar" class="reserve-section" aria-labelledby="reserve-title">
+        <div class="reserve-description">
+          <p class="eyebrow">Sua próxima visita</p>
+          <h2 id="reserve-title">Reserve seu momento.</h2>
+          <p>Escolha a data, o horário e quantas pessoas vão acompanhar você. A equipe confirma a disponibilidade no WhatsApp.</p>
+          <p class="location">Av. João Ricieri Maran, 1417<br />Três Lagoas, Foz do Iguaçu — PR</p>
+          <a href="https://www.google.com/maps/search/?api=1&amp;query=Av.%20Jo%C3%A3o%20Ricieri%20Maran%201417%20Foz%20do%20Igua%C3%A7u" target="_blank" rel="noopener noreferrer">Ver como chegar ↗</a>
+        </div>
+        <form class="reserve-form" data-reserva-form>
+          <h3>Consultar disponibilidade</h3>
+          <label for="data">Qual dia?</label>
+          <input id="data" name="data" type="date" required />
+          <label for="horario">Horário de chegada</label>
+          <select id="horario" name="horario" required>
+            <option value="11:00">11h</option><option value="12:00" selected>12h</option>
+            <option value="13:00">13h</option><option value="18:00">18h</option>
+            <option value="19:00">19h</option><option value="20:00">20h</option>
+            <option value="21:00">21h</option>
+          </select>
+          <label for="pessoas">Quantas pessoas?</label>
+          <input id="pessoas" name="pessoas" type="number" min="1" max="20" step="1" value="2" required />
+          <button type="submit">Consultar mesa no WhatsApp <span aria-hidden="true">→</span></button>
+          <p class="reserve-note" role="status" tabindex="-1" data-reserva-feedback>A consulta não garante a reserva: aguarde a confirmação da equipe.</p>
+          <noscript><a href="https://wa.me/554535772363">Conversar com o Kipeixe no WhatsApp</a></noscript>
+        </form>
+      </section>
+
+      <section class="closing-section">
+        <div><p class="eyebrow">Restaurante & pesque-pague</p><h2>Esperamos você por aqui.</h2></div>
+        <a class="button light" href="index.html#cardapio">Conhecer o cardápio <span aria-hidden="true">→</span></a>
+      </section>
+    </main>
+
+    <footer class="visit-footer">
+      <span>KIPEIXE • Três Lagoas, Foz do Iguaçu</span>
+      <span>Aberto todos os dias • 09h às 23h40</span>
+      <a href="tel:+554535772363">(45) 3577-2363</a>
+    </footer>
+    <a class="mobile-book" href="#reservar">Consultar mesa no WhatsApp</a>
+  </body>
+</html>
