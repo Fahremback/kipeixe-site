@@ -1,7 +1,7 @@
-import {SOURCES,STATUSES,validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END} from './placar-data.mjs?v=20261113-social-direct';
+import {SOURCES,STATUSES,validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END} from './placar-data.mjs?v=20261113-fb-story';
 
 const KEY='kipeixe.placar-presencial.2026-11.v1';
-const sourceNames={META_PEIXE:'Meta • anúncio peixe',META_LAGO:'Meta • anúncio lago',META_VIDEO_REAL:'Meta • vídeo real',META_VIDEO_PEIXE:'Meta • Reel pago peixe',META_VIDEO_AMBIENTE:'Meta • Reel pago lago',META:'Meta • outros',IG_REEL_PEIXE:'Reel orgânico • peixe',IG_REEL_AMBIENTE:'Reel orgânico • lago',SOCIAL_DIRECT:'Direct • Facebook/Instagram',INSTAGRAM:'Instagram • outros',SITE:'Site do Kipeixe',BAIRRO:'Cartaz/QR bairro',PARCEIRO:'Parceiro local',WHATSAPP:'WhatsApp direto',OUTROS:'Outros'};
+const sourceNames={META_PEIXE:'Meta • anúncio peixe',META_LAGO:'Meta • anúncio lago',META_VIDEO_REAL:'Meta • vídeo real',META_VIDEO_PEIXE:'Meta • Reel pago peixe',META_VIDEO_AMBIENTE:'Meta • Reel pago lago',META:'Meta • outros',IG_REEL_PEIXE:'Reel orgânico • peixe',IG_REEL_AMBIENTE:'Reel orgânico • lago',FB_STORY_PEIXE:'Story Facebook • peixe',FB_STORY_LAGO:'Story Facebook • lago',SOCIAL_DIRECT:'Direct • Facebook/Instagram',INSTAGRAM:'Instagram • outros',SITE:'Site do Kipeixe',BAIRRO:'Cartaz/QR bairro',PARCEIRO:'Parceiro local',WHATSAPP:'WhatsApp direto',OUTROS:'Outros'};
 const sourceLabel=(source)=>sourceNames[source]??(source.startsWith('PARCEIRO_')?'Parceiro • '+source.slice(9):source);
 const statusNames={CONSULTA:'Consulta',CONFIRMADA:'Confirmada',COMPARECEU:'Compareceu',FALTOU:'Não compareceu'};
 

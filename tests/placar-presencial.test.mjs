@@ -87,6 +87,19 @@ test('permite medir consultas do direct vindas da resposta automática de MESA',
   assert.match(exportCSV(entries,[]),/SOCIAL_DIRECT/);
 });
 
+test('separa consultas de Stories orgânicos do Facebook do investimento pago',()=>{
+  for (const source of ['FB_STORY_PEIXE','FB_STORY_LAGO']) assert.equal(validSource(source),true);
+  const entries=[
+    validateReservation(booking({source:'FB_STORY_PEIXE',status:'COMPARECEU',partySize:3,revenue:130})),
+    validateReservation(booking({source:'FB_STORY_LAGO',status:'CONFIRMADA',partySize:4})),
+  ];
+  const result=summarize(entries,[]);
+  assert.equal(result.bySource.FB_STORY_PEIXE.attendedPeople,3);
+  assert.equal(result.bySource.FB_STORY_LAGO.confirmedBookings,1);
+  assert.equal(result.mediaCostPerAttendedBooking,null);
+  assert.match(exportCSV(entries,[]),/FB_STORY_PEIXE/);
+});
+
 test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
   const entries=[
     validateReservation(booking({source:'PARCEIRO_RHINO',status:'COMPARECEU',revenue:135})),

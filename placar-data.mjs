@@ -1,7 +1,7 @@
 export const DATE_START = '2026-11-13';
 export const DATE_END = '2026-11-22';
 export const SHIFTS = Object.freeze(['almoco', 'jantar']);
-export const SOURCES = Object.freeze(['META_PEIXE', 'META_LAGO', 'META_VIDEO_REAL', 'META_VIDEO_PEIXE', 'META_VIDEO_AMBIENTE', 'META', 'IG_REEL_PEIXE', 'IG_REEL_AMBIENTE', 'SOCIAL_DIRECT', 'INSTAGRAM', 'SITE', 'BAIRRO', 'PARCEIRO', 'WHATSAPP', 'OUTROS']);
+export const SOURCES = Object.freeze(['META_PEIXE', 'META_LAGO', 'META_VIDEO_REAL', 'META_VIDEO_PEIXE', 'META_VIDEO_AMBIENTE', 'META', 'IG_REEL_PEIXE', 'IG_REEL_AMBIENTE', 'FB_STORY_PEIXE', 'FB_STORY_LAGO', 'SOCIAL_DIRECT', 'INSTAGRAM', 'SITE', 'BAIRRO', 'PARCEIRO', 'WHATSAPP', 'OUTROS']);
 export const STATUSES = Object.freeze(['CONSULTA', 'CONFIRMADA', 'COMPARECEU', 'FALTOU']);
 
 export function validSource(source) {
