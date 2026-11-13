@@ -7,12 +7,13 @@
   <meta name="theme-color" content="#2b2019">
   <title>Central Kipeixe | Gestão de pedidos</title>
   <link rel="icon" href="favicon.ico?v=20261110-transparent" type="image/x-icon">
-  <link rel="stylesheet" href="gestao.css?v=20261109-training">
+  <link rel="stylesheet" href="gestao.css?v=20261113-whatsapp-checkout">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
   <link rel="stylesheet" href="appearance-admin.css?v=20261110-direct-edit">
   <script src="training-engine.js?v=20261109-training" defer></script>
-  <script src="gestao.js?v=20261112-asaas-diagnostics" defer></script>
+  <script src="gestao.js?v=20261113-whatsapp-checkout" defer></script>
   <script type="module" src="appearance-admin.mjs?v=20261110-direct-edit"></script>
+  <script src="ifood-ops.js?v=20261107-shipping-homolog" defer></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -48,6 +49,7 @@
         <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
         <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
         <button type="button" data-tab="appearance" hidden><span>◈</span> Cores do site</button>
+        <button type="button" data-tab="ifood" hidden><span>▤</span> iFood — Entregas</button>
         <button type="button" data-tab="users" hidden><span>♙</span> Usuários e acessos</button>
       </nav>
       <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Ver site público ↗</a><button type="button" id="logout">Sair da central</button></div>
@@ -308,6 +310,127 @@
   </div>
 </section>
 
+      <section id="ifood-view" class="view" hidden>
+        <div class="section-heading"><div><span class="eyebrow">OPERADOR LOGÍSTICO · AMBIENTE DE TESTES</span>
+          <h2>iFood — Entregas e operação da loja</h2></div></div>
+        <p class="environment-note">Operações reais da API do aplicativo de testes. A loja de produção não é alterada. Registre a tela inteira, a data e a hora em cada cenário de homologação.</p>
+        <p id="ifood-ops-status" class="environment-status" role="status">Carregando configurações do aplicativo de teste...</p>
+        <p id="ifood-ops-client" class="environment-note"></p>
+        <div class="settings-grid ifood-ops-grid">
+          <section class="settings-card">
+            <h3>Merchant 1 — Informações da loja</h3>
+            <div class="editor-actions">
+              <button type="button" class="subtle-btn" data-ifood="merchants">Listar lojas vinculadas</button>
+              <button type="button" class="subtle-btn" data-ifood="merchant">Detalhes da loja</button>
+              <button type="button" class="subtle-btn" data-ifood="status">Consultar disponibilidade</button>
+            </div>
+            <pre id="ifood-merchant-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+          <section class="settings-card">
+            <h3>Merchant 2 — Interrupções da loja</h3>
+            <form id="ifood-pause-form" class="ifood-form">
+              <label>Motivo<input name="description" required maxlength="255" value="Pausa de homologação"></label>
+              <label>Início<input name="start" type="datetime-local" step="1" required></label>
+              <label>Fim<input name="end" type="datetime-local" step="1" required></label>
+              <button type="submit" class="primary-btn small">Cadastrar pausa</button>
+            </form>
+            <button type="button" class="subtle-btn" data-ifood="pauses">Consultar pausas</button>
+            <div id="ifood-pauses" aria-live="polite"></div>
+          </section>
+          <section class="settings-card">
+            <h3>Merchant 3 — Horários de funcionamento</h3>
+            <p>O checklist exige sábado 10h–19h e domingo 9h–12h, 13h–16h e 17h–23h. Os demais dias são preservados.</p>
+            <div class="editor-actions">
+              <button type="button" class="subtle-btn" data-ifood="hours">Consultar horários</button>
+              <button type="button" class="primary-btn small" data-ifood="hours-update">Aplicar horários do checklist</button>
+            </div>
+            <pre id="ifood-hours-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+          <section class="settings-card">
+            <h3>Shipping 1 — Eventos</h3>
+            <p>Polling automático a cada 30 segundos enquanto esta tela estiver aberta, com confirmação e descarte de duplicados pelo eventId.</p>
+            <button type="button" class="subtle-btn" data-ifood="poll">Consultar eventos agora</button>
+            <p id="ifood-poll-state" aria-live="polite"></p>
+            <pre id="ifood-events-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+          <section class="settings-card">
+            <h3>Shipping 2 — Pedido vindo do iFood</h3>
+            <p>Confirme o pedido FOOD de testes pela Order API antes de solicitar a cotação e o entregador.</p>
+            <form id="ifood-inside-form" class="ifood-form">
+              <label>ID do pedido iFood<input name="orderId" required placeholder="UUID do pedido de teste"></label>
+              <label>ID da cotação<input name="quoteId" placeholder="Preenchido após a cotação"></label>
+              <div class="editor-actions">
+                <button type="button" class="subtle-btn" data-ifood="inside-confirm">Confirmar pedido de teste</button>
+                <button type="button" class="subtle-btn" data-ifood="inside-quote">Consultar entrega</button>
+                <button type="button" class="primary-btn small" data-ifood="inside-request">Solicitar entregador</button>
+                <button type="button" class="subtle-btn" data-ifood="inside-details">Detalhes e pickupCode</button>
+              </div>
+            </form>
+            <pre id="ifood-inside-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+          <section class="settings-card">
+            <h3>Shipping 3 — Pedido externo ao iFood</h3>
+            <form id="ifood-outside-form" class="ifood-form">
+              <label>Cliente<input name="name" required value="Cliente Teste Kipeixe"></label>
+              <label>Telefone<input name="phone" required placeholder="DDD + número"></label>
+              <label>CEP<input name="postalCode" required></label>
+              <label>Rua<input name="streetName" required></label>
+              <label>Número<input name="streetNumber" required></label>
+              <label>Bairro<input name="neighborhood" required></label>
+              <label>Cidade<input name="city" required></label>
+              <label>Estado<input name="state" required maxlength="2"></label>
+              <label>Latitude<input name="latitude" type="number" step="any" required></label>
+              <label>Longitude<input name="longitude" type="number" step="any" required></label>
+              <label>Produto<input name="itemName" required value="Pedido de teste"></label>
+              <label>Preço (R$)<input name="itemPrice" type="number" min="0.01" step="0.01" value="25" required></label>
+              <label>Quantidade<input name="itemQty" type="number" min="1" max="100" step="1" value="1" required></label>
+              <label>Cotação<input name="quoteId" readonly></label>
+              <label>Frete (R$)<input name="fee" readonly></label>
+              <label>Pedido externo criado<input name="orderId" placeholder="UUID criado ou pedido de teste existente"></label>
+              <div class="editor-actions">
+                <button type="button" class="subtle-btn" data-ifood="outside-quote">Consultar disponibilidade</button>
+                <button type="button" class="primary-btn small" data-ifood="outside-create">Criar pedido de teste</button>
+                <button type="button" class="subtle-btn" data-ifood="outside-details">Detalhes e pickupCode</button>
+              </div>
+            </form>
+            <pre id="ifood-outside-output" class="ifood-result" aria-live="polite"></pre>
+            <a id="ifood-test-tracking" target="_blank" rel="noopener noreferrer" hidden>Abrir rastreamento do pedido de teste</a>
+          </section>
+          <section class="settings-card">
+            <h3>Shipping 4 — Alteração de endereço</h3>
+            <form id="ifood-address-form" class="ifood-form">
+              <label>ID do pedido<input name="orderId" required placeholder="UUID do pedido"></label>
+              <p>Solicite uma alteração de endereço (até 500 metros do original), depois aceite ou negue no sistema. O cliente também pode solicitar pela página de rastreamento.</p>
+              <label>CEP do novo endereço<input name="postalCode" required></label>
+              <label>Rua<input name="streetName" required></label>
+              <label>Número<input name="streetNumber" required></label>
+              <label>Bairro<input name="neighborhood" required></label>
+              <label>Cidade<input name="city" required></label>
+              <label>Estado<input name="state" required maxlength="2"></label>
+              <label>Latitude<input name="latitude" type="number" step="any" required></label>
+              <label>Longitude<input name="longitude" type="number" step="any" required></label>
+              <div class="editor-actions">
+                <button type="button" class="subtle-btn" data-ifood="address-request">Solicitar alteração</button>
+                <button type="button" class="primary-btn small" data-ifood="address-accept">Aceitar alteração</button>
+                <button type="button" class="subtle-btn" data-ifood="address-deny">Negar alteração</button>
+              </div>
+            </form>
+            <pre id="ifood-address-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+          <section class="settings-card">
+            <h3>Shipping 5 — Cancelamento</h3>
+            <form id="ifood-cancel-form" class="ifood-form">
+              <label>ID do pedido<input name="orderId" required placeholder="UUID do pedido externo"></label>
+              <button type="button" class="subtle-btn" data-ifood="cancel-reasons">Consultar motivos disponíveis</button>
+              <label>Motivo retornado pelo iFood<select name="cancellationCode" required><option value="">Consulte os motivos</option></select></label>
+              <label>Justificativa<textarea name="reason" rows="2" maxlength="255" required></textarea></label>
+              <button type="submit" class="primary-btn small">Solicitar cancelamento</button>
+            </form>
+            <pre id="ifood-cancel-output" class="ifood-result" aria-live="polite"></pre>
+          </section>
+        </div>
+        <p class="environment-note">Após os cenários, acesse <a href="https://developer.ifood.com.br/pt-BR/developer/tickets" target="_blank" rel="noopener noreferrer">Developer Portal</a> e exporte Logs da API › HTTP Requests do aplicativo de testes. Envie-os no novo chamado junto aos links dos vídeos, data/hora e Client ID.</p>
+      </section>
       <section id="users-view" class="view" hidden>
         <div class="section-heading"><div><span class="eyebrow">ACESSO RESTRITO AO PROPRIETÁRIO</span>
           <h2>Usuários e acessos</h2></div></div>

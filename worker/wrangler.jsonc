@@ -21,6 +21,20 @@
       "* * * * *"
     ]
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "IFOOD_POLLING",
+        "class_name": "IFoodEventPoller"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "ifood-polling-30s-v1",
+      "new_sqlite_classes": ["IFoodEventPoller"]
+    }
+  ],
   "vars": {
     "PAYMENTS_ENABLED": "true",
     "DELIVERY_ENABLED": "false",

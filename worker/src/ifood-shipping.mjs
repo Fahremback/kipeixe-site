@@ -60,6 +60,7 @@ async function accessToken(env) {
   if (!ifoodConfigured(env)) throw Error('Credenciais iFood não configuradas.');
   const signature = env.IFOOD_CLIENT_ID + ':' + env.IFOOD_CLIENT_SECRET;
   if (auth.token && Date.now() < auth.expires && auth.signature === signature) return auth.token;
+  const started = Date.now();
   const result = await fetch(API + '/authentication/v1.0/oauth/token', {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json' },
@@ -67,6 +68,9 @@ async function accessToken(env) {
       clientId: env.IFOOD_CLIENT_ID, clientSecret: env.IFOOD_CLIENT_SECRET }),
     signal: AbortSignal.timeout(13000),
   });
+  try { env.IFOOD_API_LOGGER?.({ method:'POST',
+    route:'/authentication/v1.0/oauth/token', status:result.status,
+    durationMs:Date.now()-started }); } catch {}
   if (!result.ok) throw Error('Autenticação iFood HTTP ' + result.status);
   const data = await result.json();
   if (!data.accessToken || typeof data.accessToken !== 'string')
@@ -77,18 +81,27 @@ async function accessToken(env) {
 }
 
 export async function ifoodRequest(env, route, { method = 'GET', body = null, headers = {} } = {}) {
-  if (!/^\/(shipping\/v1\.0\/|events\/v1\.0\/)/.test(route))
+  if (!/^\/(shipping\/v1\.0\/|events\/v1\.0\/|merchant\/v1\.0\/|order\/v1\.0\/)/.test(route))
     throw Error('Endpoint iFood não permitido.');
+  const started = Date.now();
   const response = await fetch(API + route, {
     method, headers: { Authorization: 'Bearer ' + await accessToken(env),
       Accept: 'application/json', 'Content-Type': 'application/json', ...headers },
     ...(body === null ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(16000),
   });
+  try { env.IFOOD_API_LOGGER?.({ method, route, status:response.status,
+    durationMs:Date.now()-started,
+    requestId:response.headers.get('x-request-id') ||
+      response.headers.get('x-correlation-id') || null }); } catch {}
   const result = response.status === 204 ? null : await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = Error('API iFood HTTP ' + response.status);
+    const code = String(result?.code || result?.error || '').slice(0, 80);
+    const detail = String(result?.message || result?.description || '').slice(0, 180);
+    const error = Error('API iFood HTTP ' + response.status +
+      (code ? ' [' + code + ']' : '') + (detail ? ': ' + detail : ''));
     error.status = response.status;
+    error.apiError = result;
     throw error;
   }
   return result;
@@ -205,23 +218,44 @@ export async function dispatchScheduledIFood(env) {
 }
 
 export async function syncIFoodEvents(env) {
-  if (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true') return 0;
+  if (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true' || !env.DB) return 0;
+  const now = Date.now();
+  const last = await env.DB.prepare('SELECT last_poll_ms FROM ifood_poll_state WHERE channel=?')
+    .bind('production').first();
+  if (last && now - last.last_poll_ms < 30_000) return 0;
+  await env.DB.prepare('INSERT INTO ifood_poll_state(channel,last_poll_ms) VALUES (?,?) ' +
+    'ON CONFLICT(channel) DO UPDATE SET last_poll_ms=excluded.last_poll_ms')
+    .bind('production', now).run();
   const events = await ifoodRequest(env, '/events/v1.0/events:polling?excludeHeartbeat=true&groups=DELIVERY',
     { headers: { 'x-polling-merchants': env.IFOOD_MERCHANT_ID } });
   if (!Array.isArray(events) || !events.length) return 0;
   const handled = [];
   for (const event of events.slice(0, 100)) {
-    if (!UUID.test(event.id || '') || !UUID.test(event.orderId || '') ||
-        event.merchantId !== env.IFOOD_MERCHANT_ID) continue;
-    const row = await env.DB.prepare('SELECT id FROM orders WHERE ifood_order_id=?')
-      .bind(event.orderId).first();
-    if (!row) continue;
+    const eventId = event.eventId || event.id;
+    const orderId = event.orderId || event.order?.id;
+    if (!UUID.test(eventId || '') ||
+        (event.merchantId && event.merchantId !== env.IFOOD_MERCHANT_ID)) continue;
+    const existing = await env.DB.prepare(
+      'SELECT event_id FROM ifood_event_log WHERE channel=? AND event_id=?')
+      .bind('production', eventId).first();
+    if (existing) { handled.push({ id: eventId }); continue; }
+    const row = UUID.test(orderId || '') ? await env.DB.prepare(
+      'SELECT id FROM orders WHERE ifood_order_id=?').bind(orderId).first() : null;
     const code = String(event.fullCode || event.code || '').slice(0, 48);
-    await env.DB.prepare('UPDATE orders SET ifood_status=?,' +
-      "fulfillment_status=CASE WHEN ?='DELIVERY_CONCLUDED' " +
-      "AND fulfillment_status='READY' THEN 'COMPLETED' ELSE fulfillment_status END," +
-      'updated_at=CURRENT_TIMESTAMP WHERE id=?').bind(code, code, row.id).run();
-    handled.push({ id: event.id });
+    const pickup = event.pickupCode || event.order?.pickupCode || event.delivery?.pickupCode || null;
+    if (row) {
+      await env.DB.prepare('UPDATE orders SET ifood_status=?,' +
+        "fulfillment_status=CASE WHEN ?='DELIVERY_CONCLUDED' " +
+        "AND fulfillment_status='READY' THEN 'COMPLETED' ELSE fulfillment_status END," +
+        'ifood_pickup_code=COALESCE(?,ifood_pickup_code),' +
+        'updated_at=CURRENT_TIMESTAMP WHERE id=?')
+        .bind(code, code, pickup ? String(pickup).slice(0, 40) : null, row.id).run();
+    }
+    await env.DB.prepare('INSERT OR IGNORE INTO ifood_event_log ' +
+      '(channel,event_id,order_id,event_code,pickup_code) VALUES (?,?,?,?,?)')
+      .bind('production', eventId, UUID.test(orderId || '') ? orderId : null,
+        code, pickup ? String(pickup).slice(0, 40) : null).run();
+    handled.push({ id: eventId });
   }
   if (handled.length) await ifoodRequest(env, '/events/v1.0/events/acknowledgment',
     { method: 'POST', body: handled });

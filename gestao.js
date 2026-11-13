@@ -97,6 +97,7 @@
     $('.main-nav [data-tab="users"]').hidden = role !== 'owner';
     $('.main-nav [data-tab="settings"]').hidden = role !== 'owner';
     $('.main-nav [data-tab="appearance"]').hidden = role !== 'owner';
+    $('.main-nav [data-tab="ifood"]').hidden = role !== 'owner';
     updateTrainingUi();
   }
   function armAudio() {
@@ -242,6 +243,7 @@
           ${order.notes ? `<p><strong>Observações completas:</strong> ${esc(order.notes)}</p>` : ''}
           ${totalItems > 3 ? `<ul class="order-all-items">${items.join('')}</ul>` : ''}
           ${uber}
+          ${isIFood ? '<p><strong>PickupCode:</strong> ' + esc(order.ifood_pickup_code || 'Aguardando retorno do iFood') + '</p>' : ''}
           ${order.refund_status !== 'NOT_REQUIRED' ? `<p><strong>Estorno:</strong> ${esc(order.refund_status)}</p>` : ''}
           ${order.closed_reason ? `<p><strong>Encerramento:</strong> ${esc(order.closed_reason)}</p>` : ''}
         </div>
@@ -914,13 +916,14 @@
   });
 
   async function switchTab(tab) {
-    if (['users', 'appearance', 'settings'].includes(tab) && currentRole !== 'owner') return;
+    if (['users', 'appearance', 'settings', 'ifood'].includes(tab) && currentRole !== 'owner') return;
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
     $('#view-title').textContent = ({ orders: trainingOn() ? 'Pedidos · Treinamento' : 'Pedidos recebidos', products: 'Controle do cardápio',
       settings: 'Funcionamento do restaurante', users: 'Usuários e acessos',
-      history: 'Histórico de pedidos', appearance: 'Aparência e cores do site' })[tab];
+      history: 'Histórico de pedidos', appearance: 'Aparência e cores do site',
+      ifood: 'iFood — Entregas e loja' })[tab];
     try {
       if (tab === 'products') await loadCatalog();
       if (tab === 'settings') await loadSettings();
@@ -928,6 +931,7 @@
       if (tab === 'users') await loadUsers();
       if (tab === 'history') await loadHistory();
       if (tab === 'appearance') document.dispatchEvent(new CustomEvent('kipeixe:appearance-open'));
+      if (tab === 'ifood') await window.ifoodOps?.load();
     } catch (error) { notify(error.message, true); }
   }
   $$('.main-nav button').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));

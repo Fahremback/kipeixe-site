@@ -6,6 +6,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { paymentConfig, paymentConfigured, paymentCredentialStatus, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
+import { ifoodAdminAction } from './ifood-operations.mjs';
 
 export const ALLOWED_ORIGINS = new Set([
   'https://restaurantekipeixe.com.br', 'https://www.restaurantekipeixe.com.br',
@@ -589,6 +590,11 @@ export async function handleAdmin(request, env, origin, url) {
   }
   const identity = await currentAdmin(request, env);
   if (!identity) return fail('Sessão inválida. Entre novamente.', 401, origin);
+  if (url.pathname.startsWith('/api/admin/ifood/')) {
+    if (identity.role !== 'owner') return fail('Acesso exclusivo ao proprietário.', 403, origin);
+    const result = await ifoodAdminAction(request, env);
+    return reply(result.data, result.status, origin);
+  }
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
     await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').bind(await hash(cookieValue(request))).run();
     return reply({ ok: true }, 200, origin, { 'Set-Cookie': adminCookie('', 0) });
@@ -688,7 +694,7 @@ export async function handleAdmin(request, env, origin, url) {
       subtotal_cents, delivery_cents, total_cents, payment_status, fulfillment_status, created_at,
       paid_at, scheduled_for, acceptance_deadline, closed_reason, refund_status, checkout_id, asaas_environment,
       uber_status,uber_delivery_id,uber_tracking_url,uber_quote_fee_cents,uber_dispatch_error
-      ,delivery_provider,ifood_status,ifood_order_id,ifood_tracking_url,ifood_dispatch_error
+      ,delivery_provider,ifood_status,ifood_order_id,ifood_tracking_url,ifood_dispatch_error,ifood_pickup_code
       FROM orders ORDER BY created_at DESC LIMIT 250`).all()).results;
     return reply({ orders: rows.map(r => ({ ...r, items: JSON.parse(r.items_json), items_json: undefined })) }, 200, origin);
   }

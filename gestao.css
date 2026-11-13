@@ -131,6 +131,13 @@
   #orders-view .stats-row{margin:5px 0 6px}
   #orders-view .section-heading.order-queue-heading{margin:5px 0 6px}
 }
+/* iFood operational workflows are live API forms, never a mock dashboard. */
+.ifood-ops-grid { align-items: start; }
+.ifood-ops-grid .settings-card { min-width: 0; }
+.ifood-form { display: grid; gap: 12px; margin: 10px 0; }
+.ifood-result { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 310px;
+  overflow: auto; font: 12px/1.5 Consolas, monospace; background: #f3efe9;
+  border: 1px solid #ddd2c6; padding: 10px; border-radius: 8px; }
 /* Training is deliberately conspicuous and isolated from genuine orders. */
 .training-settings { margin: 0 0 18px; border: 2px solid #cf9d55; background: #fffaf0; }
 .training-settings h3 { margin: 0; }
@@ -148,3 +155,6 @@
 #orders-view.training-active .stat-card[data-stat="pending"] { background: #fff5e3; }
 @media(max-width:740px) { .training-banner { flex-wrap: wrap; } .training-banner>div { flex-basis: 100%; } }
 .settings-card[hidden], [data-asaas-settings][hidden], [data-whatsapp-settings][hidden]{display:none!important}
+#ifood-pauses { display: grid; gap: 8px; margin-top: 10px; }
+#ifood-pauses article { border: 1px solid #ddd2c6; border-radius: 8px;
+  padding: 10px; display: flex; justify-content: space-between; gap: 10px; }

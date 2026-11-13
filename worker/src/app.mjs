@@ -8,7 +8,8 @@ import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 import { createAsaasPix, pixPaymentMatches } from './asaas-pix.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
-  addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood } from './ifood-shipping.mjs';
+  addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
+  ifoodConfigured } from './ifood-shipping.mjs';
 import { sendMetaOrderEvent } from './meta-capi.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
@@ -379,7 +380,7 @@ async function readOrder(request, env, origin, id) {
     delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason,
     asaas_environment, pix_qr_id, pix_payload, pix_image, pix_expires_at,
     uber_delivery_id, uber_status, uber_tracking_url,delivery_provider,
-    ifood_order_id,ifood_status,ifood_tracking_url
+    ifood_order_id,ifood_status,ifood_tracking_url,ifood_pickup_code
     FROM orders WHERE id=?`).bind(id).first();
   if (!row || !safeEqual(row.access_hash, await hash(token))) return fail('Pedido não encontrado.', 404, origin);
   const { access_hash, ...data } = row;
@@ -393,7 +394,7 @@ async function readOrder(request, env, origin, id) {
     deliveryProvider: data.delivery_provider,
     uberDeliveryId: data.uber_delivery_id, uberStatus: data.uber_status, uberTrackingUrl: data.uber_tracking_url,
     ifoodOrderId: data.ifood_order_id, ifoodStatus: data.ifood_status,
-    ifoodTrackingUrl: data.ifood_tracking_url }, 200, origin);
+    ifoodTrackingUrl: data.ifood_tracking_url, ifoodPickupCode: data.ifood_pickup_code }, 200, origin);
 }
 
 async function webhook(request, env, ctx, mode) {
@@ -534,7 +535,38 @@ export default {
       sweepExpired(env), dispatchScheduledReady(env),
       reconcilePendingPix(env, ctx),
       dispatchScheduledIFood(env).catch(error => console.warn('iFood dispatch:', error.message)),
-      syncIFoodEvents(env).catch(error => console.warn('iFood events:', error.message)),
+      ...(env.IFOOD_SHIPPING_ENABLED === 'true' && ifoodConfigured(env) && env.IFOOD_POLLING
+        ? [env.IFOOD_POLLING.get(env.IFOOD_POLLING.idFromName('kipeixe-shipping'))
+          .fetch('https://ifood-polling.internal/start').catch(
+            error => console.warn('iFood poller:', error.message))]
+        : []),
     ]));
   },
 };
+
+// Durable Object alarms give iFood the required 30-second polling cadence.
+// The cron above only ensures the alarm is running after cold starts or deploys.
+export class IFoodEventPoller {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+  async fetch() {
+    if (this.env.IFOOD_SHIPPING_ENABLED !== 'true' || !ifoodConfigured(this.env))
+      return new Response('disabled', { status: 503 });
+    if ((await this.state.storage.getAlarm()) === null)
+      await this.state.storage.setAlarm(Date.now() + 1000);
+    return new Response('polling scheduled');
+  }
+  async alarm() {
+    if (this.env.IFOOD_SHIPPING_ENABLED !== 'true' || !ifoodConfigured(this.env)) return;
+    const began = Date.now();
+    try {
+      await syncIFoodEvents(this.env);
+    } catch (error) {
+      console.error('iFood 30-second polling:', error.message);
+    } finally {
+      await this.state.storage.setAlarm(Math.max(Date.now() + 1000, began + 30_000));
+    }
+  }
+}

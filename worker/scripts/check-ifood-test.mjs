@@ -50,6 +50,9 @@ try {
     const quote = quoteDetails(data);
     console.log('Cotação validada:', (quote.feeCents / 100).toFixed(2),
       'BRL; expira:', quote.expiresAt);
+    console.log('Métodos aceitos na cotação:', JSON.stringify(
+      (data.paymentMethods || []).map(m => ({ method: m.method, paymentType: m.paymentType,
+        brand: m.brand, liability: m.liability }))));
   }
 } catch (error) {
   console.error('iFood test:', error.message);
