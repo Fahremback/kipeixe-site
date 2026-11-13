@@ -17,6 +17,8 @@ button,input,select { font: inherit; }
 .visit-hero { min-height: min(700px,84vh); position: relative; display: flex; align-items: center; isolation: isolate; background: var(--dark); }
 .hero-image,.hero-overlay { position: absolute; inset: 0; height: 100%; width: 100%; }
 .hero-image { object-fit: cover; object-position: center 55%; z-index: -2; }
+html[data-campaign-variant="peixe"] .hero-image { object-position: center 50%; }
+html[data-campaign-variant="peixe"] .hero-overlay { background: linear-gradient(90deg,rgba(27,18,12,.87),rgba(27,18,12,.49) 63%,rgba(27,18,12,.09)); }
 .hero-overlay { background: linear-gradient(90deg,rgba(25,18,12,.85),rgba(27,19,11,.48) 58%,rgba(27,19,11,.12)); z-index: -1; }
 .hero-copy { width: min(1120px,calc(100vw - 48px)); margin: 50px auto; color: #fff; }
 .eyebrow { text-transform: uppercase; font-size: 12px; letter-spacing: .21em; font-weight: 750; color: #edc39e; }

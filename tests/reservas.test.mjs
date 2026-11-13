@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReservationLink, normalizeOrigin, todayInBrazil, trackContactClick, nextReservationChoice, brazilTimeMinutes } from '../reservas.mjs';
+import { buildReservationLink, normalizeOrigin, todayInBrazil, trackContactClick, nextReservationChoice, brazilTimeMinutes, getCampaignVariant, campaignHero } from '../reservas.mjs';
 
 test('gera link de consulta de mesa com data, pessoas e origem rastreável', () => {
   const link = buildReservationLink({
@@ -34,6 +34,19 @@ test('normaliza origem e impede inclusão de texto arbitrário no rastreamento',
   assert.equal(normalizeOrigin('PROMO\nMe marque'), 'SITE');
   assert.equal(normalizeOrigin(''), 'SITE');
   assert.equal(normalizeOrigin('a'.repeat(80)), 'SITE');
+});
+
+test('alinha a primeira tela ao anúncio, mantendo variações desconhecidas no padrão', () => {
+  assert.equal(getCampaignVariant('META_VIDEO_PEIXE'), 'peixe');
+  assert.equal(getCampaignVariant('META_PEIXE'), 'peixe');
+  assert.equal(getCampaignVariant('IG_STORY_PEIXE'), 'peixe');
+  assert.equal(getCampaignVariant('META_VIDEO_AMBIENTE'), 'ambiente');
+  assert.equal(getCampaignVariant('META_LAGO'), 'ambiente');
+  assert.equal(getCampaignVariant('PARCEIRO_RHINO'), 'geral');
+  assert.equal(getCampaignVariant('<script>'), 'geral');
+  assert.match(campaignHero('peixe').image, /tilapia-milanesa\.webp$/);
+  assert.match(campaignHero('ambiente').image, /lago-mesas\.webp$/);
+  assert.equal(campaignHero('geral').headline, campaignHero('ambiente').headline);
 });
 
 test('usa calendário de São Paulo sem depender da timezone do navegador', () => {

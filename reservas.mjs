@@ -34,6 +34,30 @@ export function normalizeOrigin(raw) {
   return /^[a-z0-9_-]{1,32}$/i.test(origin) ? origin.toUpperCase() : 'SITE';
 }
 
+export function getCampaignVariant(origin) {
+  const code = normalizeOrigin(origin);
+  if (['META_VIDEO_PEIXE', 'META_PEIXE', 'IG_STORY_PEIXE'].includes(code)) return 'peixe';
+  if (['META_VIDEO_AMBIENTE', 'META_LAGO', 'IG_STORY_LAGO'].includes(code)) return 'ambiente';
+  return 'geral';
+}
+
+export function campaignHero(variant) {
+  if (variant === 'peixe') return {
+    headline: 'Peixe bem servido',
+    emphasis: 'e boa companhia.',
+    description: 'Tilápia, porções e pratos completos no Kipeixe. Escolha o dia e consulte uma mesa para seu almoço em Três Lagoas.',
+    image: 'assets/produtos/tilapia-milanesa.webp',
+    alt: 'Prato de tilápia à milanesa com acompanhamentos',
+  };
+  return {
+    headline: 'Uma boa mesa',
+    emphasis: 'merece companhia.',
+    description: 'Tilápia, porções, pratos completos e o nosso lago para aproveitar com a família ou os amigos.',
+    image: 'assets/ambiente/lago-mesas.webp',
+    alt: 'Mesas do Kipeixe junto ao lago',
+  };
+}
+
 // Evento de clique/abertura do WhatsApp. Não representa reserva confirmada.
 export function trackContactClick(fbq) {
   if (typeof fbq !== 'function') return false;
@@ -68,6 +92,22 @@ export function buildReservationLink({ date, time, partySize, origin = 'SITE', t
 }
 
 if (typeof document !== 'undefined') {
+  const pageParams = new URLSearchParams(window.location.search);
+  const pageOrigin = pageParams.get('origem') ?? pageParams.get('utm_source') ?? 'SITE';
+  const variant = getCampaignVariant(pageOrigin);
+  const hero = campaignHero(variant);
+  document.documentElement.dataset.campaignVariant = variant;
+  const heroImage = document.querySelector('[data-hero-image]');
+  const heroHeadline = document.querySelector('[data-hero-headline]');
+  const heroEmphasis = document.querySelector('[data-hero-emphasis]');
+  const heroDescription = document.querySelector('[data-hero-description]');
+  if (heroImage && heroHeadline && heroEmphasis && heroDescription) {
+    heroHeadline.textContent = hero.headline;
+    heroEmphasis.textContent = hero.emphasis;
+    heroDescription.textContent = hero.description;
+    heroImage.src = hero.image;
+    heroImage.alt = hero.alt;
+  }
   const form = document.querySelector('[data-reserva-form]');
   if (form) {
     if (typeof window.fbq === 'function') {
@@ -118,13 +158,11 @@ if (typeof document !== 'undefined') {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       try {
-        const params = new URLSearchParams(window.location.search);
-        const origin = params.get('origem') ?? params.get('utm_source') ?? 'SITE';
         const url = buildReservationLink({
           date: dateInput.value,
           time: form.querySelector('[name="horario"]').value,
           partySize: form.querySelector('[name="pessoas"]').value,
-          origin,
+          origin: pageOrigin,
           today: todayInBrazil()
         });
         trackContactClick(window.fbq);
