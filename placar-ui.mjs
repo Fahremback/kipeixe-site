@@ -1,7 +1,7 @@
-import {SOURCES,STATUSES,validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END} from './placar-data.mjs';
+import {SOURCES,STATUSES,validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END} from './placar-data.mjs?v=20261113-organic-reels';
 
 const KEY='kipeixe.placar-presencial.2026-11.v1';
-const sourceNames={META_PEIXE:'Meta • anúncio peixe',META_LAGO:'Meta • anúncio lago',META_VIDEO_REAL:'Meta • vídeo real',META:'Meta • outros',INSTAGRAM:'Instagram',SITE:'Site do Kipeixe',BAIRRO:'Cartaz/QR bairro',PARCEIRO:'Parceiro local',WHATSAPP:'WhatsApp direto',OUTROS:'Outros'};
+const sourceNames={META_PEIXE:'Meta • anúncio peixe',META_LAGO:'Meta • anúncio lago',META_VIDEO_REAL:'Meta • vídeo real',META_VIDEO_PEIXE:'Meta • Reel pago peixe',META_VIDEO_AMBIENTE:'Meta • Reel pago lago',META:'Meta • outros',IG_REEL_PEIXE:'Reel orgânico • peixe',IG_REEL_AMBIENTE:'Reel orgânico • lago',INSTAGRAM:'Instagram • outros',SITE:'Site do Kipeixe',BAIRRO:'Cartaz/QR bairro',PARCEIRO:'Parceiro local',WHATSAPP:'WhatsApp direto',OUTROS:'Outros'};
 const sourceLabel=(source)=>sourceNames[source]??(source.startsWith('PARCEIRO_')?'Parceiro • '+source.slice(9):source);
 const statusNames={CONSULTA:'Consulta',CONFIRMADA:'Confirmada',COMPARECEU:'Compareceu',FALTOU:'Não compareceu'};
 

@@ -40,8 +40,10 @@ test('alinha a primeira tela ao anúncio, mantendo variações desconhecidas no 
   assert.equal(getCampaignVariant('META_VIDEO_PEIXE'), 'peixe');
   assert.equal(getCampaignVariant('META_PEIXE'), 'peixe');
   assert.equal(getCampaignVariant('IG_STORY_PEIXE'), 'peixe');
+  assert.equal(getCampaignVariant('IG_REEL_PEIXE'), 'peixe');
   assert.equal(getCampaignVariant('META_VIDEO_AMBIENTE'), 'ambiente');
   assert.equal(getCampaignVariant('META_LAGO'), 'ambiente');
+  assert.equal(getCampaignVariant('IG_REEL_AMBIENTE'), 'ambiente');
   assert.equal(getCampaignVariant('PARCEIRO_RHINO'), 'geral');
   assert.equal(getCampaignVariant('<script>'), 'geral');
   assert.match(campaignHero('peixe').image, /tilapia-milanesa\.webp$/);

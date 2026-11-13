@@ -64,6 +64,18 @@ test('distingue as duas variações premium por reservas comparecidas',()=>{
   assert.match(exportCSV([booking({source:'META_VIDEO_PEIXE'})],[]),/META_VIDEO_PEIXE/);
 });
 
+test('atribui os dois Reels orgânicos sem confundi-los com mídia paga',()=>{
+  for (const source of ['IG_REEL_PEIXE','IG_REEL_AMBIENTE']) assert.equal(validSource(source),true);
+  const result=summarize([
+    booking({source:'IG_REEL_PEIXE',status:'COMPARECEU',partySize:4,revenue:180}),
+    booking({source:'IG_REEL_AMBIENTE',status:'CONFIRMADA',partySize:2}),
+  ],[{date:'2026-11-14',shift:'almoco',capacity:25,peak:20,spend:0}]);
+  assert.equal(result.bySource.IG_REEL_PEIXE.attendedBookings,1);
+  assert.equal(result.bySource.IG_REEL_AMBIENTE.confirmedBookings,1);
+  assert.equal(result.mediaCostPerAttendedBooking,null);
+  assert.match(exportCSV([booking({source:'IG_REEL_PEIXE'})],[]),/IG_REEL_PEIXE/);
+});
+
 test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
   const entries=[
     validateReservation(booking({source:'PARCEIRO_RHINO',status:'COMPARECEU',revenue:135})),
