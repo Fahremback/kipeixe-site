@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END} from '../placar-data.mjs';
+import {validateReservation,validateShift,summarize,exportCSV,DATE_START,DATE_END,validSource} from '../placar-data.mjs';
 
 const booking=(overrides={})=>({date:'2026-11-14',shift:'almoco',source:'META_PEIXE',partySize:3,status:'CONFIRMADA',revenue:0,...overrides});
 
@@ -48,6 +48,20 @@ test('atribui ao Meta também o novo criativo de vídeo real',()=>{
   const result=summarize([booking({source:'META_VIDEO_REAL',status:'COMPARECEU',partySize:5,revenue:200})],[{date:'2026-11-14',shift:'almoco',capacity:30,peak:20,spend:12}]);
   assert.equal(result.bySource.META_VIDEO_REAL.attendedBookings,1);
   assert.equal(result.mediaCostPerAttendedBooking,12);
+});
+
+test('distingue as duas variações premium por reservas comparecidas',()=>{
+  for (const source of ['META_VIDEO_PEIXE','META_VIDEO_AMBIENTE']) {
+    assert.equal(validSource(source),true);
+  }
+  const result=summarize([
+    booking({source:'META_VIDEO_PEIXE',status:'COMPARECEU',partySize:2,revenue:90}),
+    booking({source:'META_VIDEO_AMBIENTE',status:'CONFIRMADA',partySize:4}),
+  ],[]);
+  assert.equal(result.bySource.META_VIDEO_PEIXE.attendedBookings,1);
+  assert.equal(result.bySource.META_VIDEO_AMBIENTE.confirmedBookings,1);
+  assert.equal(result.bySource.META_VIDEO_AMBIENTE.attendedBookings,0);
+  assert.match(exportCSV([booking({source:'META_VIDEO_PEIXE'})],[]),/META_VIDEO_PEIXE/);
 });
 
 test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
