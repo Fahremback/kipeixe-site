@@ -2,6 +2,7 @@ import {SOURCES,STATUSES,validateReservation,validateShift,summarize,exportCSV,D
 
 const KEY='kipeixe.placar-presencial.2026-11.v1';
 const sourceNames={META_PEIXE:'Meta • anúncio peixe',META_LAGO:'Meta • anúncio lago',META_VIDEO_REAL:'Meta • vídeo real',META:'Meta • outros',INSTAGRAM:'Instagram',SITE:'Site do Kipeixe',BAIRRO:'Cartaz/QR bairro',PARCEIRO:'Parceiro local',WHATSAPP:'WhatsApp direto',OUTROS:'Outros'};
+const sourceLabel=(source)=>sourceNames[source]??(source.startsWith('PARCEIRO_')?'Parceiro • '+source.slice(9):source);
 const statusNames={CONSULTA:'Consulta',CONFIRMADA:'Confirmada',COMPARECEU:'Compareceu',FALTOU:'Não compareceu'};
 
 const $=(id)=>document.getElementById(id);
@@ -35,9 +36,9 @@ function render(){
   $('cost-count').textContent=s.mediaCostPerAttendedBooking===null?'—':money(s.mediaCostPerAttendedBooking);
 
   const sources=$('sources-body');sources.replaceChildren();
-  for(const key of SOURCES){
+  for(const key of Object.keys(s.bySource)){
     const row=document.createElement('tr'),data=s.bySource[key];
-    [sourceNames[key],data.contacts,data.confirmedBookings,data.attendedBookings,data.attendedPeople,money(data.revenue)].forEach(val=>cell(row,val));
+    [sourceLabel(key),data.contacts,data.confirmedBookings,data.attendedBookings,data.attendedPeople,money(data.revenue)].forEach(val=>cell(row,val));
     sources.append(row);
   }
 
@@ -45,7 +46,7 @@ function render(){
   $('empty-records').hidden=state.bookings.length>0;
   for(const entry of [...state.bookings].sort((a,b)=>b.date.localeCompare(a.date))){
     const row=document.createElement('tr');
-    [day(entry.date),entry.shift==='almoco'?'Almoço':'Jantar',sourceNames[entry.source],entry.partySize].forEach(x=>cell(row,x));
+    [day(entry.date),entry.shift==='almoco'?'Almoço':'Jantar',sourceLabel(entry.source),entry.partySize].forEach(x=>cell(row,x));
     const select=document.createElement('select');select.setAttribute('aria-label','Situação');
     for(const k of STATUSES){const opt=new Option(statusNames[k],k);select.add(opt)}select.value=entry.status;
     cell(row,'').append(select);
@@ -76,6 +77,10 @@ for(const form of [$('booking-form'),$('shift-form')])form.elements.date.value=t
 $('booking-form').addEventListener('submit',(ev)=>{
   ev.preventDefault();
   const data=Object.fromEntries(new FormData(ev.currentTarget));
+  if(data.source==='PARCEIRO' && data.partnerCode?.trim()){
+    const code=data.partnerCode.trim().toUpperCase();
+    data.source=code.startsWith('PARCEIRO_')?code:'PARCEIRO_'+code;
+  }
   try{const entry=validateReservation(data);state.bookings.push({...entry,id:crypto.randomUUID()});save();status('Mesa registrada.');}
   catch(e){status(e.message)}
 });

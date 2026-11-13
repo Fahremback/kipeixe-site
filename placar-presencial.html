@@ -30,6 +30,7 @@
           <label>Data <input name="date" type="date" min="2026-11-13" max="2026-11-22" required></label>
           <label>Turno <select name="shift"><option value="almoco">Almoço</option><option value="jantar">Jantar</option></select></label>
           <label>Origem <select name="source"><option value="META_PEIXE">Meta • anúncio peixe</option><option value="META_LAGO">Meta • anúncio lago</option><option value="META_VIDEO_REAL">Meta • vídeo real</option><option value="META">Meta • outros</option><option value="INSTAGRAM">Instagram</option><option value="SITE">Site do Kipeixe</option><option value="BAIRRO">Cartaz/QR bairro</option><option value="PARCEIRO">Parceiro local</option><option value="WHATSAPP">WhatsApp direto</option><option value="OUTROS">Outros</option></select></label>
+          <label>Se for parceiro: código da indicação <input name="partnerCode" type="text" maxlength="32" placeholder="Ex.: PARCEIRO_RHINO" autocomplete="off"></label>
           <label>Pessoas <input name="partySize" type="number" min="1" max="20" step="1" value="2" required></label>
           <label>Situação <select name="status"><option value="CONSULTA">Consulta recebida</option><option value="CONFIRMADA" selected>Confirmada</option><option value="COMPARECEU">Compareceu</option><option value="FALTOU">Não compareceu</option></select></label>
           <label>Consumo R$ <input name="revenue" type="number" min="0" step="0.01" value="0" required></label>

@@ -50,6 +50,23 @@ test('atribui ao Meta também o novo criativo de vídeo real',()=>{
   assert.equal(result.mediaCostPerAttendedBooking,12);
 });
 
+test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
+  const entries=[
+    validateReservation(booking({source:'PARCEIRO_RHINO',status:'COMPARECEU',revenue:135})),
+    validateReservation(booking({source:'PARCEIRO_BRUNABOSCO',status:'CONFIRMADA'})),
+    validateReservation(booking({source:'PARCEIRO_BRUNABOSCO',status:'COMPARECEU',partySize:2,revenue:80}))
+  ];
+  const result=summarize(entries,[]);
+  assert.equal(result.bySource.PARCEIRO_RHINO.attendedBookings,1);
+  assert.equal(result.bySource.PARCEIRO_RHINO.revenue,135);
+  assert.equal(result.bySource.PARCEIRO_BRUNABOSCO.attendedPeople,2);
+  assert.equal(result.bySource.PARCEIRO_BRUNABOSCO.confirmedBookings,2);
+  assert.match(exportCSV(entries,[]),/PARCEIRO_BRUNABOSCO/);
+  for (const source of ['PARCEIRO_', 'PARCEIRO_!', '=HYPERLINK()', 'PARCEIRO_A'.repeat(20)]) {
+    assert.throws(()=>validateReservation(booking({source})),/origem/i);
+  }
+});
+
 test('CSV traz apenas agregados, escapa valores e não inventa clientes',()=>{
   const csv=exportCSV([booking({status:'COMPARECEU',revenue:123.45})],[]);
   assert.match(csv,/data,turno,origem,situacao,pessoas,consumo/);

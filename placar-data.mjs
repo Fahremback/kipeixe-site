@@ -4,6 +4,10 @@ export const SHIFTS = Object.freeze(['almoco', 'jantar']);
 export const SOURCES = Object.freeze(['META_PEIXE', 'META_LAGO', 'META_VIDEO_REAL', 'META', 'INSTAGRAM', 'SITE', 'BAIRRO', 'PARCEIRO', 'WHATSAPP', 'OUTROS']);
 export const STATUSES = Object.freeze(['CONSULTA', 'CONFIRMADA', 'COMPARECEU', 'FALTOU']);
 
+export function validSource(source) {
+  return SOURCES.includes(source) || (typeof source === 'string' && /^PARCEIRO_[A-Z0-9][A-Z0-9_-]{0,22}$/.test(source));
+}
+
 function validDate(date) {
   return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) &&
     Number.isFinite(Date.parse(`${date}T00:00:00Z`)) &&
@@ -25,7 +29,7 @@ function money(value) {
 
 export function validateReservation(value) {
   dateAndShift(value);
-  if (!SOURCES.includes(value.source)) throw new Error('Origem da reserva inválida.');
+  if (!validSource(value.source)) throw new Error('Origem da reserva inválida.');
   if (!STATUSES.includes(value.status)) throw new Error('Situação inválida.');
   const partySize=Number(value.partySize);
   if (!Number.isInteger(partySize) || partySize < 1 || partySize > 20) throw new Error('Informe de 1 a 20 pessoas.');
@@ -45,7 +49,8 @@ export function validateShift(value) {
 }
 
 export function summarize(bookings,shiftLogs) {
-  const bySource=Object.fromEntries(SOURCES.map(x=>[x,{contacts:0,confirmedBookings:0,attendedBookings:0,attendedPeople:0,revenue:0,noShows:0}]));
+  const sources=[...new Set([...SOURCES,...bookings.map(b=>b.source).filter(validSource)])];
+  const bySource=Object.fromEntries(sources.map(x=>[x,{contacts:0,confirmedBookings:0,attendedBookings:0,attendedPeople:0,revenue:0,noShows:0}]));
   let confirmedBookings=0,attendedBookings=0,attendedPeople=0,noShows=0,revenue=0;
   for (const item of bookings) {
     const source=bySource[item.source];
