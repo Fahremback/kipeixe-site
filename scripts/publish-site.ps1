@@ -77,6 +77,11 @@ try {
   foreach ($name in @('feed_peixe.png', 'feed_lago.png', 'story_peixe.png', 'story_lago.png', 'cartaz_a5.png', 'reel_visite_12s.mp4', 'reel_imagens_reais_10s.mp4')) {
     if (-not (Test-Path (Join-Path $public 'assets\campanha' $name))) { throw ('Arquivo de campanha ausente: ' + $name) }
   }
+  foreach ($code in @('rhino', 'farmacia3l', 'brunabosco', 'amandalara', 'dourado', 'montanari', 'precojusto', 'tradicao', 'serenity', 'gracie', 'kozievitch', 'vaz')) {
+    if (-not (Test-Path (Join-Path $public 'assets\campanha\parceiros' ('cartaz_parceiro_' + $code + '.png')))) {
+      throw ('Cartaz de parceiro ausente: ' + $code)
+    }
+  }
   Write-Output ('Publicando commit ' + $commit.Substring(0, 7) + ' no Cloudflare Pages...')
   Push-Location $public
   try {
@@ -91,7 +96,9 @@ try {
       '/assets/campanha/feed_peixe.png', '/assets/campanha/feed_lago.png',
       '/assets/campanha/story_peixe.png', '/assets/campanha/story_lago.png',
       '/assets/campanha/cartaz_a5.png', '/assets/campanha/reel_visite_12s.mp4',
-      '/assets/campanha/reel_imagens_reais_10s.mp4')) {
+      '/assets/campanha/reel_imagens_reais_10s.mp4',
+      '/assets/campanha/parceiros/cartaz_parceiro_rhino.png',
+      '/assets/campanha/parceiros/cartaz_parceiro_vaz.png')) {
     $url = 'https://' + $Project + '.pages.dev' + $path + '?rev=' + $commit.Substring(0, 12)
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
     if ([int]$response.StatusCode -ne 200) { throw ('Verificacao HTTP falhou: ' + $url) }
