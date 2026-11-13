@@ -76,6 +76,17 @@ test('atribui os dois Reels orgânicos sem confundi-los com mídia paga',()=>{
   assert.match(exportCSV([booking({source:'IG_REEL_PEIXE'})],[]),/IG_REEL_PEIXE/);
 });
 
+test('permite medir consultas do direct vindas da resposta automática de MESA',()=>{
+  assert.equal(validSource('SOCIAL_DIRECT'),true);
+  const entries=[validateReservation(booking({source:'SOCIAL_DIRECT',status:'CONSULTA'})),validateReservation(booking({source:'SOCIAL_DIRECT',status:'COMPARECEU',partySize:3,revenue:125}))];
+  const result=summarize(entries,[]);
+  assert.equal(result.bySource.SOCIAL_DIRECT.contacts,2);
+  assert.equal(result.bySource.SOCIAL_DIRECT.attendedPeople,3);
+  assert.equal(result.bySource.SOCIAL_DIRECT.revenue,125);
+  assert.equal(result.mediaCostPerAttendedBooking,null);
+  assert.match(exportCSV(entries,[]),/SOCIAL_DIRECT/);
+});
+
 test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
   const entries=[
     validateReservation(booking({source:'PARCEIRO_RHINO',status:'COMPARECEU',revenue:135})),
