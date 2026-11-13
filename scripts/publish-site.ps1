@@ -27,6 +27,7 @@ try {
 
   $publicFiles = @(
     'index.html', 'visite.html', 'visite.css', 'reservas.mjs',
+    'placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs',
     'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css',
     'training-engine.js', 'styles.css', 'menu-ordering.css', 'script.js', 'store-hours.js',
     'menu-data.js', 'product-images.js', 'meta-pixel.js', 'webmcp.js', 'favicon.ico',
@@ -70,6 +71,9 @@ try {
   foreach ($name in @('visite.html', 'visite.css', 'reservas.mjs')) {
     if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo de reservas ausente: ' + $name) }
   }
+  foreach ($name in @('placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs')) {
+    if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo do placar ausente: ' + $name) }
+  }
   foreach ($name in @('feed_peixe.png', 'feed_lago.png', 'story_peixe.png', 'story_lago.png', 'cartaz_a5.png', 'reel_visite_12s.mp4', 'reel_imagens_reais_10s.mp4')) {
     if (-not (Test-Path (Join-Path $public 'assets\campanha' $name))) { throw ('Arquivo de campanha ausente: ' + $name) }
   }
@@ -83,6 +87,7 @@ try {
   foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/gestao-unified.css', '/menu-ordering.css', '/product-images.js',
       '/appearance-config.mjs', '/appearance-site.mjs', '/appearance-admin.mjs',
       '/appearance-theme.css', '/appearance-admin.css', '/visite.html', '/visite.css', '/reservas.mjs',
+      '/placar-presencial.html', '/placar.css', '/placar-ui.mjs', '/placar-data.mjs',
       '/assets/campanha/feed_peixe.png', '/assets/campanha/feed_lago.png',
       '/assets/campanha/story_peixe.png', '/assets/campanha/story_lago.png',
       '/assets/campanha/cartaz_a5.png', '/assets/campanha/reel_visite_12s.mp4',
@@ -96,6 +101,9 @@ try {
     }
     if ($path -eq '/reservas.mjs' -and -not $response.Content.Contains('buildReservationLink')) {
       throw ('Modulo de reservas nao encontrado no conteudo de ' + $url)
+    }
+    if ($path -eq '/placar-presencial.html' -and -not $response.Content.Contains('booking-form')) {
+      throw ('Placar presencial nao encontrado no conteudo de ' + $url)
     }
   }
 } finally {

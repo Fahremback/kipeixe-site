@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#2b2019">
+  <title>Kipeixe | Placar presencial 13–22/11</title>
+  <link rel="stylesheet" href="placar.css?v=20261113">
+  <script type="module" src="placar-ui.mjs?v=20261113"></script>
+</head>
+<body>
+  <header class="top"><div><p class="eyebrow">Gestão local • 13–22 novembro 2026</p><h1>KIPEIXE <span>Placar presencial</span></h1></div><a href="visite.html">Ver página de reservas ↗</a></header>
+  <main class="shell">
+    <p class="notice"><strong>Uso da equipe, neste navegador.</strong> Os registros ficam somente neste dispositivo, não são sincronizados com o sistema do restaurante e não contêm nomes ou telefones. Faça a exportação CSV ao fim de cada dia.</p>
+    <section class="stat-grid" aria-label="Resultado real até agora">
+      <article><small>Mesas confirmadas</small><strong id="confirmed-count">0</strong><span>Inclui comparecimentos e faltas</span></article>
+      <article><small>Mesas que compareceram</small><strong id="attended-count">0</strong><span>Não são cliques ou conversas</span></article>
+      <article><small>Pessoas atendidas</small><strong id="people-count">0</strong><span>Presença registrada</span></article>
+      <article><small>Ocupação de pico</small><strong id="occupancy-count">—</strong><span>Média ponderada dos turnos fechados</span></article>
+      <article><small>Receita presencial</small><strong id="revenue-count">R$ 0</strong><span>Somente mesas comparecidas</span></article>
+      <article><small>Custo por mesa Meta presente</small><strong id="cost-count">—</strong><span>Gasto Meta / mesas Meta comparecidas</span></article>
+    </section>
+
+    <section class="forms" aria-label="Lançamentos">
+      <form id="booking-form" class="panel">
+        <h2>1. Registrar mesa</h2>
+        <p>Use o código de origem recebido pelo WhatsApp. Uma consulta ainda não é uma reserva.</p>
+        <div class="field-grid">
+          <label>Data <input name="date" type="date" min="2026-11-13" max="2026-11-22" required></label>
+          <label>Turno <select name="shift"><option value="almoco">Almoço</option><option value="jantar">Jantar</option></select></label>
+          <label>Origem <select name="source"><option value="META_PEIXE">Meta • anúncio peixe</option><option value="META_LAGO">Meta • anúncio lago</option><option value="META_VIDEO_REAL">Meta • vídeo real</option><option value="META">Meta • outros</option><option value="INSTAGRAM">Instagram</option><option value="SITE">Site do Kipeixe</option><option value="BAIRRO">Cartaz/QR bairro</option><option value="PARCEIRO">Parceiro local</option><option value="WHATSAPP">WhatsApp direto</option><option value="OUTROS">Outros</option></select></label>
+          <label>Pessoas <input name="partySize" type="number" min="1" max="20" step="1" value="2" required></label>
+          <label>Situação <select name="status"><option value="CONSULTA">Consulta recebida</option><option value="CONFIRMADA" selected>Confirmada</option><option value="COMPARECEU">Compareceu</option><option value="FALTOU">Não compareceu</option></select></label>
+          <label>Consumo R$ <input name="revenue" type="number" min="0" step="0.01" value="0" required></label>
+        </div>
+        <button class="primary" type="submit">Registrar mesa</button>
+        <p class="hint">Consumo diferente de zero somente para quem compareceu.</p>
+      </form>
+
+      <form id="shift-form" class="panel">
+        <h2>2. Fechar almoço ou jantar</h2>
+        <p>Ocupação é o pico de assentos preenchidos ao mesmo tempo, não a soma de pessoas do dia.</p>
+        <div class="field-grid">
+          <label>Data <input name="date" type="date" min="2026-11-13" max="2026-11-22" required></label>
+          <label>Turno <select name="shift"><option value="almoco">Almoço</option><option value="jantar">Jantar</option></select></label>
+          <label>Assentos disponíveis <input name="capacity" type="number" min="0" max="1000" value="50" required></label>
+          <label>Pico de ocupação <input name="peak" type="number" min="0" max="1000" value="0" required></label>
+          <label class="full">Gasto Meta no turno R$ <input name="spend" type="number" min="0" step="0.01" value="0" required></label>
+        </div>
+        <button class="primary" type="submit">Salvar fechamento</button>
+        <p class="hint">Se o turno já estiver registrado, o lançamento será atualizado.</p>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="source-title">
+      <div class="section-head"><div><h2 id="source-title">De onde vieram as mesas?</h2><p>Resultado por origem; avalie comparecimentos, não cliques.</p></div><button id="export-button" type="button" class="secondary">Exportar tudo (CSV)</button></div>
+      <div class="scroll"><table><thead><tr><th>Origem</th><th>Consultas/mesas</th><th>Confirmadas</th><th>Compareceram</th><th>Pessoas</th><th>Receita</th></tr></thead><tbody id="sources-body"></tbody></table></div>
+    </section>
+
+    <section class="panel" aria-labelledby="bookings-title">
+      <div class="section-head"><div><h2 id="bookings-title">Livro de mesas</h2><p>Alterar situação e consumo conforme a equipe confirma o comparecimento.</p></div><button id="clear-button" type="button" class="danger">Apagar registros deste navegador</button></div>
+      <div class="scroll"><table><thead><tr><th>Data</th><th>Turno</th><th>Origem</th><th>Pessoas</th><th>Situação</th><th>Consumo R$</th><th>Ações</th></tr></thead><tbody id="bookings-body"></tbody></table></div>
+      <p id="empty-records" class="hint">Nenhuma reserva registrada ainda.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="days-title">
+      <h2 id="days-title">Ocupação dos turnos</h2>
+      <div class="scroll"><table><thead><tr><th>Data</th><th>Turno</th><th>Pico / capacidade</th><th>Ocupação</th><th>Gasto Meta</th></tr></thead><tbody id="shifts-body"></tbody></table></div>
+    </section>
+    <p class="status" id="app-status" role="status" aria-live="polite"></p>
+  </main>
+  <footer>KIPEIXE • Este placar é uma ferramenta local de acompanhamento, não confirma reservas automaticamente.</footer>
+</body>
+</html>
