@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReservationLink, normalizeOrigin, todayInBrazil } from '../reservas.mjs';
+import { buildReservationLink, normalizeOrigin, todayInBrazil, trackContactClick } from '../reservas.mjs';
 
 test('gera link de consulta de mesa com data, pessoas e origem rastreável', () => {
   const link = buildReservationLink({
@@ -38,4 +38,12 @@ test('normaliza origem e impede inclusão de texto arbitrário no rastreamento',
 
 test('usa calendário de São Paulo sem depender da timezone do navegador', () => {
   assert.equal(todayInBrazil(new Date('2026-11-14T01:30:00Z')), '2026-11-13');
+});
+
+test('mede somente clique para consultar mesa, sem afirmar que houve reserva', () => {
+  const events = [];
+  const fbq = (...args) => events.push(args);
+  assert.equal(trackContactClick(fbq), true);
+  assert.deepEqual(events, [['track', 'Contact', {content_name: 'consulta_mesa_presencial'}]]);
+  assert.equal(trackContactClick(undefined), false);
 });

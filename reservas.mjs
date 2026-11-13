@@ -15,6 +15,13 @@ export function normalizeOrigin(raw) {
   return /^[a-z0-9_-]{1,32}$/i.test(origin) ? origin.toUpperCase() : 'SITE';
 }
 
+// Evento de clique/abertura do WhatsApp. Não representa reserva confirmada.
+export function trackContactClick(fbq) {
+  if (typeof fbq !== 'function') return false;
+  fbq('track', 'Contact', {content_name: 'consulta_mesa_presencial'});
+  return true;
+}
+
 export function buildReservationLink({ date, time, partySize, origin = 'SITE', today = todayInBrazil() }) {
   const iso = /^\d{4}-\d{2}-\d{2}$/.test(date ?? '') ? Date.parse(`${date}T00:00:00.000Z`) : NaN;
   const todayMs = Date.parse(`${today}T00:00:00.000Z`);
@@ -40,6 +47,9 @@ export function buildReservationLink({ date, time, partySize, origin = 'SITE', t
 if (typeof document !== 'undefined') {
   const form = document.querySelector('[data-reserva-form]');
   if (form) {
+    if (typeof window.fbq === 'function') {
+      window.fbq('track', 'ViewContent', {content_name: 'visita_presencial'});
+    }
     const dateInput = form.querySelector('[name="data"]');
     const feedback = form.querySelector('[data-reserva-feedback]');
     const today = todayInBrazil();
@@ -60,6 +70,7 @@ if (typeof document !== 'undefined') {
           origin,
           today: todayInBrazil()
         });
+        trackContactClick(window.fbq);
         feedback.textContent = 'Abrindo o WhatsApp. Sua reserva será confirmada pela equipe.';
         window.location.assign(url);
       } catch (error) {
