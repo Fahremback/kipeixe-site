@@ -25,13 +25,26 @@ def main():
             assert page.locator("[data-payment-methods]").is_hidden()
             page.locator('[data-order-form] input[name="name"]').fill("Verificação de interface")
             page.locator('[data-order-form] input[name="phone"]').fill("45999998888")
+            delivery = page.locator('[data-order-choice="Entrega"]')
+            assert delivery.is_visible(), "A opção Entrega não aparece no checkout"
+            delivery.click()
+            assert page.locator('[data-address-field]').is_visible()
+            assert page.locator('[data-delivery-quote]').is_hidden()
+            page.locator('[data-online-checkout]').click()
+            assert page.locator('[data-address-error]').is_visible(), "Endereço deve ser obrigatório"
+            address = "Rua Teste, 123, Três Lagoas, Foz do Iguaçu"
+            page.locator('[data-order-form] input[name="address"]').fill(address)
             with page.expect_request(lambda req: req.url.startswith("https://wa.me/")) as attempt:
                 page.locator("[data-online-checkout]").click()
             link = urlparse(attempt.value.url)
             assert link.path == "/554535772363", link.path
-            assert "Água sem gás" in parse_qs(link.query)["text"][0]
+            message = parse_qs(link.query)["text"][0]
+            assert "Água sem gás" in message
+            assert "*Recebimento:* Entrega" in message
+            assert f"*Endereço:* {address}" in message
+            assert "*Taxa de entrega:* a confirmar" in message
             assert not submitted_orders, submitted_orders
-            print(f"Production checkout: {width}px OK")
+            print(f"Production delivery checkout: {width}px OK")
             page.close()
         browser.close()
 
