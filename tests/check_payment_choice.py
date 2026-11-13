@@ -6,11 +6,13 @@ import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 
 class SilentHandler(SimpleHTTPRequestHandler):
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.mjs': 'text/javascript'}
     def log_message(self, *args):
         pass
 
@@ -127,6 +129,108 @@ def run():
             assert 'R$ 6,00' in pix_page.locator('[data-pix-total]').inner_text().replace('\xa0', ' ')
             pix_page.locator('[data-pix-close]').last.click()
             assert not pix_page.locator('.pix-drawer').get_attribute('class').endswith('is-open')
+
+            # Manual WhatsApp mode: never calls Asaas or creates an order in the DB.
+            whatsapp_api_calls = []
+            whatsapp_config = {**cfg, 'orderChannel': 'whatsapp', 'whatsappNumber': '554535772363',
+                               'acceptsOrders': True, 'onlinePaymentEnabled': False,
+                               'deliveryEnabled': True}
+            def whatsapp_api(route):
+                path = route.request.url.split('?', 1)[0]
+                if path.endswith('/api/config'):
+                    data = whatsapp_config
+                elif path.endswith('/api/catalog'):
+                    data = {"categories": []}
+                else:
+                    whatsapp_api_calls.append(route.request.url)
+                    return route.fulfill(status=409, body='unexpected API request')
+                route.fulfill(status=200, headers={"Access-Control-Allow-Origin": local_origin},
+                              content_type='application/json', body=json.dumps(data))
+            whatsapp_page = browser.new_page(viewport={"width": 390, "height": 844})
+            whatsapp_page.route('http://127.0.0.1:8787/**', whatsapp_api)
+            whatsapp_page.route('https://wa.me/**', lambda route: route.fulfill(
+                status=200, content_type='text/html', body='<title>WhatsApp mocked</title>'))
+            whatsapp_page.goto(local_origin + '/#cardapio', wait_until='domcontentloaded')
+            whatsapp_page.get_by_role('button', name='Adicionar Água sem gás ao pedido').click()
+            whatsapp_page.locator('[data-quick-checkout]').click()
+            whatsapp_page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
+            assert whatsapp_page.locator('[data-online-checkout] strong').inner_text() == 'Enviar pedido pelo WhatsApp'
+            assert whatsapp_page.locator('[data-payment-methods]').is_hidden()
+            whatsapp_page.locator('[data-order-form] input[name="name"]').fill('Cliente WhatsApp')
+            whatsapp_page.locator('[data-order-form] input[name="phone"]').fill('45999998888')
+            whatsapp_page.locator('[data-order-choice="Entrega"]').click()
+            assert whatsapp_page.locator('[data-delivery-quote]').is_hidden()
+            whatsapp_page.locator('[data-address-field] input[name="address"]').fill('Rua Teste, 123, Três Lagoas')
+            assert whatsapp_page.locator('[data-order-total-label]').inner_text() == 'Total dos itens'
+            with whatsapp_page.expect_request(lambda req: req.url.startswith('https://wa.me/')) as sent_request:
+                whatsapp_page.locator('[data-online-checkout]').click()
+            whatsapp_url = urlparse(sent_request.value.url)
+            assert whatsapp_url.path == '/554535772363'
+            message = parse_qs(whatsapp_url.query)['text'][0]
+            assert 'Cliente WhatsApp' in message
+            assert '45999998888' in message
+            assert 'Rua Teste, 123, Três Lagoas' in message
+            assert 'Água sem gás' in message
+            assert 'R$' in message
+            assert 'Taxa de entrega:* a confirmar' in message
+            assert not any('/api/orders' in url or '/api/payments' in url for url in whatsapp_api_calls), \
+                f'WhatsApp mode unexpectedly submitted an order or payment: {whatsapp_api_calls}'
+
+            # Owner panel must save the selected channel and WhatsApp number.
+            settings = {
+                'ordersEnabled': True, 'deliveryEnabled': False, 'uberEnabled': False,
+                'ifoodEnabled': False, 'deliveryProvider': 'uber', 'deliveryFeeCents': 0,
+                'paymentMode': 'production', 'paymentsEnabled': True,
+                'orderChannel': 'whatsapp', 'whatsappNumber': '554535772363',
+                'paymentSystemAvailable': True,
+                'asaasEnvironments': {'production': {'configured': True,
+                    'apiKeyConfigured': True, 'webhookConfigured': True}},
+                'hours': cfg['openingHours'],
+            }
+            admin_updates = []
+            def admin_api(route):
+                path = urlparse(route.request.url).path
+                if path == '/api/auth/session':
+                    data = {'authenticated': True, 'username': 'proprietario', 'role': 'owner'}
+                elif path == '/api/admin/orders':
+                    data = {'orders': []}
+                elif path == '/api/admin/settings':
+                    if route.request.method == 'PUT':
+                        admin_updates.append(route.request.post_data_json)
+                        settings.update(admin_updates[-1])
+                        data = {'ok': True}
+                    else:
+                        data = settings
+                else:
+                    data = {'ok': True}
+                route.fulfill(status=200, content_type='application/json', body=json.dumps(data),
+                               headers={'Access-Control-Allow-Origin': local_origin,
+                                        'Access-Control-Allow-Credentials': 'true'})
+            admin_page = browser.new_page(viewport={'width': 1220, 'height': 900})
+            admin_errors = []
+            admin_page.on('pageerror', lambda error: admin_errors.append(str(error)))
+            admin_page.on('console', lambda message: admin_errors.append(message.text) if message.type == 'error' else None)
+            admin_page.route('http://127.0.0.1:8787/**', admin_api)
+            admin_page.goto(local_origin + '/gestao.html', wait_until='domcontentloaded')
+            try:
+                admin_page.locator('[data-tab="settings"]').wait_for(state='visible', timeout=5000)
+            except Exception:
+                print('Admin debug:', admin_errors,
+                      admin_page.locator('#dashboard-view').get_attribute('hidden'),
+                      admin_page.locator('#login-view').get_attribute('hidden'),
+                      admin_page.locator('[data-tab="settings"]').get_attribute('hidden'))
+                raise
+            admin_page.locator('[data-tab="settings"]').click()
+            admin_page.wait_for_function("document.querySelector('[name=\"orderChannel\"]').value === 'whatsapp'")
+            assert admin_page.locator('[data-asaas-settings]').first.is_hidden()
+            admin_page.locator('[name="orderChannel"]').select_option('asaas')
+            assert admin_page.locator('[data-asaas-settings]').first.is_visible()
+            admin_page.locator('[name="orderChannel"]').select_option('whatsapp')
+            admin_page.locator('[name="whatsappNumber"]').fill('5545999999999')
+            admin_page.locator('#settings-form button[type="submit"]').click()
+            admin_page.wait_for_function("document.querySelector('[name=\"whatsappNumber\"]').value === '5545999999999'")
+            assert admin_updates and admin_updates[-1]['orderChannel'] == 'whatsapp'
+            assert admin_updates[-1]['whatsappNumber'] == '5545999999999'
 
             # Simulate an Asaas refusal without any external financial request.
             rejected_orders = []

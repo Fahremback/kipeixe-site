@@ -1310,6 +1310,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
 }
 .checkout-payment-section .checkout-section-title{margin:0}
 .checkout-payment-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.checkout-payment-methods[hidden],.delivery-quote[hidden]{display:none!important}
 .checkout-payment-option{display:block;position:relative;min-width:0;cursor:pointer}
 .checkout-payment-option input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .checkout-payment-methods .checkout-payment-option > span{

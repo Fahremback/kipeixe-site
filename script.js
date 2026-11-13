@@ -19,6 +19,7 @@
 
   const qs = (selector, root = document) => root.querySelector(selector);
   const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const whatsappActive = () => storeConfig?.orderChannel === 'whatsapp';
 
   const year = qs('[data-year]');
   if (year) year.textContent = new Date().getFullYear();
@@ -623,7 +624,10 @@
     cartCheckout.hidden = count === 0;
     if (cartTotal) cartTotal.textContent = currency.format(cartValue());
     if (paymentTotal) paymentTotal.textContent = currency.format(cartValue() +
-      (orderType?.value === 'Entrega' ? Number(deliveryQuote?.feeCents || 0) / 100 : 0));
+      (!whatsappActive() && orderType?.value === 'Entrega' ? Number(deliveryQuote?.feeCents || 0) / 100 : 0));
+    const totalLabelNode = qs('[data-order-total-label]', orderForm);
+    if (totalLabelNode) totalLabelNode.textContent = whatsappActive() && orderType?.value === 'Entrega'
+      ? 'Total dos itens' : 'Total do pedido';
 
     cartItems.innerHTML = cart.map((item) => `
       <article class="cart-row" data-cart-id="${escapeHtml(item.id)}">
@@ -765,8 +769,10 @@
     if (!orderType || !addressField) return;
     const delivery = orderType.value === 'Entrega';
     addressField.hidden = !delivery;
-    const useIFood = storeConfig?.deliveryProvider === 'ifood' && delivery;
+    const useIFood = !whatsappActive() && storeConfig?.deliveryProvider === 'ifood' && delivery;
     if (ifoodAddressSection) ifoodAddressSection.hidden = !useIFood;
+    const quoteSection = qs('[data-delivery-quote]');
+    if (quoteSection) quoteSection.hidden = !delivery || whatsappActive();
     const inputAddress = qs('input[name="address"]', addressField);
     if (inputAddress) {
       inputAddress.readOnly = useIFood;
@@ -938,6 +944,17 @@
   const onlineHint = qs('[data-online-hint]');
   function syncPaymentCaption() {
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
+    const paymentMethods = qs('[data-payment-methods]', orderForm);
+    const paymentHeading = qs('[data-order-channel-title]', orderForm);
+    if (paymentMethods) paymentMethods.hidden = whatsappActive();
+    if (paymentHeading) paymentHeading.textContent = whatsappActive() ? 'Resumo do pedido' : 'Forma de pagamento';
+    if (whatsappActive()) {
+      if (onlineButton) {
+        qs('strong', onlineButton).textContent = 'Enviar pedido pelo WhatsApp';
+        qs('small', onlineButton).textContent = 'Continuar para a conversa';
+      }
+      return;
+    }
     if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
     const caption = qs('small', onlineButton);
     if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
@@ -1187,9 +1204,11 @@
       storeConfig = await configResponse.json();
       syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
-      if (onlineButton) onlineButton.disabled = paymentBusy || !storeConfig.onlinePaymentEnabled;
+      if (onlineButton) onlineButton.disabled = paymentBusy || !(storeConfig.orderChannel === 'whatsapp'
+        ? storeConfig.acceptsOrders && /^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')
+        : storeConfig.onlinePaymentEnabled);
       if (onlineHint) {
-        onlineHint.hidden = storeConfig.onlinePaymentEnabled && !storeConfig.sandbox;
+        onlineHint.hidden = whatsappActive() || (storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
         onlineHint.textContent = storeConfig.onlinePaymentEnabled
           ? 'Ambiente de testes: nenhum valor real será cobrado.'
           : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
@@ -1205,14 +1224,20 @@
       if (!storeConfig.deliveryEnabled) deliveryQuote = null;
       const onlineLabel = qs('strong', onlineButton);
       const onlineCaption = qs('small', onlineButton);
-      if (onlineLabel) onlineLabel.textContent = !storeConfig.onlinePaymentEnabled
+      if (onlineLabel) onlineLabel.textContent = whatsappActive() ? 'Enviar pedido pelo WhatsApp'
+        : !storeConfig.onlinePaymentEnabled
         ? 'Pagamento indisponível' : 'Pagar agora';
-      if (onlineCaption) onlineCaption.textContent = storeConfig.sandbox
+      if (onlineCaption) onlineCaption.textContent = whatsappActive() ? 'Continuar para a conversa'
+        : storeConfig.sandbox
         ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
-      if (checkoutDisclaimer) checkoutDisclaimer.textContent = storeConfig.sandbox
+      if (checkoutDisclaimer) checkoutDisclaimer.textContent = whatsappActive()
+        ? 'O restaurante confirmará seu pedido, o valor final e o pagamento pelo WhatsApp.'
+        : storeConfig.sandbox
         ? 'AMBIENTE DE TESTES: cobrança simulada, sem dinheiro real. O restaurante só recebe o pedido após a confirmação do Asaas.'
         : 'Seu pedido será enviado ao Kipeixe após a confirmação do pagamento e ficará sujeito ao aceite do restaurante.';
       syncPaymentCaption();
+      if (whatsappActive()) deliveryQuote = null;
+      syncAddressField();
       renderCart();
     } catch {
       // Falha fechada: checkout não envia pedidos por outro canal silenciosamente.
@@ -1323,8 +1348,59 @@
     }
   }
 
+  function startWhatsappCheckout() {
+    if (!storeConfig?.acceptsOrders || !/^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')) {
+      showOrderStatus('Pedidos indisponíveis', 'Não foi possível abrir o atendimento pelo WhatsApp.');
+      return;
+    }
+    if (!validateScheduleChoice()) return;
+    const data = new FormData(orderForm);
+    const name = String(data.get('name') || '').trim();
+    const phone = String(data.get('phone') || '').replace(/\D/g, '');
+    const type = String(data.get('type') || '');
+    const address = String(data.get('address') || '').trim();
+    const notes = String(data.get('notes') || '').trim();
+    const mode = String(data.get('mode') || 'immediate');
+    const scheduledAt = String(data.get('scheduledAt') || '');
+    setFieldError(nameInput, nameError, name.length < 2 || name.length > 90);
+    setFieldError(phoneInput, phoneError, phone.length < 10 || phone.length > 13);
+    setFieldError(addressInput, addressError, type === 'Entrega' && (!address || address.length > 250));
+    if (!cart.length || name.length < 2 || name.length > 90 || phone.length < 10 || phone.length > 13 ||
+        type === 'Entrega' && (!address || address.length > 250) || notes.length > 500) {
+      showOrderStatus('Confira os dados', 'Preencha nome, telefone e endereço (quando necessário).');
+      if (name.length < 2 || name.length > 90) nameInput?.focus();
+      else if (phone.length < 10 || phone.length > 13) phoneInput?.focus();
+      else if (type === 'Entrega' && !address) addressInput?.focus();
+      return;
+    }
+    if (mode === 'scheduled' && !scheduledAt) {
+      scheduleInput?.focus();
+      showOrderStatus('Escolha o horário', 'Informe a data e a hora do pedido.');
+      return;
+    }
+    const lines = [
+      '*Pedido Kipeixe*', '',
+      `*Nome:* ${name}`,
+      `*Telefone:* ${phone}`,
+      `*Recebimento:* ${type}`,
+    ];
+    if (type === 'Entrega') lines.push(`*Endereço:* ${address}`);
+    lines.push(`*Quando:* ${mode === 'scheduled' ? scheduledAt.replace('T', ' às ') : 'Agora'}`, '', '*Itens:*');
+    for (const item of cart) {
+      lines.push(`• ${item.qty}x ${item.name}${item.variant ? ` (${item.variant})` : ''} — ${currency.format(item.price * item.qty)}`);
+    }
+    lines.push('', `*Total dos itens:* ${currency.format(cartValue())}`);
+    if (type === 'Entrega') lines.push('*Taxa de entrega:* a confirmar');
+    if (notes) lines.push('', `*Observações:* ${notes}`);
+    lines.push('', 'Por favor, confirmem meu pedido e as condições de pagamento.');
+    const url = `https://wa.me/${storeConfig.whatsappNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+    // A mensagem é apenas preenchida. O cliente precisa enviá-la no WhatsApp.
+    window.location.assign(url);
+  }
+
   async function startOnlineCheckout() {
     if (paymentBusy) return;
+    if (whatsappActive()) { startWhatsappCheckout(); return; }
     if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
       showOrderStatus('Pedido aguardando conferência',
         'Já existe um pedido com pagamento pendente. Confira o Pix antes de criar outra cobrança.');

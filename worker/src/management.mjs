@@ -13,6 +13,8 @@ export const ALLOWED_ORIGINS = new Set([
 const encoder = new TextEncoder();
 const json = (value) => JSON.stringify(value);
 export const isPaymentsReady = paymentReady;
+export const DEFAULT_WHATSAPP_NUMBER = '554535772363';
+export const whatsappPhoneValid = value => /^55[1-9]\d{9,10}$/.test(String(value || ''));
 
 export function reply(data, status = 200, origin = '', extra = {}) {
   const headers = new Headers({
@@ -61,6 +63,7 @@ const canPrice = value => value === null || (Number.isInteger(value) && value >=
 
 export async function storeSettings(env) {
   if (!env.DB) return { ordersEnabled: false, paymentsEnabled: false, paymentMode: 'sandbox',
+    orderChannel: 'whatsapp', whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
     deliveryEnabled: false, deliveryFeeCents: 0, uberEnabled: false,
     ifoodEnabled: false, deliveryProvider: 'uber', hours: DEFAULT_HOURS };
   const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
@@ -71,6 +74,8 @@ export async function storeSettings(env) {
     ordersEnabled: values.orders_enabled === 'true',
     paymentsEnabled: values.payments_enabled === 'true',
     paymentMode: PAYMENT_MODES.has(values.payment_mode) ? values.payment_mode : 'sandbox',
+    orderChannel: values.order_channel === 'asaas' ? 'asaas' : 'whatsapp',
+    whatsappNumber: whatsappPhoneValid(values.whatsapp_number) ? values.whatsapp_number : DEFAULT_WHATSAPP_NUMBER,
     deliveryEnabled: values.delivery_enabled === 'true',
     deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
     uberEnabled: values.uber_enabled === 'true',
@@ -84,11 +89,13 @@ export async function clientConfig(env) {
   const settings = await storeSettings(env);
   const now = new Date();
   return {
-    onlinePaymentEnabled: isPaymentsReady(env, settings.paymentMode) &&
+    orderChannel: settings.orderChannel,
+    whatsappNumber: settings.whatsappNumber,
+    onlinePaymentEnabled: settings.orderChannel === 'asaas' && isPaymentsReady(env, settings.paymentMode) &&
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
-    deliveryEnabled: settings.deliveryProvider === 'ifood'
+    deliveryEnabled: settings.orderChannel === 'whatsapp' ? settings.deliveryEnabled : settings.deliveryProvider === 'ifood'
       ? ifoodReady(env, settings) : uberReady(env, settings),
     deliveryProvider: settings.deliveryProvider,
     uberDirectReady: uberReady(env, settings),
@@ -629,6 +636,8 @@ export async function handleAdmin(request, env, origin, url) {
       hours = validateHours(data.hours);
       if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
       if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
+      if (!['whatsapp', 'asaas'].includes(data.orderChannel)) throw Error('Canal de pedidos inválido.');
+      if (!whatsappPhoneValid(data.whatsappNumber)) throw Error('Informe um WhatsApp válido com DDI 55 e DDD.');
       if (typeof data.uberEnabled !== 'boolean') throw Error('Configuração Uber Direct inválida.');
       if (typeof data.ifoodEnabled !== 'boolean' ||
           !['uber', 'ifood'].includes(data.deliveryProvider))
@@ -637,10 +646,11 @@ export async function handleAdmin(request, env, origin, url) {
         throw Error('Uber Direct exige aprovação da conta e credenciais válidas no servidor.');
       if (data.ifoodEnabled && (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true'))
         throw Error('iFood Shipping exige credenciais autorizadas e habilitação no servidor.');
-      if (data.deliveryEnabled && !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
+      if (data.orderChannel === 'asaas' && data.deliveryEnabled &&
+          !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
         throw Error('Ative o serviço de entrega selecionado antes de oferecer entregas.');
       if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
-      if (data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
+      if (data.orderChannel === 'asaas' && data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
         throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');
       }
     } catch (e) { return fail(e.message, 422, origin); }
@@ -655,6 +665,10 @@ export async function handleAdmin(request, env, origin, url) {
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(json(hours)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payment_mode',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.paymentMode),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('order_channel',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.orderChannel),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('whatsapp_number',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.whatsappNumber),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('uber_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.uberEnabled)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('ifood_enabled',?)
@@ -664,7 +678,8 @@ export async function handleAdmin(request, env, origin, url) {
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payments_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.paymentsEnabled)),
     ]);
-    await audit(env, actor, 'SETTINGS_CHANGED', 'store', `asaas:${data.paymentMode} payments:${data.paymentsEnabled}`);
+    await audit(env, actor, 'SETTINGS_CHANGED', 'store',
+      `channel:${data.orderChannel} asaas:${data.paymentMode} payments:${data.paymentsEnabled}`);
     return reply({ ok: true }, 200, origin);
   }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {

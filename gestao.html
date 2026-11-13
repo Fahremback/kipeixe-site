@@ -215,7 +215,22 @@
             <p>Coleta: Av. João Ricieri Maran, 1417, Três Lagoas, Foz do Iguaçu. A integração exige Customer ID, Client ID, Client Secret e chave de assinatura dos webhooks na Cloudflare.</p>
             <a href="https://direct.uber.com/" target="_blank" rel="noopener noreferrer">Abrir painel Uber Direct</a>
           </div>
-          <div class="settings-card asaas-settings">
+          <div class="settings-card order-channel-settings">
+            <h3>Finalização dos pedidos</h3>
+            <p>Escolha como o cliente finaliza o pedido feito no cardápio.</p>
+            <label>Canal de finalização
+              <select name="orderChannel">
+                <option value="whatsapp">WhatsApp — enviar pedido para atendimento</option>
+                <option value="asaas">Asaas — pagamento online</option>
+              </select>
+            </label>
+            <label data-whatsapp-settings>Número do WhatsApp (DDI + DDD)
+              <input name="whatsappNumber" type="tel" inputmode="numeric" maxlength="13" value="554535772363" placeholder="5545999999999" autocomplete="off">
+            </label>
+            <p class="environment-status" data-order-channel-status role="status">Atendimento pelo WhatsApp ativo.</p>
+            <p>WhatsApp: o cliente envia os itens diretamente na conversa, e a equipe confirma disponibilidade, entrega e pagamento. Não é criada cobrança automática.</p>
+          </div>
+          <div class="settings-card asaas-settings" data-asaas-settings>
             <h3>Pagamentos Asaas</h3>
             <p>Selecione em qual conta os novos pedidos serão cobrados. Pedidos anteriores continuam associados à conta original.</p>
             <label>Ambiente da integração
@@ -232,7 +247,7 @@
           </div>
           <div class="settings-card"><h3>Horário de funcionamento</h3><p>Horário local de Foz do Iguaçu. Desmarque um dia para fechar.</p>
             <div id="hours-list"></div></div>
-          <div class="settings-card help-card"><h3>Regras automáticas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
+          <div class="settings-card help-card" data-asaas-settings><h3>Regras automáticas do Asaas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
             <p><strong>Prazo para pagar:</strong> o checkout Asaas expira após 60 minutos. Pedidos não pagos passam para “Pagamento expirado” automaticamente.</p>
             <p><strong>Agendados:</strong> a equipe pode decidir até o horário escolhido pelo cliente.</p>
             <p><strong>Recusas:</strong> o sistema solicita estorno no Asaas. Se o provedor exigir intervenção, o pedido fica destacado para revisão.</p>

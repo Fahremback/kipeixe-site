@@ -544,6 +544,9 @@
     form.elements.deliveryFee.value = (settings.deliveryFeeCents / 100).toFixed(2);
     form.elements.paymentMode.value = settings.paymentMode || 'sandbox';
     form.elements.paymentsEnabled.checked = settings.paymentsEnabled || false;
+    form.elements.orderChannel.value = settings.orderChannel || 'whatsapp';
+    form.elements.whatsappNumber.value = settings.whatsappNumber || '554535772363';
+    updateOrderChannel();
     updatePaymentEnvironment();
     $('#hours-list').innerHTML = DAYS.map((day, index) => {
       const slot = settings.hours[String(index)];
@@ -580,6 +583,16 @@
       ? 'MODO TESTE: pedidos e pagamentos simulados, sem transferência real de dinheiro.'
       : 'ATENÇÃO: Produção realiza cobranças reais na conta vinculada à chave de produção.';
   }
+  function updateOrderChannel() {
+    const form = $('#settings-form');
+    const whatsapp = form.elements.orderChannel.value === 'whatsapp';
+    $$('[data-asaas-settings]').forEach(section => { section.hidden = whatsapp; });
+    $('[data-whatsapp-settings]').hidden = !whatsapp;
+    $('[data-order-channel-status]').textContent = whatsapp
+      ? 'Ativo: pedidos encaminhados ao WhatsApp.'
+      : 'Ativo: pagamento online pelo Asaas.';
+  }
+  $('#settings-form').elements.orderChannel.addEventListener('change', updateOrderChannel);
   $('#settings-form').elements.paymentMode.addEventListener('change', updatePaymentEnvironment);
   async function changeTrainingMode(enabled) {
     if (!training) { notify('Não foi possível carregar o simulador.', true); return; }
@@ -638,6 +651,8 @@
           deliveryFeeCents: Math.round(Number(form.elements.deliveryFee.value) * 100),
           paymentMode: form.elements.paymentMode.value,
           paymentsEnabled: form.elements.paymentsEnabled.checked,
+          orderChannel: form.elements.orderChannel.value,
+          whatsappNumber: form.elements.whatsappNumber.value.replace(/\D/g, ''),
           hours,
         }),
       });

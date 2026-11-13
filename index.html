@@ -266,12 +266,12 @@
                 <small class="field-error" id="name-error" data-name-error hidden>Informe seu nome para continuar.</small>
               </label>
               <label class="modern-field">
-                <span>Telefone com DDD <small>(para pagamento online)</small></span>
+                <span>Telefone com DDD <small>(para contato sobre o pedido)</small></span>
                 <div class="field-control">
                   <span class="field-icon" aria-hidden="true">☎</span>
                   <input type="tel" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" aria-describedby="phone-error" placeholder="(45) 99999-9999" />
                 </div>
-                <small class="field-error" id="phone-error" data-phone-error hidden>Informe um telefone com DDD para pagar online.</small>
+                <small class="field-error" id="phone-error" data-phone-error hidden>Informe um telefone com DDD.</small>
               </label>
             </div>
 
@@ -370,10 +370,10 @@
               <div class="checkout-section-title">
                 <span>06</span>
                 <div>
-                  <strong id="checkout-payment-title">Forma de pagamento</strong>
+                  <strong id="checkout-payment-title" data-order-channel-title>Forma de pagamento</strong>
                 </div>
               </div>
-              <div class="checkout-payment-methods" role="radiogroup" aria-label="Escolha como pagar">
+              <div class="checkout-payment-methods" data-payment-methods role="radiogroup" aria-label="Escolha como pagar">
                 <label class="checkout-payment-option">
                   <input type="radio" name="paymentMethod" value="PIX" checked />
                   <span><b aria-hidden="true">◇</b><span>Pix</span></span>
@@ -383,7 +383,7 @@
                   <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
                 </label>
               </div>
-              <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
+              <div class="checkout-payment-total"><span data-order-total-label>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
               <span><strong>Conectando pagamento...</strong><small>Verificando disponibilidade</small></span>

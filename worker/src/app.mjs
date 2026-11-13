@@ -217,7 +217,8 @@ function validateBuyer(data, settings) {
 
 async function createOrder(request, env, origin, ctx) {
   const settings = await storeSettings(env);
-  if (!isPaymentsReady(env, settings.paymentMode) || !settings.paymentsEnabled || !settings.ordersEnabled) {
+  if (settings.orderChannel !== 'asaas' || !isPaymentsReady(env, settings.paymentMode) ||
+      !settings.paymentsEnabled || !settings.ordersEnabled) {
     return fail('Pedidos online indisponíveis.', 503, origin);
   }
   let body, buyer, schedule, priced, billingTypes;
