@@ -74,7 +74,7 @@ try {
   foreach ($name in @('placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs')) {
     if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo do placar ausente: ' + $name) }
   }
-  foreach ($name in @('feed_peixe.png', 'feed_lago.png', 'story_peixe.png', 'story_lago.png', 'cartaz_a5.png', 'reel_visite_12s.mp4', 'reel_imagens_reais_10s.mp4')) {
+  foreach ($name in @('feed_peixe.png', 'feed_lago.png', 'story_peixe.png', 'story_lago.png', 'cartaz_a5.png', 'reel_visite_12s.mp4', 'reel_imagens_reais_10s.mp4', 'reel_experiencia_premium_14s.mp4', 'reel_peixe_premium_14s.mp4')) {
     if (-not (Test-Path (Join-Path $public 'assets\campanha' $name))) { throw ('Arquivo de campanha ausente: ' + $name) }
   }
   foreach ($code in @('rhino', 'farmacia3l', 'brunabosco', 'amandalara', 'dourado', 'montanari', 'precojusto', 'tradicao', 'serenity', 'gracie', 'kozievitch', 'vaz')) {
@@ -112,6 +112,13 @@ try {
     if ($path -eq '/placar-presencial.html' -and -not $response.Content.Contains('booking-form')) {
       throw ('Placar presencial nao encontrado no conteudo de ' + $url)
     }
+  }
+  foreach ($path in @('/assets/campanha/reel_experiencia_premium_14s.mp4',
+                      '/assets/campanha/reel_peixe_premium_14s.mp4')) {
+    $url = 'https://' + $Project + '.pages.dev' + $path + '?rev=' + $commit.Substring(0, 12)
+    $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
+    if ([int]$response.StatusCode -ne 200) { throw ('Video premium indisponivel: ' + $url) }
+    Write-Output ('OK ' + $path + ' HTTP 200')
   }
 } finally {
   if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Force -Recurse }
