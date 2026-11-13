@@ -100,6 +100,19 @@ test('separa consultas de Stories orgânicos do Facebook do investimento pago',(
   assert.match(exportCSV(entries,[]),/FB_STORY_PEIXE/);
 });
 
+test('aceita origem dos posts programados de domingo e segunda sem contá-la como anúncio pago',()=>{
+  for (const source of ['IG_FEED_PEIXE','IG_FEED_LAGO']) assert.equal(validSource(source),true);
+  const entries=[
+    validateReservation(booking({source:'IG_FEED_PEIXE',status:'COMPARECEU',partySize:2,revenue:88})),
+    validateReservation(booking({source:'IG_FEED_LAGO',status:'CONFIRMADA',partySize:5})),
+  ];
+  const result=summarize(entries,[]);
+  assert.equal(result.bySource.IG_FEED_PEIXE.attendedPeople,2);
+  assert.equal(result.bySource.IG_FEED_LAGO.confirmedBookings,1);
+  assert.equal(result.mediaCostPerAttendedBooking,null);
+  assert.match(exportCSV(entries,[]),/IG_FEED_LAGO/);
+});
+
 test('contabiliza indicações separadas de parceiros locais com códigos seguros',()=>{
   const entries=[
     validateReservation(booking({source:'PARCEIRO_RHINO',status:'COMPARECEU',revenue:135})),

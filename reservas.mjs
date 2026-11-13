@@ -36,8 +36,8 @@ export function normalizeOrigin(raw) {
 
 export function getCampaignVariant(origin) {
   const code = normalizeOrigin(origin);
-  if (['META_VIDEO_PEIXE', 'META_PEIXE', 'IG_STORY_PEIXE', 'IG_REEL_PEIXE', 'FB_STORY_PEIXE'].includes(code)) return 'peixe';
-  if (['META_VIDEO_AMBIENTE', 'META_LAGO', 'IG_STORY_LAGO', 'IG_REEL_AMBIENTE', 'FB_STORY_LAGO'].includes(code)) return 'ambiente';
+  if (['META_VIDEO_PEIXE', 'META_PEIXE', 'IG_STORY_PEIXE', 'IG_REEL_PEIXE', 'FB_STORY_PEIXE', 'IG_FEED_PEIXE'].includes(code)) return 'peixe';
+  if (['META_VIDEO_AMBIENTE', 'META_LAGO', 'IG_STORY_LAGO', 'IG_REEL_AMBIENTE', 'FB_STORY_LAGO', 'IG_FEED_LAGO'].includes(code)) return 'ambiente';
   return 'geral';
 }
 
