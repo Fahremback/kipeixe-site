@@ -44,9 +44,15 @@ h1,h2 { font-family: Georgia,'Times New Roman',serif; font-weight: normal; line-
 .reserve-form { display: grid; gap: 10px; background: #fff; border-radius: 22px; box-shadow: 0 20px 55px #422c171b; padding: clamp(22px,3.5vw,40px); }
 .reserve-form h3 { font: 29px Georgia,serif; margin-bottom: 15px; }
 .reserve-form label { font-weight: 680; font-size: 14px; margin-top: 6px; }
+.date-shortcuts { display: flex; gap: 9px; }
+.reserve-form .date-shortcuts button { margin: 0; padding: 9px 19px; border: 1px solid #b8a18d; border-radius: 999px; background: #fffaf4; color: var(--dark); font-weight: 650; cursor: pointer; }
+.reserve-form .date-shortcuts button[aria-pressed="true"] { background: var(--dark); border-color: var(--dark); color: #fff; }
+.reserve-form .date-shortcuts button:disabled { opacity: .45; cursor: not-allowed; }
 .reserve-form input,.reserve-form select { width: 100%; height: 53px; border: 1px solid #cfbca9; background: #fffdf9; color: var(--dark); border-radius: 9px; padding: 0 15px; }
 .reserve-form button { border: 0; padding: 18px 12px; margin-top: 16px; border-radius: 9px; color: #fff; background: var(--accent); font-weight: 750; cursor: pointer; }
 .reserve-form button:hover { background: #913a1c; }
+.reserve-form .date-shortcuts button:not(:disabled):hover { background: #ede1d2; }
+.reserve-form .date-shortcuts button[aria-pressed="true"]:hover { background: var(--dark); }
 .reserve-note { font-size: 12px; color: #79665c; margin: 4px 0 0; }
 .closing-section { padding: 70px max(24px,calc((100% - 1120px)/2)); display: flex; justify-content: space-between; align-items: center; gap: 24px; background: var(--dark); color: #fff; }
 .closing-section h2 { font-size: clamp(30px,4vw,50px); margin: 0; }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReservationLink, normalizeOrigin, todayInBrazil, trackContactClick } from '../reservas.mjs';
+import { buildReservationLink, normalizeOrigin, todayInBrazil, trackContactClick, nextReservationChoice, brazilTimeMinutes } from '../reservas.mjs';
 
 test('gera link de consulta de mesa com data, pessoas e origem rastreável', () => {
   const link = buildReservationLink({
@@ -38,6 +38,17 @@ test('normaliza origem e impede inclusão de texto arbitrário no rastreamento',
 
 test('usa calendário de São Paulo sem depender da timezone do navegador', () => {
   assert.equal(todayInBrazil(new Date('2026-11-14T01:30:00Z')), '2026-11-13');
+});
+
+test('sugere o próximo horário futuro e amanhã quando os horários de hoje acabaram', () => {
+  assert.deepEqual(nextReservationChoice(new Date('2026-11-13T22:49:00Z')), {date:'2026-11-13',time:'20:00'});
+  assert.deepEqual(nextReservationChoice(new Date('2026-11-14T02:01:00Z')), {date:'2026-11-14',time:'11:00'});
+  assert.equal(brazilTimeMinutes(new Date('2026-11-14T02:01:00Z')), 23 * 60 + 1);
+});
+
+test('impede consulta para horário que já passou hoje', () => {
+  assert.throws(() => buildReservationLink({date:'2026-11-13', time:'12:00', partySize:2, today:'2026-11-13', now:new Date('2026-11-13T22:49:00Z')}), /já passou/i);
+  assert.doesNotThrow(() => buildReservationLink({date:'2026-11-13', time:'20:00', partySize:2, today:'2026-11-13', now:new Date('2026-11-13T22:49:00Z')}));
 });
 
 test('mede somente clique para consultar mesa, sem afirmar que houve reserva', () => {

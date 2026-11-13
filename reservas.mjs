@@ -10,6 +10,25 @@ export function todayInBrazil(now = new Date()) {
   return `${pick('year')}-${pick('month')}-${pick('day')}`;
 }
 
+export function brazilTimeMinutes(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now);
+  const part = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return part('hour') * 60 + part('minute');
+}
+
+export function addCalendarDays(date, days) {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+export function nextReservationChoice(now = new Date()) {
+  const date = todayInBrazil(now);
+  const currentMinutes = brazilTimeMinutes(now);
+  const firstFutureSlot = RESERVATION_SLOTS.find((slot) => Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3)) > currentMinutes);
+  return firstFutureSlot ? {date, time: firstFutureSlot} : {date: addCalendarDays(date, 1), time: RESERVATION_SLOTS[0]};
+}
+
 export function normalizeOrigin(raw) {
   const origin = String(raw ?? '').trim();
   return /^[a-z0-9_-]{1,32}$/i.test(origin) ? origin.toUpperCase() : 'SITE';
@@ -22,7 +41,7 @@ export function trackContactClick(fbq) {
   return true;
 }
 
-export function buildReservationLink({ date, time, partySize, origin = 'SITE', today = todayInBrazil() }) {
+export function buildReservationLink({ date, time, partySize, origin = 'SITE', today = todayInBrazil(), now = new Date() }) {
   const iso = /^\d{4}-\d{2}-\d{2}$/.test(date ?? '') ? Date.parse(`${date}T00:00:00.000Z`) : NaN;
   const todayMs = Date.parse(`${today}T00:00:00.000Z`);
   const validDate = Number.isFinite(iso) && new Date(iso).toISOString().slice(0, 10) === date;
@@ -31,6 +50,10 @@ export function buildReservationLink({ date, time, partySize, origin = 'SITE', t
   }
   if (!RESERVATION_SLOTS.includes(time)) {
     throw new Error('Escolha um horário disponível para consulta.');
+  }
+  if (date === today && today === todayInBrazil(now) &&
+      Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= brazilTimeMinutes(now)) {
+    throw new Error('Este horário já passou. Escolha um horário futuro.');
   }
   const party = Number(partySize);
   if (!Number.isInteger(party) || party < 1 || party > 20) {
@@ -53,10 +76,42 @@ if (typeof document !== 'undefined') {
     const dateInput = form.querySelector('[name="data"]');
     const feedback = form.querySelector('[data-reserva-feedback]');
     const today = todayInBrazil();
-    const until = new Date(Date.parse(`${today}T00:00:00Z`) + MAX_DAYS_AHEAD * 86_400_000).toISOString().slice(0, 10);
+    const until = addCalendarDays(today, MAX_DAYS_AHEAD);
     dateInput.min = today;
     dateInput.max = until;
-    dateInput.value = today;
+    const timeInput = form.querySelector('[name="horario"]');
+    const shortcuts = [...form.querySelectorAll('[data-date-offset]')];
+
+    const syncDates = () => {
+      const current = todayInBrazil();
+      const currentMinutes = brazilTimeMinutes();
+      const hasTodaySlot = RESERVATION_SLOTS.some((slot) => Number(slot.slice(0, 2)) * 60 + Number(slot.slice(3)) > currentMinutes);
+      dateInput.min = current;
+      dateInput.max = addCalendarDays(current, MAX_DAYS_AHEAD);
+      if (dateInput.value === current && !hasTodaySlot) dateInput.value = addCalendarDays(current, 1);
+      shortcuts.forEach((button) => {
+        const date = addCalendarDays(current, Number(button.dataset.dateOffset));
+        button.disabled = date === current && !hasTodaySlot;
+        button.setAttribute('aria-pressed', String(dateInput.value === date));
+      });
+      [...timeInput.options].forEach((option) => {
+        const slotMinutes = Number(option.value.slice(0, 2)) * 60 + Number(option.value.slice(3));
+        option.disabled = dateInput.value === current && slotMinutes <= currentMinutes;
+      });
+      if (timeInput.selectedOptions[0]?.disabled) {
+        timeInput.value = [...timeInput.options].find((option) => !option.disabled)?.value || '';
+      }
+    };
+
+    const next = nextReservationChoice();
+    dateInput.value = next.date;
+    timeInput.value = next.time;
+    syncDates();
+    shortcuts.forEach((button) => button.addEventListener('click', () => {
+      dateInput.value = addCalendarDays(todayInBrazil(), Number(button.dataset.dateOffset));
+      syncDates();
+    }));
+    dateInput.addEventListener('change', syncDates);
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();

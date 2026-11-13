@@ -71,6 +71,10 @@
         <form class="reserve-form" data-reserva-form>
           <h3>Consultar disponibilidade</h3>
           <label for="data">Qual dia?</label>
+          <div class="date-shortcuts" aria-label="Escolha rápida de data">
+            <button type="button" data-date-offset="0" aria-pressed="false">Hoje</button>
+            <button type="button" data-date-offset="1" aria-pressed="false">Amanhã</button>
+          </div>
           <input id="data" name="data" type="date" required />
           <label for="horario">Horário de chegada</label>
           <select id="horario" name="horario" required>
