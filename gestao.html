@@ -9,8 +9,10 @@
   <link rel="icon" href="favicon.ico?v=20261110-transparent" type="image/x-icon">
   <link rel="stylesheet" href="gestao.css?v=20261109-training">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
+  <link rel="stylesheet" href="appearance-admin.css?v=20261110-direct-edit">
   <script src="training-engine.js?v=20261109-training" defer></script>
-  <script src="gestao.js?v=20261109-training" defer></script>
+  <script src="gestao.js?v=20261112-asaas-diagnostics" defer></script>
+  <script type="module" src="appearance-admin.mjs?v=20261110-direct-edit"></script>
 </head>
 <body>
   <main id="login-view" class="login-layout">
@@ -45,6 +47,7 @@
         <button type="button" data-tab="history"><span>◷</span> Histórico de pedidos</button>
         <button type="button" data-tab="products"><span>▦</span> Produtos e preços</button>
         <button type="button" data-tab="settings"><span>◷</span> Horários e operação</button>
+        <button type="button" data-tab="appearance" hidden><span>◈</span> Cores do site</button>
         <button type="button" data-tab="users" hidden><span>♙</span> Usuários e acessos</button>
       </nav>
       <div class="sidebar-footer"><a href="/" target="_blank" rel="noopener">Ver site público ↗</a><button type="button" id="logout">Sair da central</button></div>
@@ -212,7 +215,22 @@
             <p>Coleta: Av. João Ricieri Maran, 1417, Três Lagoas, Foz do Iguaçu. A integração exige Customer ID, Client ID, Client Secret e chave de assinatura dos webhooks na Cloudflare.</p>
             <a href="https://direct.uber.com/" target="_blank" rel="noopener noreferrer">Abrir painel Uber Direct</a>
           </div>
-          <div class="settings-card asaas-settings">
+          <div class="settings-card order-channel-settings">
+            <h3>Finalização dos pedidos</h3>
+            <p>Escolha como o cliente finaliza o pedido feito no cardápio.</p>
+            <label>Canal de finalização
+              <select name="orderChannel">
+                <option value="whatsapp">WhatsApp — enviar pedido para atendimento</option>
+                <option value="asaas">Asaas — pagamento online</option>
+              </select>
+            </label>
+            <label data-whatsapp-settings>Número do WhatsApp (DDI + DDD)
+              <input name="whatsappNumber" type="tel" inputmode="numeric" maxlength="13" value="554535772363" placeholder="5545999999999" autocomplete="off">
+            </label>
+            <p class="environment-status" data-order-channel-status role="status">Atendimento pelo WhatsApp ativo.</p>
+            <p>WhatsApp: o cliente envia os itens diretamente na conversa, e a equipe confirma disponibilidade, entrega e pagamento. Não é criada cobrança automática.</p>
+          </div>
+          <div class="settings-card asaas-settings" data-asaas-settings>
             <h3>Pagamentos Asaas</h3>
             <p>Selecione em qual conta os novos pedidos serão cobrados. Pedidos anteriores continuam associados à conta original.</p>
             <label>Ambiente da integração
@@ -229,7 +247,7 @@
           </div>
           <div class="settings-card"><h3>Horário de funcionamento</h3><p>Horário local de Foz do Iguaçu. Desmarque um dia para fechar.</p>
             <div id="hours-list"></div></div>
-          <div class="settings-card help-card"><h3>Regras automáticas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
+          <div class="settings-card help-card" data-asaas-settings><h3>Regras automáticas do Asaas</h3><p><strong>Imediatos:</strong> depois que o Asaas confirmar o pagamento, a equipe tem 30 minutos para aceitar ou recusar.</p>
             <p><strong>Prazo para pagar:</strong> o checkout Asaas expira após 60 minutos. Pedidos não pagos passam para “Pagamento expirado” automaticamente.</p>
             <p><strong>Agendados:</strong> a equipe pode decidir até o horário escolhido pelo cliente.</p>
             <p><strong>Recusas:</strong> o sistema solicita estorno no Asaas. Se o provedor exigir intervenção, o pedido fica destacado para revisão.</p>
@@ -237,6 +255,59 @@
           <button type="submit" class="primary-btn save-settings">Salvar alterações</button>
         </form>
       </section>
+      <section id="appearance-view" class="view" hidden>
+  <div class="section-heading">
+    <div><span class="eyebrow">EXCLUSIVO DO PROPRIETÁRIO</span><h2>Editor visual de cores</h2></div>
+    <div class="appearance-actions">
+      <button type="button" class="subtle-btn" id="appearance-discard">Descartar alterações</button>
+      <button type="button" class="primary-btn small" id="appearance-save">Publicar cores no site</button>
+    </div>
+  </div>
+  <p class="appearance-description">Clique diretamente no que deseja mudar na prévia. Os controles de cor aparecem junto do item e você vê o resultado na hora. Os clientes só veem as alterações depois de publicar.</p>
+  <div id="appearance-status" class="appearance-status" role="status">Carregando configurações…</div>
+  <div class="appearance-workspace">
+      <div class="appearance-controls-column">
+        <div class="appearance-column-heading">EDITAR DIRETAMENTE NA PRÉVIA</div>
+        <div class="appearance-controls">
+      <label class="appearance-page-label" for="appearance-page">Página do site</label>
+      <select id="appearance-page" aria-label="Página para editar"></select>
+      <div class="appearance-visual-hint"><span class="appearance-visual-hint-icon" aria-hidden="true">↖</span><div><strong>Clique no que quer colorir</strong><p>Botão, texto, fundo, cartão ou borda: escolha na prévia e mude ali mesmo.</p></div></div>
+      <div class="appearance-section-top"><h3>Item escolhido</h3><button type="button" class="subtle-btn" id="appearance-pick">Pausar seleção</button></div>
+      <p class="appearance-help" id="appearance-selection-help">Aponte para um elemento da prévia e clique. Ele será destacado automaticamente.</p>
+      <div id="appearance-picked" hidden>
+        <strong id="appearance-picked-name"></strong>
+        <div class="appearance-swatches" id="appearance-element-swatches"></div>
+        <button type="button" class="subtle-btn" id="appearance-remove-element">Remover ajustes deste elemento</button>
+      </div>
+      <p id="appearance-element-summary" class="appearance-help"></p>
+      <details class="appearance-details appearance-advanced">
+        <summary>Mais opções: cores de toda a página</summary>
+        <div class="appearance-section-top"><h3>Paleta da página</h3><button type="button" class="subtle-btn" id="appearance-reset-page">Restaurar página</button></div>
+        <div class="appearance-swatches" id="appearance-page-swatches"></div>
+      </details>
+      <details class="appearance-details appearance-advanced">
+        <summary>Áreas compartilhadas (cabeçalho, rodapé e carrinho)</summary>
+        <div class="appearance-swatches" id="appearance-global-swatches"></div>
+      </details>
+        </div>
+    </div>
+    <div class="appearance-preview-column">
+      <div class="appearance-preview-toolbar">
+        <span>CLIQUE PARA EDITAR</span>
+        <label class="appearance-preview-page" for="appearance-page-shortcut">Página <select id="appearance-page-shortcut" aria-label="Página da prévia"></select></label>
+        <div class="appearance-device-buttons">
+          <button type="button" class="subtle-btn is-selected" data-appearance-device="desktop">Computador</button>
+          <button type="button" class="subtle-btn" data-appearance-device="mobile">Celular</button>
+        </div>
+      </div>
+      <div class="appearance-viewport" id="appearance-viewport">
+        <iframe id="appearance-preview" title="Prévia do site Kipeixe" src="/?theme_editor=1#cardapio" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+      </div>
+      <p class="appearance-help">Clique no elemento desejado e use a paleta que aparece junto dele. Role dentro da prévia para alcançar outras áreas do site.</p>
+    </div>
+  </div>
+</section>
+
       <section id="users-view" class="view" hidden>
         <div class="section-heading"><div><span class="eyebrow">ACESSO RESTRITO AO PROPRIETÁRIO</span>
           <h2>Usuários e acessos</h2></div></div>

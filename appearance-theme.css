@@ -1,0 +1,66 @@
+/* Appearance overrides are applied only to sections customized by the owner. */
+.site-header { background: var(--theme-header, rgba(23,53,39,.96)); color: var(--theme-header-text,#fff); }
+.site-header .desktop-tabs button, .site-header .brand { color: inherit; }
+.site-header .desktop-tabs button.is-active, .site-header .desktop-tabs button:hover { color: inherit; }
+.footer { background: var(--theme-footer,var(--forest-950)); color: var(--theme-footer-text,#fff); }
+.footer span, .footer-admin { color: var(--theme-footer-text,rgba(255,255,255,.76)); }
+.header-order, .quick-checkout-action { background: var(--theme-cart-button,var(--orange)); color: var(--theme-cart-button-text,#fff); }
+.quick-checkout { background: var(--theme-cart,var(--forest-950)); color: var(--theme-cart-text,#fff); }
+.quick-checkout:hover .quick-checkout-action { background: var(--theme-cart-button,var(--orange-2)); }
+@media(max-width:760px) {
+ .mobile-tabs { background: var(--theme-header,var(--forest-950)); color: var(--theme-header-text,#fff); }
+ .mobile-tabs button { color: inherit; }
+}
+
+.site-page[data-theme-active] .menu-search,
+.site-page[data-theme-active] .home-info,
+.site-page[data-theme-active] .contact-info,
+.site-page[data-theme-active] .contact-card,
+.site-page[data-theme-active] .menu-entry,
+.site-page[data-theme-active] .contact-method,
+.site-page[data-theme-active] .fishing-info,
+.site-page[data-theme-active] .fishing-card { background-color: var(--theme-page-surface,#fff); color: var(--theme-page-text,var(--ink)); }
+.site-page[data-theme-active] .menu-search-controls input,
+.site-page[data-theme-active] .page-turner button:not(:last-child),
+.site-page[data-theme-active] .variant-button { background-color: var(--theme-page-surface,#fff); color: var(--theme-page-text,var(--ink)); border-color: var(--theme-page-border,var(--line)); }
+.site-page[data-theme-active] .book,
+.site-page[data-theme-active] .book-page { background-color: var(--theme-page-surface-alt,var(--cream)); color: var(--theme-page-text,var(--ink)); }
+.site-page[data-theme-active] .menu-page,
+.site-page.menu-page[data-theme-active] { background: linear-gradient(140deg,var(--theme-page-bg,#fff9f1),var(--theme-page-surface-alt,#f7eadb)); }
+.site-page[data-theme-active] .menu-sales-copy,
+.site-page[data-theme-active] .menu-search-status,
+.site-page[data-theme-active] .section-intro p,
+.site-page[data-theme-active] .home-info small,
+.site-page[data-theme-active] .consult-price { color: var(--theme-page-muted,var(--muted)); }
+.site-page[data-theme-active] .book-index,
+.site-page[data-theme-active] .choice-card,
+.site-page[data-theme-active] .menu-cover,
+.site-page[data-theme-active] .page-heading,
+.site-page[data-theme-active] .page-hero.compact { background-color: var(--theme-page-dark,var(--forest-950)); color: var(--theme-page-dark-text,#fff); }
+.site-page[data-theme-active] .page-heading { background: linear-gradient(125deg,var(--theme-page-dark,#2b2019),var(--theme-page-dark-soft,#805438)); }
+.site-page[data-theme-active] .page-heading::after { background: linear-gradient(90deg,var(--theme-page-dark,#2b2019),transparent); }
+.site-page[data-theme-active] .book-index button,
+.site-page[data-theme-active] .choice-card small { color: var(--theme-page-dark-text,#fff); }
+.site-page[data-theme-active] .page-heading h3,
+.site-page[data-theme-active] .page-hero h1,
+.site-page[data-theme-active] .choice-card strong { color: var(--theme-page-dark-text,#fff); }
+.site-page[data-theme-active] .home-shade { background: linear-gradient(90deg,var(--theme-page-overlay,#2b2019),transparent); }
+.site-page[data-theme-active] .fishing-overlay { background: linear-gradient(90deg,var(--theme-page-overlay,#2b2019),transparent); }
+.site-page[data-theme-active] .home-content,
+.site-page[data-theme-active] .fishing-copy { color: var(--theme-page-hero-text,#fff); }
+.site-page[data-theme-active] .home-copy { color: var(--theme-page-hero-text,#fff); opacity:.82; }
+.site-page[data-theme-active] .button-orange,
+.site-page[data-theme-active] .page-turner button:last-child,
+.site-page[data-theme-active] .menu-search-controls button,
+.site-page[data-theme-active] .choice-card b { background-color: var(--theme-page-accent,var(--orange)); color: var(--theme-page-accent-text,#fff); }
+.site-page[data-theme-active] .button-orange:hover,
+.site-page[data-theme-active] .page-turner button:last-child:not(:disabled):hover { background-color: var(--theme-page-accent-hover,var(--orange-2)); }
+.site-page[data-theme-active] .home-content h1 span,
+.site-page[data-theme-active] .page-number,
+.site-page[data-theme-active] .eyebrow.dark { color: var(--theme-page-accent,var(--orange)); }
+.site-page[data-theme-active] .home-info article,
+.site-page[data-theme-active] .book,
+.site-page[data-theme-active] .menu-entry { border-color: var(--theme-page-border,var(--line)); }
+.site-page[data-theme-active] .home-info article,
+.site-page[data-theme-active] .fishing-info article { background-color: var(--theme-page-card,#fff); color: var(--theme-page-card-text,var(--ink)); }
+/* The selector-based overrides for individual clicked elements follow these rules dynamically. */

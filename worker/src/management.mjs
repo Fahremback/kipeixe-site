@@ -1,8 +1,9 @@
+import { getAppearance, saveAppearance } from './appearance.mjs';
 import { DEFAULT_HOURS, localSlot, openAt, validateHours, nextStatus, PENDING_DECISION } from './domain.mjs';
 import { pbkdf2Sync } from 'node:crypto';
 import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { paymentConfig, paymentConfigured, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
+import { paymentConfig, paymentConfigured, paymentCredentialStatus, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
 
@@ -12,6 +13,8 @@ export const ALLOWED_ORIGINS = new Set([
 const encoder = new TextEncoder();
 const json = (value) => JSON.stringify(value);
 export const isPaymentsReady = paymentReady;
+export const DEFAULT_WHATSAPP_NUMBER = '554535772363';
+export const whatsappPhoneValid = value => /^55[1-9]\d{9,10}$/.test(String(value || ''));
 
 export function reply(data, status = 200, origin = '', extra = {}) {
   const headers = new Headers({
@@ -60,6 +63,7 @@ const canPrice = value => value === null || (Number.isInteger(value) && value >=
 
 export async function storeSettings(env) {
   if (!env.DB) return { ordersEnabled: false, paymentsEnabled: false, paymentMode: 'sandbox',
+    orderChannel: 'whatsapp', whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
     deliveryEnabled: false, deliveryFeeCents: 0, uberEnabled: false,
     ifoodEnabled: false, deliveryProvider: 'uber', hours: DEFAULT_HOURS };
   const rows = (await env.DB.prepare('SELECT key, value FROM store_settings').all()).results;
@@ -70,6 +74,8 @@ export async function storeSettings(env) {
     ordersEnabled: values.orders_enabled === 'true',
     paymentsEnabled: values.payments_enabled === 'true',
     paymentMode: PAYMENT_MODES.has(values.payment_mode) ? values.payment_mode : 'sandbox',
+    orderChannel: values.order_channel === 'asaas' ? 'asaas' : 'whatsapp',
+    whatsappNumber: whatsappPhoneValid(values.whatsapp_number) ? values.whatsapp_number : DEFAULT_WHATSAPP_NUMBER,
     deliveryEnabled: values.delivery_enabled === 'true',
     deliveryFeeCents: Number(values.delivery_fee_cents) || 0,
     uberEnabled: values.uber_enabled === 'true',
@@ -83,11 +89,13 @@ export async function clientConfig(env) {
   const settings = await storeSettings(env);
   const now = new Date();
   return {
-    onlinePaymentEnabled: isPaymentsReady(env, settings.paymentMode) &&
+    orderChannel: settings.orderChannel,
+    whatsappNumber: settings.whatsappNumber,
+    onlinePaymentEnabled: settings.orderChannel === 'asaas' && isPaymentsReady(env, settings.paymentMode) &&
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
-    deliveryEnabled: settings.deliveryProvider === 'ifood'
+    deliveryEnabled: settings.orderChannel === 'whatsapp' ? settings.deliveryEnabled : settings.deliveryProvider === 'ifood'
       ? ifoodReady(env, settings) : uberReady(env, settings),
     deliveryProvider: settings.deliveryProvider,
     uberDirectReady: uberReady(env, settings),
@@ -424,20 +432,24 @@ async function asaas(env, mode, path, method = 'GET') {
 }
 
 export async function refundOrder(env, id) {
-  const order = await env.DB.prepare('SELECT id, checkout_id, refund_status, asaas_environment FROM orders WHERE id = ?').bind(id).first();
-  if (!order || !order.checkout_id || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
+  const order = await env.DB.prepare('SELECT id, checkout_id, payment_id, refund_status, asaas_environment FROM orders WHERE id = ?').bind(id).first();
+  if (!order || (!order.checkout_id && !order.payment_id) || !['PENDING', 'REVIEW'].includes(order.refund_status)) return false;
   const claim = await env.DB.prepare(`UPDATE orders SET refund_status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND refund_status IN ('PENDING', 'REVIEW')`).bind(id).run();
   if (!claim.meta.changes) return false;
   try {
-    const listing = await asaas(env, order.asaas_environment, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
-    const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
-    if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
-    await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(eligible[0].id, id).run();
-    await asaas(env, order.asaas_environment, `/payments/${encodeURIComponent(eligible[0].id)}/refund`, 'POST');
+    let paymentId = order.payment_id;
+    if (!paymentId) {
+      const listing = await asaas(env, order.asaas_environment, `/payments?checkoutSession=${encodeURIComponent(order.checkout_id)}&limit=20`);
+      const eligible = (listing.data || []).filter(p => ['RECEIVED', 'CONFIRMED'].includes(p.status));
+      if (eligible.length !== 1) throw new Error('Cobrança paga não identificada univocamente.');
+      paymentId = eligible[0].id;
+      await env.DB.prepare('UPDATE orders SET payment_id = ? WHERE id = ?').bind(paymentId, id).run();
+    }
+    await asaas(env, order.asaas_environment, `/payments/${encodeURIComponent(paymentId)}/refund`, 'POST');
     await env.DB.prepare(`UPDATE orders SET refund_status = 'REQUESTED', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
       .bind(id).run();
-    await audit(env, 'system', 'REFUND_REQUESTED', id, eligible[0].id);
+    await audit(env, 'system', 'REFUND_REQUESTED', id, paymentId);
     return true;
   } catch {
     await env.DB.prepare(`UPDATE orders SET refund_status = 'REVIEW', updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
@@ -449,20 +461,22 @@ export async function refundOrder(env, id) {
 export async function sweepExpired(env, now = new Date()) {
   if (!env.DB) return 0;
   const deadline = now.toISOString();
-  // Asaas checkouts are valid for 60 minutes. Keep the local queue in sync
+  // Checkouts and one-use Pix QR codes are valid for 60 minutes. Keep the local queue in sync
   // even if CHECKOUT_EXPIRED was not delivered by the payment webhook.
   // REVIEW is intentionally excluded: its charge outcome is uncertain.
   await env.DB.prepare(`UPDATE orders SET payment_status='EXPIRED', updated_at=CURRENT_TIMESTAMP
-    WHERE payment_status='PENDING' AND datetime(created_at, '+60 minutes') <= datetime(?)`)
-    .bind(deadline).run();
-  const rows = (await env.DB.prepare(`SELECT id, checkout_id FROM orders
+    WHERE payment_status='PENDING' AND (
+      (checkout_id IS NOT NULL AND datetime(created_at, '+60 minutes') <= datetime(?)) OR
+      (pix_qr_id IS NOT NULL AND datetime(pix_expires_at) <= datetime(?)))`)
+    .bind(deadline, deadline).run();
+  const rows = (await env.DB.prepare(`SELECT id, checkout_id, payment_id FROM orders
     WHERE payment_status = 'PAID' AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED')
     AND acceptance_deadline IS NOT NULL AND acceptance_deadline <= ? LIMIT 100`)
     .bind(deadline).all()).results;
   let closed = 0;
   for (const row of rows) {
     const result = await env.DB.prepare(`UPDATE orders SET fulfillment_status = 'AUTO_REJECTED',
-      refund_status = CASE WHEN checkout_id IS NULL THEN 'NOT_REQUIRED' ELSE 'PENDING' END,
+      refund_status = CASE WHEN checkout_id IS NULL AND payment_id IS NULL THEN 'NOT_REQUIRED' ELSE 'PENDING' END,
       closed_reason = 'Prazo de aceitação esgotado', updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND payment_status = 'PAID'
       AND fulfillment_status IN ('AWAITING_ACCEPTANCE','SCHEDULED') AND acceptance_deadline <= ?`)
@@ -470,7 +484,7 @@ export async function sweepExpired(env, now = new Date()) {
     if (result.meta.changes) {
       closed++;
       await audit(env, 'system', 'AUTO_REJECTED', row.id);
-      if (row.checkout_id) await refundOrder(env, row.id);
+      if (row.checkout_id || row.payment_id) await refundOrder(env, row.id);
     }
   }
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at < ?').bind(Date.now()).run();
@@ -582,6 +596,19 @@ export async function handleAdmin(request, env, origin, url) {
   const userResult = await adminUsersRoute(request, env, origin, url, identity);
   if (userResult) return userResult;
   const actor = identity.username;
+  if (url.pathname === '/api/admin/appearance') {
+    if (identity.role !== 'owner') return fail('Somente o proprietário pode editar as cores.', 403, origin);
+    if (request.method === 'GET') return reply(await getAppearance(env), 200, origin);
+    if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
+    let data;
+    try { data = await limitedJson(request, 45000); }
+    catch { return fail('Configuração de cores inválida.', 400, origin); }
+    try {
+      const saved = await saveAppearance(env, data);
+      await audit(env, actor, 'APPEARANCE_CHANGED', 'site');
+      return reply({ ok:true, appearance:saved }, 200, origin);
+    } catch(error) { return fail(error.message, 422, origin); }
+  }
   if (url.pathname === '/api/admin/settings' && identity.role !== 'owner')
     return fail('Somente o proprietário pode alterar as configurações do restaurante.', 403, origin);
   const historyResult = await orderHistoryRoute(request, env, origin, url, identity);
@@ -593,8 +620,8 @@ export async function handleAdmin(request, env, origin, url) {
     if (request.method === 'GET') return reply({
       ...(await storeSettings(env)),
       asaasEnvironments: {
-        sandbox: { configured: paymentConfigured(env, 'sandbox') },
-        production: { configured: paymentConfigured(env, 'production') },
+        sandbox: paymentCredentialStatus(env, 'sandbox'),
+        production: paymentCredentialStatus(env, 'production'),
       },
       paymentSystemAvailable: env.PAYMENTS_ENABLED === 'true',
       uberDirectConfigured: uberConfigured(env),
@@ -609,6 +636,8 @@ export async function handleAdmin(request, env, origin, url) {
       hours = validateHours(data.hours);
       if (!Number.isInteger(data.deliveryFeeCents) || data.deliveryFeeCents < 0 || data.deliveryFeeCents > 30000) throw Error('Taxa de entrega inválida.');
       if (typeof data.ordersEnabled !== 'boolean' || typeof data.deliveryEnabled !== 'boolean') throw Error('Disponibilidade inválida.');
+      if (!['whatsapp', 'asaas'].includes(data.orderChannel)) throw Error('Canal de pedidos inválido.');
+      if (!whatsappPhoneValid(data.whatsappNumber)) throw Error('Informe um WhatsApp válido com DDI 55 e DDD.');
       if (typeof data.uberEnabled !== 'boolean') throw Error('Configuração Uber Direct inválida.');
       if (typeof data.ifoodEnabled !== 'boolean' ||
           !['uber', 'ifood'].includes(data.deliveryProvider))
@@ -617,10 +646,11 @@ export async function handleAdmin(request, env, origin, url) {
         throw Error('Uber Direct exige aprovação da conta e credenciais válidas no servidor.');
       if (data.ifoodEnabled && (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true'))
         throw Error('iFood Shipping exige credenciais autorizadas e habilitação no servidor.');
-      if (data.deliveryEnabled && !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
+      if (data.orderChannel === 'asaas' && data.deliveryEnabled &&
+          !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
         throw Error('Ative o serviço de entrega selecionado antes de oferecer entregas.');
       if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
-      if (data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
+      if (data.orderChannel === 'asaas' && data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
         throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');
       }
     } catch (e) { return fail(e.message, 422, origin); }
@@ -635,6 +665,10 @@ export async function handleAdmin(request, env, origin, url) {
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(json(hours)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payment_mode',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.paymentMode),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('order_channel',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.orderChannel),
+      env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('whatsapp_number',?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(data.whatsappNumber),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('uber_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.uberEnabled)),
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('ifood_enabled',?)
@@ -644,7 +678,8 @@ export async function handleAdmin(request, env, origin, url) {
       env.DB.prepare(`INSERT INTO store_settings(key,value) VALUES ('payments_enabled',?)
         ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(String(data.paymentsEnabled)),
     ]);
-    await audit(env, actor, 'SETTINGS_CHANGED', 'store', `asaas:${data.paymentMode} payments:${data.paymentsEnabled}`);
+    await audit(env, actor, 'SETTINGS_CHANGED', 'store',
+      `channel:${data.orderChannel} asaas:${data.paymentMode} payments:${data.paymentsEnabled}`);
     return reply({ ok: true }, 200, origin);
   }
   if (url.pathname === '/api/admin/orders' && request.method === 'GET') {

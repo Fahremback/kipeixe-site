@@ -8,6 +8,7 @@
   }
 
   let MENU = Array.isArray(window.KIPEIXE_MENU) ? window.KIPEIXE_MENU : [];
+  let lastCatalogSignature = null;
   const API = location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:8787'
     : 'https://api.restaurantekipeixe.com.br';
@@ -18,6 +19,7 @@
 
   const qs = (selector, root = document) => root.querySelector(selector);
   const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const whatsappActive = () => storeConfig?.orderChannel === 'whatsapp';
 
   const year = qs('[data-year]');
   if (year) year.textContent = new Date().getFullYear();
@@ -129,117 +131,8 @@
 
   // Mapeamento auditado item por item. Se não há foto realmente compatível,
   // o item fica sem miniatura em vez de exibir outro produto ou outra marca.
-  const ITEM_PHOTOS = {
-    "peixes|tilapia a milanesa": localProductImage('tilapia-milanesa'),
-    "peixes|tilapia grelhada": onlineProductImage('grilled-fish'),
-    "peixes|tilapia a parmegiana": '',
-    "peixes|tilapia a dore": onlineProductImage('fried-fish-fillets'),
-    "peixes|tilapia a brasileira": '',
-    "peixes|camarao a milanesa": onlineProductImage('fried-shrimp'),
-    "peixes|surubi grelhado": onlineProductImage('grilled-fish'),
-    "peixes|surubi a milanesa": onlineProductImage('fried-fish-fillets'),
-    "peixes|salmao ao molho fino": pexelsProductImage('31043029'),
-    "peixes|sashimi completo": '',
-    "peixes|tilapia a vinagrete": localProductImage('tilapia-vinagrete'),
-    "peixes|sinfonia de kipeixe": onlineProductImage('brazilian-seafood'),
-    "carnes|bisteca de porco": onlineProductImage('pork-chop'),
-    "carnes|bisteca de porco a tropeira": onlineProductImage('pork-chop'),
-    "carnes|bistecao a moda da casa": localProductImage('carne'),
-    "carnes|file mignon a milanesa": pexelsProductImage('37389030'),
-    "carnes|file mignon a parana": '',
-    "carnes|file mignon a parmegiana": commonsProductImage("Bife a parmegiana com arroz e batata frita.jpg"),
-    "carnes|file mignon com fritas": localProductImage('carne'),
-    "carnes|picanha completa": localProductImage('carne'),
-    "frango|frango grelhado": localProductImage('frango'),
-    "frango|frango a milanesa": pexelsProductImage('33755321'),
-    "frango|frango a passarinho": onlineProductImage('fried-chicken'),
-    "frango|espaguete a bolonhesa": onlineProductImage('spaghetti-bolognese'),
-    "frango|espaguete alho e oleo": onlineProductImage('spaghetti-aglio-olio'),
-    "porcoes|tilapia": localProductImage('porcao-peixe'),
-    "porcoes|tilapia em postas": localProductImage('porcao-peixe'),
-    "porcoes|pacu em postas": localProductImage('porcao-peixe'),
-    "porcoes|surubi": localProductImage('porcao-peixe'),
-    "porcoes|camarao": onlineProductImage('fried-shrimp'),
-    "porcoes|picanha": localProductImage('carne'),
-    "porcoes|file mignon": localProductImage('carne'),
-    "porcoes|calabresa": '',
-    "porcoes|frango a passarinho": onlineProductImage('fried-chicken'),
-    "porcoes|banana a milanesa": onlineProductImage('fried-banana'),
-    "porcoes|bolinho de bacalhau": commonsProductImage("Bolinho de Bacalhau.jpg"),
-    "porcoes|feijao": pexelsProductImage('8479384'),
-    "porcoes|lambari": onlineProductImage('small-fried-fish'),
-    "porcoes|batata frita": onlineProductImage('fries'),
-    "porcoes|polenta": commonsProductImage("Polenta fritta da sgranocchiare.jpg"),
-    "porcoes|mandioca": onlineProductImage('cassava-fries'),
-    "porcoes|arroz": pexelsProductImage('8923092'),
-    "porcoes|farofa": commonsProductImage("Farofa brazil.jpg"),
-    "porcoes|pirao": localProductImage('pirao'),
-    "porcoes|creme de alho": pexelsProductImage('6129134'),
-    "porcoes|molho rose": '',
-    "porcoes|molho tartaro": onlineProductImage('tartar-sauce'),
-    "porcoes|vinagrete": localProductImage('vinagrete'),
-    "saladas|palmito": '',
-    "saladas|maionese pequena": onlineProductImage('potato-salad'),
-    "saladas|maionese grande": onlineProductImage('potato-salad'),
-    "saladas|salada mista pequena": onlineProductImage('mixed-salad'),
-    "saladas|salada mista media": onlineProductImage('mixed-salad'),
-    "saladas|salada mista grande": onlineProductImage('mixed-salad'),
-    "lanches|x-salada": pexelsProductImage('6045440'),
-    "lanches|x-burguer": onlineProductImage('cheeseburger'),
-    "lanches|x-egg": pexelsProductImage('2293537'),
-    "lanches|x-bacon": pexelsProductImage('3826320'),
-    "lanches|x-tudo": onlineProductImage('bacon-egg-burger'),
-    "lanches|x-frango": onlineProductImage('chicken-burger'),
-    "lanches|x-calabresa": pexelsProductImage('18396045'),
-    "bebidas|antarctica original": pexelsProductImage('12946714'),
-    "bebidas|spaten": pexelsProductImage('12946714'),
-    "bebidas|amstel": pexelsProductImage('12946714'),
-    "bebidas|skol": pexelsProductImage('12946714'),
-    "bebidas|malzbier": pexelsProductImage('12946714'),
-    "bebidas|heineken": pexelsProductImage('12946714'),
-    "bebidas|heineken zero": pexelsProductImage('12946714'),
-    "bebidas|refrigerantes": pexelsProductImage('20045266'),
-    "bebidas|agua sem gas": onlineProductImage('water'),
-    "bebidas|agua com gas": onlineProductImage('sparkling-water'),
-    "bebidas|agua tonica": onlineProductImage('sparkling-water'),
-    "bebidas|agua h2o": onlineProductImage('sparkling-water'),
-    "sucos|abacaxi": onlineProductImage('pineapple-juice'),
-    "sucos|acerola": onlineProductImage('acerola-juice'),
-    "sucos|laranja": onlineProductImage('orange-juice'),
-    "sucos|limao": onlineProductImage('lime-juice'),
-    "sucos|manga": onlineProductImage('mango-juice'),
-    "sucos|maracuja": onlineProductImage('passionfruit-juice'),
-    "sucos|morango": onlineProductImage('strawberry-juice'),
-    "sucos|uva": pexelsProductImage('12987518'),
-    "sucos|suco no copo": pexelsProductImage('7656390'),
-    "sucos|adicional de leite": onlineProductImage('milk'),
-    "sucos|adicional de fruta": onlineProductImage('mixed-fruit'),
-    "vinhos|120 santa rita sauvignon blanc": pexelsProductImage('5732813'),
-    "vinhos|casa amada carmenere": pexelsProductImage('9149107'),
-    "vinhos|casillero del diablo red blend": pexelsProductImage('9149107'),
-    "vinhos|estacao 36 bordo demi-sec": pexelsProductImage('9149107'),
-    "vinhos|jarra de vinho": pexelsProductImage('9149107'),
-    "vinhos|reservado cabernet sauvignon": pexelsProductImage('9149107'),
-    "vinhos|reservado malbec": pexelsProductImage('9149107'),
-    "vinhos|santa veronica cabernet sauvignon": pexelsProductImage('9149107'),
-    "vinhos|santa veronica malbec alta reserve": pexelsProductImage('9149107'),
-    "vinhos|taca de vinho": pexelsProductImage('9149107'),
-    "coqueteis|bergamo": pexelsProductImage('8679432'),
-    "coqueteis|pina colada": onlineProductImage('pina-colada'),
-    "coqueteis|daiquiri de morango": onlineProductImage('strawberry-daiquiri'),
-    "coqueteis|freyr": '',
-    "coqueteis|gin tonica mediterraneo": onlineProductImage('gin-tonic'),
-    "coqueteis|gin tonica tradicional": onlineProductImage('gin-tonic'),
-    "coqueteis|mojito": onlineProductImage('mojito'),
-    "coqueteis|rubro mojito": pexelsProductImage('30412118'),
-    "coqueteis|caipirinha bacardi": pexelsProductImage('13059626'),
-    "coqueteis|caipirinha cachaca": pexelsProductImage('13059626'),
-    "coqueteis|caipirinha steinhager": pexelsProductImage('13059626'),
-    "coqueteis|caipirinha vodka": pexelsProductImage('13059626'),
-    "coqueteis|caipirinha vodka smirnoff": pexelsProductImage('13059626'),
-    "coqueteis|caipirinha vodka com fruta": pexelsProductImage('13059626'),
-    "coqueteis|adicional de frutas": onlineProductImage('mixed-fruit'),
-  };
+  // Image paths are catalogued in product-images.js (original menu photos first).
+  const ITEM_PHOTOS = window.KIPEIXE_PRODUCT_PHOTOS || {};
 
   const itemImage = (name, categoryId) =>
     ITEM_PHOTOS[`${categoryId}|${normalize(name)}`] ?? '';
@@ -269,88 +162,196 @@
 
   const renderMenuItem = (item, category, showCategory = false) => {
     let actions = '';
+    const photoSrc = itemImage(item.name, category.id);
+    const photo = photoSrc
+      ? `<button type="button" class="menu-entry-photo-button" data-photo-zoom
+          data-photo-src="${escapeHtml(versionAsset(photoSrc))}"
+          data-photo-name="${escapeHtml(item.name)}"
+          aria-label="Ampliar foto de ${escapeHtml(item.name)}">
+          <img class="menu-entry-photo" src="${escapeHtml(versionAsset(photoSrc))}"
+            alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+        </button>`
+      : '<div class="menu-entry-photo-placeholder" aria-hidden="true"><span>KIPEIXE</span></div>';
 
     if (Array.isArray(item.variants) && item.variants.length) {
+      const startingPrice = Math.min(...item.variants.map((variant) => Number(variant.price)));
       actions = `
-        <div class="variant-list">
-          ${item.variants.map((variant) => `
-            <button
-              type="button"
-              class="variant-button"
-              data-add-item
-              data-product-id="${escapeHtml(item.id || '')}"
-              data-name="${escapeHtml(item.name)}"
-              data-variant="${escapeHtml(variant.label || 'Opção')}"
-              data-price="${variant.price}"
-            >${escapeHtml(variant.label || 'Opção')} · ${currency.format(variant.price)}</button>
-          `).join('')}
+        <div class="menu-entry-actions">
+          <strong class="menu-entry-price">A partir de ${currency.format(startingPrice)}</strong>
+          <div class="variant-list" aria-label="Escolha o tamanho">
+            ${item.variants.map((variant) => `
+              <button type="button" class="variant-button" data-add-item
+                data-product-id="${escapeHtml(item.id || '')}"
+                data-name="${escapeHtml(item.name)}"
+                data-variant="${escapeHtml(variant.label || 'Opção')}"
+                data-price="${variant.price}"
+                aria-label="Adicionar ${escapeHtml(item.name)} ${escapeHtml(variant.label || 'Opção')} por ${currency.format(variant.price)}"
+              >${escapeHtml(variant.label || 'Opção')} · ${currency.format(variant.price)}</button>
+            `).join('')}
+          </div>
         </div>
       `;
     } else if (Number.isFinite(item.price)) {
       actions = `
         <div class="menu-entry-actions">
-          <span class="menu-entry-price">${currency.format(item.price)}</span>
-          <button
-            type="button"
-            class="add-button"
-            data-add-item
-            data-product-id="${escapeHtml(item.id || '')}"
-            data-name="${escapeHtml(item.name)}"
-            data-variant=""
-            data-price="${item.price}"
-          >+ Adicionar</button>
+          <strong class="menu-entry-price">${currency.format(item.price)}</strong>
+          <div class="menu-entry-control">
+            <button type="button" class="add-button" data-add-item
+              data-product-id="${escapeHtml(item.id || '')}"
+              data-name="${escapeHtml(item.name)}" data-variant="" data-price="${item.price}"
+              aria-label="Adicionar ${escapeHtml(item.name)} ao pedido"
+            >Adicionar <span aria-hidden="true">+</span></button>
+            <div class="menu-qty-controls" data-menu-qty-controls
+              data-cart-id="${escapeHtml(makeItemId(item.name))}" hidden>
+              <button type="button" data-menu-qty-minus aria-label="Diminuir ${escapeHtml(item.name)}">−</button>
+              <strong data-menu-qty-value>1</strong>
+              <button type="button" data-add-item
+                data-product-id="${escapeHtml(item.id || '')}"
+                data-name="${escapeHtml(item.name)}" data-variant="" data-price="${item.price}"
+                aria-label="Adicionar mais um ${escapeHtml(item.name)}">+</button>
+            </div>
+          </div>
         </div>
       `;
     } else {
-      actions = '<span class="consult-price">Consulte</span>';
+      actions = '<div class="menu-entry-actions"><span class="consult-price">Consulte o preço</span></div>';
     }
 
     return `
-      <article class="menu-entry">
+      <article class="menu-entry${photoSrc ? ' has-photo' : ''}">
         <div class="menu-entry-main">
           ${showCategory ? `<span class="menu-entry-category">${escapeHtml(category.title)}</span>` : ''}
           <h4>${escapeHtml(item.name)}</h4>
           ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ''}
         </div>
         ${actions}
+        ${photo}
       </article>
     `;
   };
 
-  const renderCategory = (index, animate = true) => {
+  const updateRailButtons = (rail) => {
+    const section = rail.closest('[data-category-section]');
+    if (!section) return;
+    const left = section.querySelector('[data-rail-prev]');
+    const right = section.querySelector('[data-rail-next]');
+    const remaining = rail.scrollWidth - rail.clientWidth;
+    if (left) left.disabled = rail.scrollLeft < 3;
+    if (right) right.disabled = remaining < 3 || rail.scrollLeft >= remaining - 3;
+  };
+
+  const prepareRails = () => {
+    qsa('[data-menu-rail]', menuItems).forEach((rail) => {
+      let drag = null;
+      let ignoreClickUntil = 0;
+      rail.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'mouse' || event.button !== 0) return;
+        drag = { x: event.clientX, start: rail.scrollLeft, active: false, pointerId: event.pointerId };
+      });
+      rail.addEventListener('pointermove', (event) => {
+        if (!drag || event.pointerId !== drag.pointerId) return;
+        const dx = event.clientX - drag.x;
+        if (!drag.active && Math.abs(dx) > 7) {
+          drag.active = true;
+          rail.classList.add('is-dragging');
+          rail.setPointerCapture(event.pointerId);
+        }
+        if (!drag.active) return;
+        rail.scrollLeft = drag.start - dx;
+        ignoreClickUntil = Date.now() + 350;
+        event.preventDefault();
+      });
+      const finishDrag = () => {
+        if (!drag) return;
+        if (drag.active) ignoreClickUntil = Date.now() + 350;
+        rail.classList.remove('is-dragging');
+        drag = null;
+      };
+      rail.addEventListener('pointerup', finishDrag);
+      rail.addEventListener('pointercancel', finishDrag);
+      rail.addEventListener('lostpointercapture', finishDrag);
+      rail.addEventListener('click', (event) => {
+        if (Date.now() < ignoreClickUntil) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      }, true);
+      rail.addEventListener('scroll', () => updateRailButtons(rail), { passive: true });
+      updateRailButtons(rail);
+    });
+  };
+
+  const renderAllCategories = () => {
+    menuItems.dataset.menuLayout = 'rails';
+    menuItems.innerHTML = MENU.map((category, index) => `
+      <section class="menu-category-section" data-category-section="${index}"
+        aria-labelledby="menu-category-title-${index}">
+        <div class="menu-category-head">
+          <div class="menu-category-copy">
+            <h3 id="menu-category-title-${index}">${escapeHtml(category.title)}</h3>
+            <span>${category.items.length} ${category.items.length === 1 ? 'opção' : 'opções'}</span>
+          </div>
+          <div class="menu-rail-controls" aria-label="Navegar nos pratos de ${escapeHtml(category.title)}">
+            <button type="button" data-rail-prev aria-label="Voltar pratos de ${escapeHtml(category.title)}">‹</button>
+            <button type="button" data-rail-next aria-label="Ver mais pratos de ${escapeHtml(category.title)}">›</button>
+          </div>
+        </div>
+        <div class="menu-category-rail" data-menu-rail tabindex="0"
+          aria-label="Pratos de ${escapeHtml(category.title)}. Deslize para o lado para ver mais.">
+          ${category.items.map((item) => renderMenuItem(item, category)).join('')}
+        </div>
+      </section>
+    `).join('');
+    prepareRails();
+    syncMenuControls();
+  };
+
+  const renderCategory = (index, scroll = true, rebuild = false) => {
     if (!MENU.length || !menuItems) return;
     if (menuSearch) menuSearch.value = '';
     if (menuSearchClear) menuSearchClear.hidden = true;
     if (menuSearchStatus) menuSearchStatus.textContent = '';
-    if (pageTurner) pageTurner.hidden = false;
+    if (pageTurner) pageTurner.hidden = true;
     currentCategory = Math.max(0, Math.min(MENU.length - 1, index));
     const category = MENU[currentCategory];
-
     categoryTitle.textContent = category.title;
     categoryEyebrow.textContent = category.eyebrow || 'Cardápio Kipeixe';
     pageNumber.textContent = String(currentCategory + 1).padStart(2, '0');
     categoryProgress.textContent = `${currentCategory + 1} / ${MENU.length}`;
-    menuItems.innerHTML = category.items.map((item) => renderMenuItem(item, category)).join('');
-
+    if (rebuild || menuItems.dataset.menuLayout !== 'rails') renderAllCategories();
     prevCategory.disabled = currentCategory === 0;
     nextCategory.disabled = currentCategory === MENU.length - 1;
     renderMenuTabs();
-
-    if (animate && bookPage && bookPage.animate) {
-      bookPage.animate(
-        [
-          { opacity: .35, transform: 'translateX(10px)' },
-          { opacity: 1, transform: 'translateX(0)' }
-        ],
-        { duration: 210, easing: 'ease-out' }
-      );
-    }
-
-    if (window.innerWidth < 761) {
+    if (scroll) {
+      qs(`[data-category-section="${currentCategory}"]`, menuItems)?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        block: 'start', inline: 'nearest'
+      });
       const active = qs('[data-category-index].is-active', categoryTabs);
       active?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
   };
+
+  // The sticky category chips reflect the row currently visible while scrolling down.
+  let categoryScrollFrame = 0;
+  window.addEventListener('scroll', () => {
+    if (categoryScrollFrame || menuItems?.dataset.menuLayout !== 'rails') return;
+    categoryScrollFrame = requestAnimationFrame(() => {
+      categoryScrollFrame = 0;
+      const cutoff = window.innerWidth < 761 ? 205 : 216;
+      let visible = 0;
+      qsa('[data-category-section]', menuItems).forEach((section, index) => {
+        if (section.getBoundingClientRect().top <= cutoff) visible = index;
+      });
+      if (visible === currentCategory) return;
+      currentCategory = visible;
+      qsa('[data-category-index]', categoryTabs).forEach((button) => {
+        const active = Number(button.dataset.categoryIndex) === visible;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    });
+  }, { passive: true });
 
   const renderSearch = () => {
     if (!menuSearch || !menuItems) return;
@@ -373,10 +374,12 @@
     menuSearchStatus.textContent = label;
     menuSearchClear.hidden = false;
     if (pageTurner) pageTurner.hidden = true;
+    menuItems.dataset.menuLayout = 'search';
     menuItems.innerHTML = results.length
       ? results.map(({ item, category }) => renderMenuItem(item, category, true)).join('')
       : '<div class="menu-no-results" data-menu-no-results>Nenhum produto encontrado. Tente outro nome ou escolha uma categoria.</div>';
     renderMenuTabs();
+    syncMenuControls();
   };
 
   menuSearch?.addEventListener('input', renderSearch);
@@ -393,6 +396,15 @@
     if (image.dataset.fallbackApplied === 'true') return;
 
     image.dataset.fallbackApplied = 'true';
+    if (image.matches('.menu-entry-photo')) {
+      const trigger = image.closest('[data-photo-zoom]');
+      const placeholder = document.createElement('div');
+      placeholder.className = 'menu-entry-photo-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      placeholder.innerHTML = '<span>KIPEIXE</span>';
+      trigger?.replaceWith(placeholder);
+      return;
+    }
     const fallbackSrc = versionAsset(FALLBACK_DISH_IMAGE);
     image.src = fallbackSrc;
 
@@ -405,6 +417,22 @@
     const button = event.target.closest('[data-category-index]');
     if (!button) return;
     renderCategory(Number(button.dataset.categoryIndex));
+  });
+  menuItems?.addEventListener('click', (event) => {
+    const control = event.target.closest('[data-rail-prev], [data-rail-next]');
+    if (!control) return;
+    const rail = control.closest('[data-category-section]')?.querySelector('[data-menu-rail]');
+    if (!rail) return;
+    const distance = Math.max(rail.clientWidth * .8, 270);
+    rail.scrollBy({left: control.hasAttribute('data-rail-next') ? distance : -distance, behavior: 'smooth'});
+  });
+  qsa('[data-category-scroll]').forEach((button) => {
+    button.addEventListener('click', () => {
+      categoryTabs?.scrollBy({
+        left: Number(button.dataset.categoryScroll) * Math.max(220, categoryTabs.clientWidth * .75),
+        behavior: 'smooth'
+      });
+    });
   });
   prevCategory?.addEventListener('click', () => renderCategory(currentCategory - 1));
   nextCategory?.addEventListener('click', () => renderCategory(currentCategory + 1));
@@ -565,6 +593,17 @@
   const cartCount = () => cart.reduce((sum, item) => sum + item.qty, 0);
   const cartValue = () => cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
+  const syncMenuControls = () => {
+    qsa('[data-menu-qty-controls]', menuItems).forEach((control) => {
+      const qty = cart.find((item) => item.id === control.dataset.cartId)?.qty || 0;
+      const addButton = control.parentElement?.querySelector('.add-button');
+      if (addButton) addButton.hidden = qty > 0;
+      control.hidden = qty === 0;
+      const amount = qs('[data-menu-qty-value]', control);
+      if (amount) amount.textContent = qty;
+    });
+  };
+
   const renderCart = () => {
     const count = cartCount();
     qsa('[data-cart-count]').forEach((node) => { node.textContent = count; });
@@ -578,13 +617,17 @@
       quickCheckout.setAttribute('aria-label', `Finalizar pedido. ${itemLabel}. Total ${totalLabel}`);
     }
     safeStorage.set('kipeixe_cart_v1', cart);
+    syncMenuControls();
 
     if (!cartItems || !cartEmpty || !cartCheckout) return;
     cartEmpty.hidden = count > 0;
     cartCheckout.hidden = count === 0;
     if (cartTotal) cartTotal.textContent = currency.format(cartValue());
     if (paymentTotal) paymentTotal.textContent = currency.format(cartValue() +
-      (orderType?.value === 'Entrega' ? Number(deliveryQuote?.feeCents || 0) / 100 : 0));
+      (!whatsappActive() && orderType?.value === 'Entrega' ? Number(deliveryQuote?.feeCents || 0) / 100 : 0));
+    const totalLabelNode = qs('[data-order-total-label]', orderForm);
+    if (totalLabelNode) totalLabelNode.textContent = whatsappActive() && orderType?.value === 'Entrega'
+      ? 'Total dos itens' : 'Total do pedido';
 
     cartItems.innerHTML = cart.map((item) => `
       <article class="cart-row" data-cart-id="${escapeHtml(item.id)}">
@@ -671,7 +714,7 @@
 
     if (!added.length) return;
     setPage('cardapio');
-    renderCategory(added[0].categoryIndex, false);
+    renderCategory(added[0].categoryIndex, true);
     for (const { item, price, variant } of added) {
       track('ViewContent', {
         content_name: item.name, content_ids: [makeItemId(item.name, variant)],
@@ -683,12 +726,25 @@
   }
 
   menuItems?.addEventListener('click', (event) => {
+    const minus = event.target.closest('[data-menu-qty-minus]');
+    if (minus) {
+      const id = minus.closest('[data-menu-qty-controls]')?.dataset.cartId;
+      const entry = cart.find((item) => item.id === id);
+      if (entry) {
+        entry.qty -= 1;
+        cart = cart.filter((item) => item.qty > 0);
+        renderCart();
+      }
+      return;
+    }
     const button = event.target.closest('[data-add-item]');
     if (!button) return;
     addItem(button.dataset.name, button.dataset.variant, button.dataset.price, button.dataset.productId);
-    const original = button.textContent;
-    button.textContent = 'Adicionado ✓';
-    setTimeout(() => { button.textContent = original; }, 850);
+    if (button.matches('.variant-button')) {
+      const original = button.textContent;
+      button.textContent = 'Adicionado ✓';
+      setTimeout(() => { if (button.isConnected) button.textContent = original; }, 850);
+    }
   });
 
   qsa('[data-cart-open]').forEach((button) => button.addEventListener('click', openCart));
@@ -713,8 +769,10 @@
     if (!orderType || !addressField) return;
     const delivery = orderType.value === 'Entrega';
     addressField.hidden = !delivery;
-    const useIFood = storeConfig?.deliveryProvider === 'ifood' && delivery;
+    const useIFood = !whatsappActive() && storeConfig?.deliveryProvider === 'ifood' && delivery;
     if (ifoodAddressSection) ifoodAddressSection.hidden = !useIFood;
+    const quoteSection = qs('[data-delivery-quote]');
+    if (quoteSection) quoteSection.hidden = !delivery || whatsappActive();
     const inputAddress = qs('input[name="address"]', addressField);
     if (inputAddress) {
       inputAddress.readOnly = useIFood;
@@ -884,6 +942,27 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
+  function syncPaymentCaption() {
+    const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
+    const paymentMethods = qs('[data-payment-methods]', orderForm);
+    const paymentHeading = qs('[data-order-channel-title]', orderForm);
+    if (paymentMethods) paymentMethods.hidden = whatsappActive();
+    if (paymentHeading) paymentHeading.textContent = whatsappActive() ? 'Resumo do pedido' : 'Forma de pagamento';
+    if (whatsappActive()) {
+      if (onlineButton) {
+        qs('strong', onlineButton).textContent = 'Enviar pedido pelo WhatsApp';
+        qs('small', onlineButton).textContent = 'Continuar para a conversa';
+      }
+      return;
+    }
+    if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
+    const caption = qs('small', onlineButton);
+    if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
+    const title = qs('strong', onlineButton);
+    if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
+  }
+  qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
+    input.addEventListener('change', syncPaymentCaption));
   const hoursService = window.KIPEIXE_HOURS;
   const immediateInput = qs('input[name="mode"][value="immediate"]', orderForm);
   const scheduledInput = qs('input[name="mode"][value="scheduled"]', orderForm);
@@ -897,6 +976,7 @@
   const onlineStatusTitle = qs('[data-online-status-title]');
   const onlineStatusMessage = qs('[data-online-status-message]');
   const onlineStatusRefresh = qs('[data-online-status-refresh]');
+  const onlinePixOpen = qs('[data-online-pix-open]');
   const onlineStatusLink = qs('[data-online-status-link]');
   const uberTrackingLink = qs('[data-uber-tracking]');
   const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
@@ -905,6 +985,99 @@
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
   let paymentBusy = false;
   let statusInterval = null;
+  const pixDrawer = qs('[data-pix-drawer]');
+  const pixPanel = qs('.pix-panel', pixDrawer);
+  const pixImage = qs('[data-pix-image]', pixDrawer);
+  const pixCode = qs('[data-pix-code]', pixDrawer);
+  const pixExpiration = qs('[data-pix-expiration]', pixDrawer);
+  const pixTotal = qs('[data-pix-total]', pixDrawer);
+  const pixCopy = qs('[data-pix-copy]', pixDrawer);
+  const pixCheck = qs('[data-pix-check]', pixDrawer);
+  const pixProgress = qs('.pix-payment-progress', pixDrawer);
+  const pixProgressTitle = qs('[data-pix-progress-title]', pixDrawer);
+  const pixProgressNote = qs('[data-pix-progress-note]', pixDrawer);
+  let availablePix = null;
+
+  function closePix() {
+    pixDrawer?.classList.remove('is-open');
+    pixDrawer?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('pix-open');
+    onlinePixOpen?.focus({ preventScroll: true });
+  }
+
+  function displayPix(pix, totalCents) {
+    if (!pix || !/^[A-Za-z0-9+/=]{40,50000}$/.test(pix.image || '') ||
+        typeof pix.payload !== 'string' || pix.payload.length < 30 || pix.payload.length > 5000 ||
+        !Number.isFinite(Date.parse(pix.expiresAt))) return false;
+    availablePix = { ...pix, totalCents };
+    if (pixImage) pixImage.src = 'data:image/png;base64,' + pix.image;
+    if (pixCode) pixCode.value = pix.payload;
+    if (pixTotal) pixTotal.textContent = currency.format(totalCents / 100);
+    if (onlinePixOpen) onlinePixOpen.hidden = false;
+    updatePixExpiration();
+    return true;
+  }
+
+  function updatePixExpiration() {
+    if (!availablePix || !pixExpiration) return;
+    const remaining = Math.ceil((Date.parse(availablePix.expiresAt) - Date.now()) / 1000);
+    pixExpiration.textContent = remaining > 0
+      ? `Código válido por ${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
+      : 'Prazo de pagamento encerrado';
+    if (remaining <= 0 && !pixPanel?.classList.contains('is-complete')) {
+      pixCopy.disabled = true;
+      if (pixProgressTitle) pixProgressTitle.textContent = 'Prazo do QR Code encerrado';
+      if (pixProgressNote) pixProgressNote.textContent = 'Verifique o status antes de tentar fazer outro pedido.';
+    }
+  }
+
+  function updatePixProgress(status) {
+    if (!pixProgress) return;
+    const paid = status === 'PAID';
+    const expired = status === 'EXPIRED' || status === 'CANCELED';
+    pixPanel?.classList.toggle('is-complete', paid || expired);
+    pixProgress.classList.toggle('is-paid', paid);
+    pixProgress.classList.toggle('is-expired', expired);
+    if (pixProgressTitle) pixProgressTitle.textContent = paid ? 'Pagamento confirmado' :
+      expired ? 'Código Pix expirado' : 'Aguardando pagamento';
+    if (pixProgressNote) pixProgressNote.textContent = paid
+      ? 'Recebemos a confirmação do Asaas. O Kipeixe irá avaliar seu pedido.'
+      : expired ? 'O código não está mais disponível para pagamento.'
+      : 'A confirmação é automática. Você também pode verificar abaixo.';
+    if (pixCheck) pixCheck.hidden = paid || expired;
+    if (onlinePixOpen) onlinePixOpen.hidden = paid || expired || !availablePix;
+    if (pixCopy) pixCopy.disabled = paid || expired ||
+      (availablePix && Date.parse(availablePix.expiresAt) <= Date.now());
+  }
+
+  function openPix() {
+    if (!availablePix || !pixDrawer) return;
+    pixDrawer.classList.add('is-open');
+    pixDrawer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('pix-open');
+    pixPanel?.focus({ preventScroll: true });
+    if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
+    checkOrderStatus();
+  }
+
+  qsa('[data-pix-close]').forEach(button => button.addEventListener('click', closePix));
+  onlinePixOpen?.addEventListener('click', openPix);
+  pixCheck?.addEventListener('click', async () => {
+    pixCheck.disabled = true;
+    try { await checkOrderStatus(); } finally { pixCheck.disabled = false; }
+  });
+  pixCopy?.addEventListener('click', async () => {
+    if (!availablePix || Date.parse(availablePix.expiresAt) <= Date.now()) return;
+    try {
+      await navigator.clipboard.writeText(availablePix.payload);
+      pixCopy.textContent = '✓ Código Pix copiado';
+    } catch {
+      pixCode?.focus();
+      pixCode?.select();
+      pixCopy.textContent = 'Selecione e copie o código acima';
+    }
+  });
+  setInterval(updatePixExpiration, 1000);
   let fulfillmentTouched = false;
 
   const activeOpeningHours = () => storeConfig?.openingHours ||
@@ -981,6 +1154,13 @@
 
   function updateMenuFromApi(categories) {
     if (!Array.isArray(categories) || categories.length === 0) return;
+    const signature = JSON.stringify(categories);
+    const needsRedraw = signature !== lastCatalogSignature;
+    lastCatalogSignature = signature;
+    const railPositions = needsRedraw
+      ? qsa('[data-category-section]', menuItems).map(section =>
+          section.querySelector('[data-menu-rail]')?.scrollLeft || 0)
+      : [];
     MENU = categories;
     const prices = new Map(MENU.flatMap(category => category.items.flatMap(item =>
       item.variants?.length
@@ -991,7 +1171,19 @@
       ...entry, ...prices.get(entry.id)
     }));
     currentCategory = Math.min(currentCategory, MENU.length - 1);
-    renderCategory(currentCategory, false);
+    if (needsRedraw) {
+      if (menuSearch?.value.trim()) {
+        renderSearch();
+      } else {
+        renderCategory(currentCategory, false, true);
+        qsa('[data-category-section]', menuItems).forEach((section, index) => {
+          const rail = section.querySelector('[data-menu-rail]');
+          if (!rail) return;
+          rail.scrollLeft = railPositions[index] || 0;
+          updateRailButtons(rail);
+        });
+      }
+    }
     renderCart();
   }
 
@@ -1012,12 +1204,15 @@
       storeConfig = await configResponse.json();
       syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
-      if (onlineButton) onlineButton.disabled = paymentBusy || !storeConfig.onlinePaymentEnabled;
-      if (onlineHint) onlineHint.textContent = storeConfig.onlinePaymentEnabled
-        ? (storeConfig.sandbox
+      if (onlineButton) onlineButton.disabled = paymentBusy || !(storeConfig.orderChannel === 'whatsapp'
+        ? storeConfig.acceptsOrders && /^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')
+        : storeConfig.onlinePaymentEnabled);
+      if (onlineHint) {
+        onlineHint.hidden = whatsappActive() || (storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
+        onlineHint.textContent = storeConfig.onlinePaymentEnabled
           ? 'Ambiente de testes: nenhum valor real será cobrado.'
-          : 'Pagamento protegido pelo Asaas. Seu pedido só segue após confirmação.')
-        : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+          : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+      }
       const deliveryChoice = qs('[data-order-choice="Entrega"]');
       if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
       if (deliveryQuoteButton) deliveryQuoteButton.textContent =
@@ -1029,15 +1224,20 @@
       if (!storeConfig.deliveryEnabled) deliveryQuote = null;
       const onlineLabel = qs('strong', onlineButton);
       const onlineCaption = qs('small', onlineButton);
-      if (onlineLabel) onlineLabel.textContent = !storeConfig.onlinePaymentEnabled
-        ? 'Pagamento indisponível'
-        : storeConfig.sandbox ? 'Abrir pagamento de teste' : 'Continuar para pagamento';
-      if (onlineCaption) onlineCaption.textContent = storeConfig.sandbox
-        ? 'Pix ou cartão fictícios · Sandbox Asaas'
-        : 'Pix ou cartão · Ambiente seguro Asaas';
-      if (checkoutDisclaimer) checkoutDisclaimer.textContent = storeConfig.sandbox
+      if (onlineLabel) onlineLabel.textContent = whatsappActive() ? 'Enviar pedido pelo WhatsApp'
+        : !storeConfig.onlinePaymentEnabled
+        ? 'Pagamento indisponível' : 'Pagar agora';
+      if (onlineCaption) onlineCaption.textContent = whatsappActive() ? 'Continuar para a conversa'
+        : storeConfig.sandbox
+        ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
+      if (checkoutDisclaimer) checkoutDisclaimer.textContent = whatsappActive()
+        ? 'O restaurante confirmará seu pedido, o valor final e o pagamento pelo WhatsApp.'
+        : storeConfig.sandbox
         ? 'AMBIENTE DE TESTES: cobrança simulada, sem dinheiro real. O restaurante só recebe o pedido após a confirmação do Asaas.'
-        : 'Depois do pagamento, aguarde o aceite do Kipeixe. Pedidos imediatos sem resposta em 30 minutos são recusados, com solicitação de estorno.';
+        : 'Seu pedido será enviado ao Kipeixe após a confirmação do pagamento e ficará sujeito ao aceite do restaurante.';
+      syncPaymentCaption();
+      if (whatsappActive()) deliveryQuote = null;
+      syncAddressField();
       renderCart();
     } catch {
       // Falha fechada: checkout não envia pedidos por outro canal silenciosamente.
@@ -1048,6 +1248,7 @@
         qs('small', onlineButton).textContent = 'Falha ao conectar ao Asaas. Tente novamente.';
       }
       if (onlineHint) onlineHint.textContent = 'Não foi possível consultar o serviço de pagamento. Nenhum pedido foi realizado.';
+      if (onlineHint) onlineHint.hidden = false;
       syncSchedule();
     }
   }
@@ -1084,11 +1285,16 @@
       });
       if (!response.ok) throw Error('Não foi possível consultar o pedido.');
       const data = await response.json();
+      if (currentOrder?.reviewUnresolved && ['PAID', 'EXPIRED', 'CANCELED'].includes(data.paymentStatus)) {
+        currentOrder.reviewUnresolved = false;
+        safeStorage.set('kipeixe_current_order_v2', currentOrder);
+      }
       const [title, description] = orderMessages[data.orderStatus] ||
         ['Acompanhando pedido', 'O restaurante está atualizando a situação.'];
       const paymentText = data.paymentStatus === 'PAID' ? '' :
         data.paymentStatus === 'PENDING' ? ' Pagamento ainda não confirmado.' :
-        data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' : '';
+        data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' :
+        data.paymentStatus === 'REVIEW' ? ' Pagamento não confirmado. Aguarde conferência do restaurante.' : '';
       const refundText = data.refundStatus === 'REVIEW' ? ' Estorno precisa de conferência do restaurante.' :
         data.refundStatus === 'REQUESTED' ? ' Estorno solicitado.' :
         data.refundStatus === 'REFUNDED' ? ' Estorno confirmado.' : '';
@@ -1109,6 +1315,14 @@
           '. Para receber, confirme os últimos 4 dígitos do seu telefone com o entregador.' : '';
       showOrderStatus(title, description + paymentText + refundText + courierText + ifoodText,
         data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
+      if (data.paymentMethod === 'PIX') {
+        if (data.pix) displayPix(data.pix, data.totalCents);
+        updatePixProgress(data.paymentStatus);
+        if (currentOrder?.pixPending && ['PAID', 'EXPIRED', 'CANCELED'].includes(data.paymentStatus)) {
+          currentOrder.pixPending = false;
+          safeStorage.set('kipeixe_current_order_v2', currentOrder);
+        }
+      }
       if (uberTrackingLink) {
         let safeTracking = null;
         try {
@@ -1134,8 +1348,66 @@
     }
   }
 
+  function startWhatsappCheckout() {
+    if (!storeConfig?.acceptsOrders || !/^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')) {
+      showOrderStatus('Pedidos indisponíveis', 'Não foi possível abrir o atendimento pelo WhatsApp.');
+      return;
+    }
+    if (!validateScheduleChoice()) return;
+    const data = new FormData(orderForm);
+    const name = String(data.get('name') || '').trim();
+    const phone = String(data.get('phone') || '').replace(/\D/g, '');
+    const type = String(data.get('type') || '');
+    const address = String(data.get('address') || '').trim();
+    const notes = String(data.get('notes') || '').trim();
+    const mode = String(data.get('mode') || 'immediate');
+    const scheduledAt = String(data.get('scheduledAt') || '');
+    setFieldError(nameInput, nameError, name.length < 2 || name.length > 90);
+    setFieldError(phoneInput, phoneError, phone.length < 10 || phone.length > 13);
+    setFieldError(addressInput, addressError, type === 'Entrega' && (!address || address.length > 250));
+    if (!cart.length || name.length < 2 || name.length > 90 || phone.length < 10 || phone.length > 13 ||
+        type === 'Entrega' && (!address || address.length > 250) || notes.length > 500) {
+      showOrderStatus('Confira os dados', 'Preencha nome, telefone e endereço (quando necessário).');
+      if (name.length < 2 || name.length > 90) nameInput?.focus();
+      else if (phone.length < 10 || phone.length > 13) phoneInput?.focus();
+      else if (type === 'Entrega' && !address) addressInput?.focus();
+      return;
+    }
+    if (mode === 'scheduled' && !scheduledAt) {
+      scheduleInput?.focus();
+      showOrderStatus('Escolha o horário', 'Informe a data e a hora do pedido.');
+      return;
+    }
+    const lines = [
+      '*Pedido Kipeixe*', '',
+      `*Nome:* ${name}`,
+      `*Telefone:* ${phone}`,
+      `*Recebimento:* ${type}`,
+    ];
+    if (type === 'Entrega') lines.push(`*Endereço:* ${address}`);
+    lines.push(`*Quando:* ${mode === 'scheduled' ? scheduledAt.replace('T', ' às ') : 'Agora'}`, '', '*Itens:*');
+    for (const item of cart) {
+      lines.push(`• ${item.qty}x ${item.name}${item.variant ? ` (${item.variant})` : ''} — ${currency.format(item.price * item.qty)}`);
+    }
+    lines.push('', `*Total dos itens:* ${currency.format(cartValue())}`);
+    if (type === 'Entrega') lines.push('*Taxa de entrega:* a confirmar');
+    if (notes) lines.push('', `*Observações:* ${notes}`);
+    lines.push('', 'Por favor, confirmem meu pedido e as condições de pagamento.');
+    const url = `https://wa.me/${storeConfig.whatsappNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+    // A mensagem é apenas preenchida. O cliente precisa enviá-la no WhatsApp.
+    window.location.assign(url);
+  }
+
   async function startOnlineCheckout() {
     if (paymentBusy) return;
+    if (whatsappActive()) { startWhatsappCheckout(); return; }
+    if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
+      showOrderStatus('Pedido aguardando conferência',
+        'Já existe um pedido com pagamento pendente. Confira o Pix antes de criar outra cobrança.');
+      await checkOrderStatus();
+      if (currentOrder?.pixPending && availablePix) openPix();
+      return;
+    }
     if (!storeConfig?.onlinePaymentEnabled) {
       showOrderStatus('Pagamento indisponível', 'O serviço de pagamento não está disponível. Nenhum pedido foi enviado.');
       return;
@@ -1148,10 +1420,24 @@
     const address = String(data.get('address') || '').trim();
     const mode = String(data.get('mode') || 'immediate');
     const dateInput = String(data.get('scheduledAt') || '');
+    const paymentMethod = String(data.get('paymentMethod') || '');
     setFieldError(nameInput, nameError, name.length < 2);
-    setFieldError(phoneInput, phoneError, phone.length < 10);
+    setFieldError(phoneInput, phoneError, phone.length < 10 || phone.length > 13);
     setFieldError(addressInput, addressError, type === 'Entrega' && !address);
-    if (!cart.length || name.length < 2 || phone.length < 10 || type === 'Entrega' && !address) return;
+    if (!cart.length || name.length < 2 || phone.length < 10 || phone.length > 13 || type === 'Entrega' && !address) {
+      showOrderStatus('Confira os dados', !cart.length
+        ? 'Adicione um produto antes de continuar.'
+        : 'Informe seu nome, telefone com DDD e endereço quando necessário.');
+      if (name.length < 2) nameInput?.focus();
+      else if (phone.length < 10 || phone.length > 13) phoneInput?.focus();
+      else if (type === 'Entrega' && !address) addressInput?.focus();
+      return;
+    }
+    if (!['PIX', 'CREDIT_CARD'].includes(paymentMethod)) {
+      showOrderStatus('Escolha como pagar', 'Selecione Pix ou cartão de crédito antes de continuar.');
+      qs('input[name="paymentMethod"]', orderForm)?.focus();
+      return;
+    }
     if (type === 'Entrega' && (!deliveryQuote || deliveryQuote.address !== address ||
         Date.parse(deliveryQuote.expiresAt) < Date.now() + 30000)) {
       deliveryQuoteStatus.textContent = 'Calcule ou atualize a taxa de entrega antes de pagar.';
@@ -1172,7 +1458,7 @@
     const attempt = {
       requestId: crypto.randomUUID(), accessToken: crypto.randomUUID(),
       customer: { name, phone, type, address, notes: String(data.get('notes') || '') },
-      mode, scheduledAt,
+      mode, scheduledAt, paymentMethod,
       items: cart.map(item => ({ productId: item.productId || undefined,
         name: item.name, variant: item.variant || '', qty: item.qty })),
       deliveryQuoteId: type === 'Entrega' ? deliveryQuote.quoteId : null,
@@ -1189,9 +1475,16 @@
         body: JSON.stringify(attempt)
       });
       const result = await response.json();
-      if (!response.ok) throw Error(result.error || 'Falha ao iniciar pagamento.');
+      if (!response.ok) {
+        if (result?.paymentStatus === 'REVIEW' && /^[0-9a-f-]{36}$/i.test(result.orderId || '')) {
+          currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken, reviewUnresolved: true };
+          safeStorage.set('kipeixe_current_order_v2', currentOrder);
+        }
+        throw Error(result.error || 'Falha ao iniciar pagamento.');
+      }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
+      if (paymentMethod === 'PIX') { currentOrder.hasPix = true; currentOrder.pixPending = true; }
       safeStorage.set('kipeixe_current_order_v2', currentOrder);
       track('InitiateCheckout', {
         value: cartValue(), currency: 'BRL', num_items: cartCount(),
@@ -1199,6 +1492,14 @@
           id: item.id, quantity: item.qty, item_price: item.price
         }))
       });
+      if (paymentMethod === 'PIX') {
+        if (!displayPix(result.pix, result.totalCents)) throw Error('QR Code inválido retornado pelo Asaas. Consulte o pedido antes de tentar novamente.');
+        updatePixProgress('PENDING');
+        showOrderStatus('Aguardando Pix', 'Escaneie o QR Code ou copie o código Pix para pagar.');
+        paymentBusy = false;
+        openPix();
+        return;
+      }
       if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
       window.location.assign(result.checkoutUrl);
     } catch (error) {
@@ -1235,11 +1536,15 @@
       checkOrderStatus();
       if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
     }
+    if (currentOrder?.hasPix && !returned.has('retorno') && !returned.has('pedido')) {
+      checkOrderStatus();
+    }
     applyProductDeepLink();
   });
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+      if (pixDrawer?.classList.contains('is-open')) { closePix(); return; }
       closePhoto();
       closeCart();
     }

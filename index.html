@@ -28,7 +28,9 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261106-admin-footer" />
+    <link rel="stylesheet" href="styles.css?v=20261112-payment-clean" />
+    <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
+    <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
     <script>window.KIPEIXE_API_ENABLED = true;</script>
     <script src="meta-pixel.js?v=20261106-1"></script>
     <!-- GENERATED_RESTAURANT_JSON_LD_START -->
@@ -103,18 +105,9 @@
       <section class="site-page menu-page is-active" data-page="cardapio">
         <div class="menu-experience" data-menu-experience>
           <div class="menu-inside" data-menu-inside>
-            <div class="menu-inside-head">
-              <div>
-                <p class="eyebrow dark">Restaurante Kipeixe · Peça diretamente</p>
-                <h1>Escolha o que vai pedir.</h1>
-                <p class="menu-sales-copy">Encontre seus pratos e bebidas, adicione ao pedido e envie para confirmação pelo WhatsApp.</p>
-              </div>
-              <div class="menu-head-actions">
-                <button type="button" class="mini-cart" data-cart-open>Ver meu pedido <b data-cart-count>0</b></button>
-              </div>
-            </div>
+            <h1 class="menu-visually-hidden">Cardápio Kipeixe — escolha seus pratos e faça seu pedido</h1>
             <div class="menu-search" role="search">
-              <label for="menu-search-input">O que você procura?</label>
+              <label class="menu-visually-hidden" for="menu-search-input">O que você procura?</label>
               <div class="menu-search-controls">
                 <input id="menu-search-input" type="search" data-menu-search placeholder="Buscar tilápia, picanha, sucos..." autocomplete="off" />
                 <button type="button" data-menu-search-clear hidden>Limpar</button>
@@ -125,7 +118,9 @@
             <div class="book">
               <aside class="book-index" aria-label="Categorias do cardápio">
                 <p>Índice</p>
+                <button class="category-nav-scroll" type="button" data-category-scroll="-1" aria-label="Ver categorias anteriores">‹</button>
                 <div data-category-tabs></div>
+                <button class="category-nav-scroll" type="button" data-category-scroll="1" aria-label="Ver próximas categorias">›</button>
               </aside>
 
               <article class="book-page">
@@ -249,6 +244,7 @@
           <p data-online-status-message></p>
           <div class="online-order-actions">
             <button data-online-status-refresh type="button" hidden>Verificar pagamento</button>
+            <button data-online-pix-open type="button" hidden>Mostrar QR Code Pix</button>
             <a data-online-status-link href="https://asaas.com" target="_blank" rel="noopener noreferrer" hidden>Retomar pagamento</a>
             <a data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entregador Uber</a>
           </div>
@@ -270,12 +266,12 @@
                 <small class="field-error" id="name-error" data-name-error hidden>Informe seu nome para continuar.</small>
               </label>
               <label class="modern-field">
-                <span>Telefone com DDD <small>(para pagamento online)</small></span>
+                <span>Telefone com DDD <small>(para contato sobre o pedido)</small></span>
                 <div class="field-control">
                   <span class="field-icon" aria-hidden="true">☎</span>
                   <input type="tel" name="phone" autocomplete="tel" inputmode="tel" maxlength="20" aria-describedby="phone-error" placeholder="(45) 99999-9999" />
                 </div>
-                <small class="field-error" id="phone-error" data-phone-error hidden>Informe um telefone com DDD para pagar online.</small>
+                <small class="field-error" id="phone-error" data-phone-error hidden>Informe um telefone com DDD.</small>
               </label>
             </div>
 
@@ -374,16 +370,20 @@
               <div class="checkout-section-title">
                 <span>06</span>
                 <div>
-                  <strong id="checkout-payment-title">Pagamento</strong>
-                  <small>Confira seu pedido e finalize com segurança</small>
+                  <strong id="checkout-payment-title" data-order-channel-title>Forma de pagamento</strong>
                 </div>
               </div>
-              <div class="checkout-payment-methods" aria-label="Formas de pagamento aceitas">
-                <span><b aria-hidden="true">◇</b> Pix</span>
-                <span><b aria-hidden="true">▣</b> Cartão de crédito</span>
+              <div class="checkout-payment-methods" data-payment-methods role="radiogroup" aria-label="Escolha como pagar">
+                <label class="checkout-payment-option">
+                  <input type="radio" name="paymentMethod" value="PIX" checked />
+                  <span><b aria-hidden="true">◇</b><span>Pix</span></span>
+                </label>
+                <label class="checkout-payment-option">
+                  <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
+                  <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
+                </label>
               </div>
-              <p class="checkout-payment-explainer">Escolha a forma de pagamento na próxima tela, no ambiente seguro do Asaas.</p>
-              <div class="checkout-payment-total"><span>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
+              <div class="checkout-payment-total"><span data-order-total-label>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
               <span><strong>Conectando pagamento...</strong><small>Verificando disponibilidade</small></span>
@@ -392,6 +392,35 @@
             <small class="checkout-online-hint" data-online-hint role="status">Consultando o serviço de pagamento.</small>
             <small class="checkout-disclaimer" data-checkout-disclaimer>Seu pedido só é encaminhado ao restaurante após a confirmação do pagamento. O restaurante ainda precisa aceitar o pedido.</small>
           </form>
+        </div>
+      </section>
+    </aside>
+
+    <aside class="pix-drawer" data-pix-drawer aria-hidden="true">
+      <div class="pix-backdrop" data-pix-close></div>
+      <section class="pix-panel" role="dialog" aria-modal="true" aria-labelledby="pix-title" tabindex="-1">
+        <header class="pix-panel-header">
+          <div><span class="pix-panel-kicker">PAGAMENTO SEGURO · ASAAS</span><h2 id="pix-title">Pague seu pedido com Pix</h2></div>
+          <button type="button" data-pix-close aria-label="Fechar pagamento Pix">×</button>
+        </header>
+        <div class="pix-panel-body">
+          <div class="pix-panel-total"><span>Total a pagar</span><strong data-pix-total>R$ 0,00</strong></div>
+          <div class="pix-panel-qr-area">
+            <div class="pix-qr-card"><img data-pix-image alt="QR Code Pix exclusivo deste pedido" width="224" height="224" /></div>
+            <strong>Escaneie com o aplicativo do seu banco</strong>
+            <span class="pix-expiration" data-pix-expiration></span>
+          </div>
+          <div class="pix-code-area">
+            <label for="pix-copy-code">Ou copie o código Pix</label>
+            <input id="pix-copy-code" data-pix-code readonly autocomplete="off" spellcheck="false" />
+            <button type="button" data-pix-copy><span aria-hidden="true">⧉</span> Copiar código Pix</button>
+          </div>
+          <div class="pix-payment-progress" role="status" aria-live="polite">
+            <span class="pix-progress-indicator"></span>
+            <div><strong data-pix-progress-title>Aguardando pagamento</strong><small data-pix-progress-note>Assim que o Asaas confirmar, o restaurante recebe seu pedido.</small></div>
+          </div>
+          <button class="pix-check-button" type="button" data-pix-check>Já paguei · Verificar agora</button>
+          <p class="pix-security-note">Pagamento processado pelo Asaas. O pedido segue para o restaurante somente após a confirmação e ainda depende de aceite.</p>
         </div>
       </section>
     </aside>
@@ -421,8 +450,10 @@
     </nav>
 
     <script src="menu-data.js?v=20261015-tilapia55"></script>
+    <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261106-ifood-shipping"></script>
+    <script src="script.js?v=20261112-payment-clean"></script>
+    <script type="module" src="appearance-site.mjs?v=20261110-direct-edit"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {

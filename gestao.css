@@ -147,3 +147,4 @@
 #orders-view.training-active .compact-order.urgent { box-shadow: inset 3px 0 #a97327; }
 #orders-view.training-active .stat-card[data-stat="pending"] { background: #fff5e3; }
 @media(max-width:740px) { .training-banner { flex-wrap: wrap; } .training-banner>div { flex-basis: 100%; } }
+.settings-card[hidden], [data-asaas-settings][hidden], [data-whatsapp-settings][hidden]{display:none!important}

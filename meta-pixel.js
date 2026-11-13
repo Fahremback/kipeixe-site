@@ -1,5 +1,7 @@
 // Meta Pixel for restaurantekipeixe.com.br. No customer PII is sent by this file.
 (() => {
+  // Do not record admin design previews as real visits or ad conversions.
+  if (new URLSearchParams(location.search).has('theme_editor')) return;
   const pixelId = '1152743323896193';
   if (window.__kipeixePixelReady) return;
   window.__kipeixePixelReady = true;

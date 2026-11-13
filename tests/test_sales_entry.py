@@ -19,11 +19,12 @@ def check_device(browser, label, width, height):
     assert page.locator('[data-menu-inside]').is_visible(), "não exigir clique para abrir o cardápio"
     assert page.locator('[data-menu-cover]').count() == 0, "capa intermediária deve desaparecer"
     assert page.locator('[data-page-link="cardapio"].is-active').count() >= 1
-    assert page.locator('[data-menu-items] .menu-entry').count() == 12
+    assert page.locator('[data-category-section]').count() == 10
+    assert page.locator('[data-category-section="0"] .menu-entry').count() == 12
     assert page.locator(".desktop-tabs [data-page-link]").first.get_attribute("data-page-link") == "cardapio"
     assert page.locator(".mobile-tabs [data-page-link]").first.get_attribute("data-page-link") == "cardapio"
     assert page.locator('[data-menu-search]').is_visible()
-    assert page.locator('[data-menu-items] img').count() == 0
+    assert page.locator('[data-menu-items] img').count() > 15
 
     page.locator('[data-menu-search]').fill("camarão")
     assert page.locator('[data-menu-items] .menu-entry').count() == 2
@@ -32,11 +33,11 @@ def check_device(browser, label, width, height):
     assert page.locator('[data-menu-items] .menu-entry').count() == 0
     assert page.locator('[data-menu-no-results]').is_visible()
     page.locator('[data-menu-search-clear]').click()
-    assert page.locator('[data-menu-items] .menu-entry').count() == 12
+    assert page.locator('[data-category-section]').count() == 10
 
     page.locator('[data-category-index="5"]').click()
     assert "X-Burguer" in page.locator('[data-menu-items]').inner_text()
-    page.locator('[data-add-item][data-name="X-Burguer"]').click()
+    page.locator('.add-button[data-add-item][data-name="X-Burguer"]').click()
     assert page.locator('[data-quick-checkout]').is_visible()
     assert "18,00" in page.locator('[data-quick-total]').inner_text()
     page.locator('[data-quick-checkout]').click()

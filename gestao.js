@@ -96,6 +96,7 @@
     $('#operator-name').textContent = username;
     $('.main-nav [data-tab="users"]').hidden = role !== 'owner';
     $('.main-nav [data-tab="settings"]').hidden = role !== 'owner';
+    $('.main-nav [data-tab="appearance"]').hidden = role !== 'owner';
     updateTrainingUi();
   }
   function armAudio() {
@@ -543,6 +544,9 @@
     form.elements.deliveryFee.value = (settings.deliveryFeeCents / 100).toFixed(2);
     form.elements.paymentMode.value = settings.paymentMode || 'sandbox';
     form.elements.paymentsEnabled.checked = settings.paymentsEnabled || false;
+    form.elements.orderChannel.value = settings.orderChannel || 'whatsapp';
+    form.elements.whatsappNumber.value = settings.whatsappNumber || '554535772363';
+    updateOrderChannel();
     updatePaymentEnvironment();
     $('#hours-list').innerHTML = DAYS.map((day, index) => {
       const slot = settings.hours[String(index)];
@@ -557,16 +561,38 @@
     if (!settings) return;
     const form = $('#settings-form');
     const mode = form.elements.paymentMode.value;
-    const ready = Boolean(settings.asaasEnvironments?.[mode]?.configured && settings.paymentSystemAvailable);
+    const credentials = settings.asaasEnvironments?.[mode] || {};
+    const ready = Boolean(credentials.configured && settings.paymentSystemAvailable);
     const status = $('#asaas-environment-status');
-    status.textContent = ready
-      ? 'Chave e webhook cadastrados — ambiente pronto para ativação.'
-      : 'Ambiente ainda não configurado. Cadastre a API Key e o webhook no servidor antes de ativar.';
+    if (credentials.apiKeyConfigured === false && credentials.webhookConfigured === true) {
+      status.textContent = 'API Key ausente. Token do webhook já cadastrado. Falta apenas cadastrar a chave de ' +
+        (mode === 'production' ? 'produção' : 'sandbox') + ' no servidor.';
+    } else if (credentials.apiKeyConfigured === true && credentials.webhookConfigured === false) {
+      status.textContent = 'API Key cadastrada. Token do webhook ausente neste ambiente.';
+    } else if (credentials.apiKeyConfigured === false && credentials.webhookConfigured === false) {
+      status.textContent = 'API Key e token do webhook ausentes neste ambiente.';
+    } else if (!settings.paymentSystemAvailable) {
+      status.textContent = 'Credenciais presentes, mas a integração está desabilitada no servidor.';
+    } else if (ready) {
+      status.textContent = 'API Key e webhook cadastrados. A conexão com o Asaas ainda precisa ser validada.';
+    } else {
+      status.textContent = 'Configuração incompleta. Confira as credenciais do ambiente no servidor.';
+    }
     status.classList.toggle('is-ready', ready);
     $('#asaas-risk-note').textContent = mode === 'sandbox'
       ? 'MODO TESTE: pedidos e pagamentos simulados, sem transferência real de dinheiro.'
       : 'ATENÇÃO: Produção realiza cobranças reais na conta vinculada à chave de produção.';
   }
+  function updateOrderChannel() {
+    const form = $('#settings-form');
+    const whatsapp = form.elements.orderChannel.value === 'whatsapp';
+    $$('[data-asaas-settings]').forEach(section => { section.hidden = whatsapp; });
+    $('[data-whatsapp-settings]').hidden = !whatsapp;
+    $('[data-order-channel-status]').textContent = whatsapp
+      ? 'Ativo: pedidos encaminhados ao WhatsApp.'
+      : 'Ativo: pagamento online pelo Asaas.';
+  }
+  $('#settings-form').elements.orderChannel.addEventListener('change', updateOrderChannel);
   $('#settings-form').elements.paymentMode.addEventListener('change', updatePaymentEnvironment);
   async function changeTrainingMode(enabled) {
     if (!training) { notify('Não foi possível carregar o simulador.', true); return; }
@@ -625,6 +651,8 @@
           deliveryFeeCents: Math.round(Number(form.elements.deliveryFee.value) * 100),
           paymentMode: form.elements.paymentMode.value,
           paymentsEnabled: form.elements.paymentsEnabled.checked,
+          orderChannel: form.elements.orderChannel.value,
+          whatsappNumber: form.elements.whatsappNumber.value.replace(/\D/g, ''),
           hours,
         }),
       });
@@ -789,6 +817,7 @@
       ORDER_STATUS_CORRECTED: 'Marcação corrigida',
       IFOOD_DISPATCH_RETRY: 'Nova tentativa de despacho iFood',
       UBER_DISPATCH_RETRY: 'Nova tentativa de despacho Uber',
+      ASAAS_CHECKOUT_FAILED: 'Falha ao iniciar pagamento Asaas',
     };
     $('#history-events').innerHTML = `
       <div class="history-event"><strong>Pedido registrado</strong>
@@ -885,19 +914,20 @@
   });
 
   async function switchTab(tab) {
-    if (tab === 'users' && currentRole !== 'owner') return;
+    if (['users', 'appearance', 'settings'].includes(tab) && currentRole !== 'owner') return;
     activeTab = tab;
     $$('.main-nav button').forEach(button => button.classList.toggle('active', button.dataset.tab === tab));
     $$('.view').forEach(view => view.hidden = view.id !== `${tab}-view`);
     $('#view-title').textContent = ({ orders: trainingOn() ? 'Pedidos · Treinamento' : 'Pedidos recebidos', products: 'Controle do cardápio',
       settings: 'Funcionamento do restaurante', users: 'Usuários e acessos',
-      history: 'Histórico de pedidos' })[tab];
+      history: 'Histórico de pedidos', appearance: 'Aparência e cores do site' })[tab];
     try {
       if (tab === 'products') await loadCatalog();
       if (tab === 'settings') await loadSettings();
       if (tab === 'orders') await loadOrders();
       if (tab === 'users') await loadUsers();
       if (tab === 'history') await loadHistory();
+      if (tab === 'appearance') document.dispatchEvent(new CustomEvent('kipeixe:appearance-open'));
     } catch (error) { notify(error.message, true); }
   }
   $$('.main-nav button').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));

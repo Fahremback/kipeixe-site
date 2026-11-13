@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { asaasCheckoutItems } from '../src/app.mjs';
+import { asaasCheckoutItems, asaasCheckoutBillingTypes, asaasErrorDetails, asaasCheckoutPayload } from '../src/app.mjs';
 
 test('checkout items respect Asaas 30-character name limit', () => {
   const fullName = 'Filé de tilápia crocante ao molho especial (porção grande)';
@@ -29,4 +29,60 @@ test('short item names are preserved and description stays optional', () => {
   assert.equal(items[0].name, 'Tilápia');
   assert.equal(items[0].description, undefined);
   assert.equal(items[0].value, 55);
+});
+
+test('checkout accepts explicit Pix and credit-card selections', () => {
+  assert.deepEqual(asaasCheckoutBillingTypes('PIX'), ['PIX']);
+  assert.deepEqual(asaasCheckoutBillingTypes('CREDIT_CARD'), ['CREDIT_CARD']);
+});
+
+test('legacy checkout allows both; invalid methods are rejected', () => {
+  assert.deepEqual(asaasCheckoutBillingTypes(undefined), ['PIX', 'CREDIT_CARD']);
+  assert.deepEqual(asaasCheckoutBillingTypes(''), ['PIX', 'CREDIT_CARD']);
+  assert.throws(() => asaasCheckoutBillingTypes('BOLETO'), /Forma de pagamento/);
+  assert.throws(() => asaasCheckoutBillingTypes(['PIX']), /Forma de pagamento/);
+});
+
+test('Asaas 400 invalid_object exposes the missing field instead of dropping the description', () => {
+  const result = asaasErrorDetails({
+    errors: [
+      { code: 'invalid_object', description: 'O campo items deve ser informado.' },
+      { code: 'invalid_object', description: 'billingTypes inválido.' },
+    ],
+  });
+  assert.equal(result.code, 'invalid_object');
+  assert.equal(result.description, 'O campo items deve ser informado. | billingTypes inválido.');
+});
+
+test('Asaas 400 diagnostic redacts credentials and limits untrusted descriptions', () => {
+  const result = asaasErrorDetails({
+    errors: [{code: 'invalid_object', description: '$aact_prod_SECRETVALUE ' + 'a'.repeat(2000)}],
+  });
+  assert.ok(!result.description.includes('$aact_prod_'));
+  assert.ok(result.description.length <= 600);
+  assert.equal(asaasErrorDetails(null).description, '');
+});
+
+test('R$120 rejected production order generates spec-compliant Pix and card requests', () => {
+  const order = {
+    id: '9bee4a35-7f6b-4ead-bd47-503c7c1cdcee',
+    deliveryCents: 0,
+    items: [{ name: 'Bisteca de porco à tropeira', variant: '', qty: 1, unitCents: 12000 }],
+  };
+  for (const billingTypes of [['PIX'], ['CREDIT_CARD']]) {
+    const body = JSON.parse(JSON.stringify(asaasCheckoutPayload(order, billingTypes)));
+    assert.deepEqual(body.billingTypes, billingTypes);
+    assert.deepEqual(body.chargeTypes, ['DETACHED']);
+    assert.equal(body.minutesToExpire, 60);
+    assert.equal(body.externalReference, order.id);
+    for (const key of ['successUrl','cancelUrl','expiredUrl']) {
+      const url = new URL(body.callback[key]);
+      assert.equal(url.protocol, 'https:');
+      assert.equal(url.hostname, 'restaurantekipeixe.com.br');
+    }
+    assert.deepEqual(body.items, [{ name: 'Bisteca de porco à tropeira', quantity: 1, value: 120 }]);
+    assert.equal(body.customerData, undefined);
+    assert.equal(body.subscription, undefined);
+    assert.equal(body.installment, undefined);
+  }
 });
