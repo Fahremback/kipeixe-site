@@ -108,7 +108,9 @@ if (typeof document !== 'undefined') {
     timeInput.value = next.time;
     syncDates();
     shortcuts.forEach((button) => button.addEventListener('click', () => {
-      dateInput.value = addCalendarDays(todayInBrazil(), Number(button.dataset.dateOffset));
+      const offset = Number(button.dataset.dateOffset);
+      dateInput.value = addCalendarDays(todayInBrazil(), offset);
+      timeInput.value = offset === 0 ? nextReservationChoice().time : '12:00';
       syncDates();
     }));
     dateInput.addEventListener('change', syncDates);
