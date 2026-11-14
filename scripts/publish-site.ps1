@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$wrangler = Join-Path $repo 'worker\node_modules\wrangler\bin\wrangler.js'
+$wrangler = if ($env:KIPEIXE_WRANGLER_PATH) { $env:KIPEIXE_WRANGLER_PATH } else { Join-Path $repo 'worker\node_modules\wrangler\bin\wrangler.js' }
 if (-not (Test-Path $wrangler)) { throw 'Instale as dependencias em worker antes de publicar.' }
 
 $commit = (& git -C $repo rev-parse HEAD).Trim()
@@ -26,7 +26,9 @@ try {
   Expand-Archive -LiteralPath $archive -DestinationPath $source
 
   $publicFiles = @(
-    'index.html', 'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css',
+    'index.html', 'visite.html', 'visite.css', 'reservas.mjs',
+    'placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs',
+    'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css',
     'training-engine.js', 'ifood-ops.js', 'styles.css', 'menu-ordering.css', 'script.js', 'store-hours.js',
     'menu-data.js', 'product-images.js', 'meta-pixel.js', 'webmcp.js', 'favicon.ico',
     'appearance-config.mjs', 'appearance-site.mjs', 'appearance-theme.css',
@@ -38,7 +40,7 @@ try {
     if (Test-Path $file) { Copy-Item -LiteralPath $file -Destination (Join-Path $public $name) }
   }
 
-  $extensions = @('.webp', '.jpg', '.jpeg', '.png', '.svg', '.ico', '.json', '.txt', '.xml')
+  $extensions = @('.webp', '.jpg', '.jpeg', '.png', '.svg', '.ico', '.json', '.txt', '.xml', '.mp4')
   foreach ($folder in @('assets', 'ai')) {
     $directory = Join-Path $source $folder
     if (-not (Test-Path $directory)) { continue }
@@ -69,6 +71,20 @@ try {
   foreach ($name in @('appearance-config.mjs', 'appearance-site.mjs', 'appearance-admin.mjs', 'appearance-theme.css', 'appearance-admin.css')) {
     if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo de aparencia ausente: ' + $name) }
   }
+  foreach ($name in @('visite.html', 'visite.css', 'reservas.mjs')) {
+    if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo de reservas ausente: ' + $name) }
+  }
+  foreach ($name in @('placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs')) {
+    if (-not (Test-Path (Join-Path $public $name))) { throw ('Arquivo do placar ausente: ' + $name) }
+  }
+  foreach ($name in @('feed_peixe.png', 'feed_lago.png', 'story_peixe.png', 'story_lago.png', 'cartaz_a5.png', 'reel_visite_12s.mp4', 'reel_imagens_reais_10s.mp4', 'reel_experiencia_premium_14s.mp4', 'reel_peixe_premium_14s.mp4')) {
+    if (-not (Test-Path (Join-Path $public 'assets\campanha' $name))) { throw ('Arquivo de campanha ausente: ' + $name) }
+  }
+  foreach ($code in @('rhino', 'farmacia3l', 'brunabosco', 'amandalara', 'dourado', 'montanari', 'precojusto', 'tradicao', 'serenity', 'gracie', 'kozievitch', 'vaz')) {
+    if (-not (Test-Path (Join-Path $public 'assets\campanha\parceiros' ('cartaz_parceiro_' + $code + '.png')))) {
+      throw ('Cartaz de parceiro ausente: ' + $code)
+    }
+  }
   Write-Output ('Publicando commit ' + $commit.Substring(0, 7) + ' no Cloudflare Pages...')
   Push-Location $public
   try {
@@ -78,10 +94,33 @@ try {
 
   foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/ifood-ops.js', '/gestao-unified.css', '/menu-ordering.css', '/product-images.js',
       '/appearance-config.mjs', '/appearance-site.mjs', '/appearance-admin.mjs',
-      '/appearance-theme.css', '/appearance-admin.css')) {
+      '/appearance-theme.css', '/appearance-admin.css', '/visite.html', '/visite.css', '/reservas.mjs',
+      '/placar-presencial.html', '/placar.css', '/placar-ui.mjs', '/placar-data.mjs',
+      '/assets/campanha/feed_peixe.png', '/assets/campanha/feed_lago.png',
+      '/assets/campanha/story_peixe.png', '/assets/campanha/story_lago.png',
+      '/assets/campanha/cartaz_a5.png', '/assets/campanha/reel_visite_12s.mp4',
+      '/assets/campanha/reel_imagens_reais_10s.mp4',
+      '/assets/campanha/parceiros/cartaz_parceiro_rhino.png',
+      '/assets/campanha/parceiros/cartaz_parceiro_vaz.png')) {
     $url = 'https://' + $Project + '.pages.dev' + $path + '?rev=' + $commit.Substring(0, 12)
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
     if ([int]$response.StatusCode -ne 200) { throw ('Verificacao HTTP falhou: ' + $url) }
+    Write-Output ('OK ' + $path + ' HTTP 200')
+    if ($path -eq '/visite.html' -and -not $response.Content.Contains('data-reserva-form')) {
+      throw ('Pagina de reservas nao encontrada no conteudo de ' + $url)
+    }
+    if ($path -eq '/reservas.mjs' -and -not $response.Content.Contains('buildReservationLink')) {
+      throw ('Modulo de reservas nao encontrado no conteudo de ' + $url)
+    }
+    if ($path -eq '/placar-presencial.html' -and -not $response.Content.Contains('booking-form')) {
+      throw ('Placar presencial nao encontrado no conteudo de ' + $url)
+    }
+  }
+  foreach ($path in @('/assets/campanha/reel_experiencia_premium_14s.mp4',
+                      '/assets/campanha/reel_peixe_premium_14s.mp4')) {
+    $url = 'https://' + $Project + '.pages.dev' + $path + '?rev=' + $commit.Substring(0, 12)
+    $response = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing
+    if ([int]$response.StatusCode -ne 200) { throw ('Video premium indisponivel: ' + $url) }
     Write-Output ('OK ' + $path + ' HTTP 200')
   }
 } finally {
