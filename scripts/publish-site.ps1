@@ -13,6 +13,16 @@ if (-not (Test-Path $wrangler)) { throw 'Instale as dependencias em worker antes
 
 $commit = (& git -C $repo rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao identificar o commit atual.' }
+if ($Branch -eq 'main') {
+  & git -C $repo fetch --quiet origin main
+  if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel conferir a versao atual de origin/main. Publicacao bloqueada.' }
+  $remoteMain = (& git -C $repo rev-parse FETCH_HEAD).Trim()
+  if ($LASTEXITCODE -ne 0) { throw 'Falha ao consultar origin/main. Publicacao bloqueada.' }
+  & git -C $repo merge-base --is-ancestor $remoteMain HEAD
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Publicacao bloqueada: este checkout esta atras do main remoto. Atualize e integre as alteracoes antes de publicar.'
+  }
+}
 
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('kipeixe-pages-' + [guid]::NewGuid().ToString('N'))
 $archive = Join-Path $temp 'site.zip'
