@@ -87,6 +87,22 @@ test('permite medir consultas do direct vindas da resposta automática de MESA',
   assert.match(exportCSV(entries,[]),/SOCIAL_DIRECT/);
 });
 
+test('contabiliza a nova resposta instantânea sem confundir conversas com mesas confirmadas',()=>{
+  assert.equal(validSource('SOCIAL_INSTANTANEA'),true);
+  const entries=[
+    validateReservation(booking({source:'SOCIAL_INSTANTANEA',status:'CONSULTA'})),
+    validateReservation(booking({source:'SOCIAL_INSTANTANEA',status:'CONFIRMADA',partySize:4})),
+    validateReservation(booking({source:'SOCIAL_INSTANTANEA',status:'COMPARECEU',partySize:2,revenue:90}))
+  ];
+  const stats=summarize(entries,[]);
+  assert.equal(stats.bySource.SOCIAL_INSTANTANEA.contacts,3);
+  assert.equal(stats.bySource.SOCIAL_INSTANTANEA.confirmedBookings,2);
+  assert.equal(stats.bySource.SOCIAL_INSTANTANEA.attendedPeople,2);
+  assert.equal(stats.bySource.SOCIAL_INSTANTANEA.revenue,90);
+  assert.equal(stats.mediaCostPerAttendedBooking,null);
+  assert.match(exportCSV(entries,[]),/SOCIAL_INSTANTANEA/);
+});
+
 test('separa consultas de Stories orgânicos do Facebook do investimento pago',()=>{
   for (const source of ['FB_STORY_PEIXE','FB_STORY_LAGO']) assert.equal(validSource(source),true);
   const entries=[
