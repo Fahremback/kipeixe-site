@@ -87,15 +87,16 @@ img { display: block; max-width: 100%; }
 }
 
 .brand img {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  object-fit: cover;
+  width: 143px;
+  height: 52px;
+  border-radius: 0;
+  object-fit: contain;
 }
 
 .brand span { display: grid; gap: 2px; }
+.brand .brand-identity { justify-items: center; gap: 0; }
 .brand strong { font-size: 17px; line-height: 1; letter-spacing: .14em; }
-.brand small { font-size: 10px; line-height: 1; color: rgba(255,255,255,.62); letter-spacing: .09em; text-transform: uppercase; }
+.brand small { font-size: 9px; line-height: 1; color: rgba(255,255,255,.78); letter-spacing: .09em; text-transform: uppercase; }
 
 .desktop-tabs {
   display: flex;
@@ -1077,7 +1078,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   }
   .site-main { padding-top: 66px; }
   .site-page { min-height: calc(100vh - 66px - 68px); }
-  .brand img { width: 38px; height: 38px; }
+  .brand img { width: 129px; height: 47px; }
   .brand strong { font-size: 15px; }
   .brand small { display: none; }
   .header-order { padding: 8px; }

@@ -60,7 +60,7 @@ def main():
 
     # Extract authentic logo from the site, keeping transparency around its
     # original black canvas and preserving the red fish mark.
-    logo_src = Image.open(ROOT / "assets/logo.webp").convert("RGB")
+    logo_src = Image.open(ROOT / "assets/logo-completo.webp").convert("RGB")
     crop = logo_src.crop((68, 27, 444, 300))
     cropped = crop.resize((160*SCALE, 112*SCALE), Image.Resampling.LANCZOS)
     logo = Image.new("RGBA", cropped.size)
