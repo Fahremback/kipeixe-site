@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Confira o cardápio do Kipeixe em Foz do Iguaçu. Escolha peixes, porções, carnes, lanches e bebidas, monte seu pedido e envie pelo WhatsApp para confirmação." />
     <meta name="theme-color" content="#2b2019" />
+    <style>html[data-appearance-loading] body { visibility: hidden; }</style>
+    <script>
+      (() => {
+        const root = document.documentElement;
+        root.setAttribute('data-appearance-loading', '');
+        const preview = window.parent !== window && new URLSearchParams(location.search).has('theme_editor');
+        const controller = new AbortController();
+        const deadline = setTimeout(() => controller.abort(), 3500);
+        const endpoint = (location.hostname === '127.0.0.1'
+          ? 'http://127.0.0.1:8787' : 'https://api.restaurantekipeixe.com.br') + '/api/appearance';
+        window.__kipeixeAppearancePromise = preview ? Promise.resolve(null)
+          : fetch(endpoint, { cache: 'no-store', signal: controller.signal })
+            .then(response => response.ok ? response.json() : null)
+            .catch(() => null).finally(() => clearTimeout(deadline));
+        const safetyRelease = setTimeout(() => root.removeAttribute('data-appearance-loading'), 4500);
+        window.__kipeixeAppearanceReveal = () => {
+          clearTimeout(safetyRelease);
+          root.removeAttribute('data-appearance-loading');
+        };
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:site_name" content="Kipeixe Restaurante & Pesque-Pague" />
@@ -458,7 +479,7 @@
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
     <script src="script.js?v=20261113-whatsapp-checkout"></script>
-    <script type="module" src="appearance-site.mjs?v=20261110-direct-edit"></script>
+    <script type="module" src="appearance-site.mjs?v=20261114-first-paint"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
       if (document.modelContext?.registerTool || navigator.modelContext?.registerTool) {

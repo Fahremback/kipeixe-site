@@ -209,6 +209,7 @@ if (preview) {
     if (event.source!==window.parent || event.origin!==location.origin) return;
     if (event.data?.type==='kipeixe:appearance-theme') {
       render(event.data.appearance);
+      window.__kipeixeAppearanceReveal?.();
       const page=event.data.page;
       if (allowedPage(page) && location.hash!==`#${page}`) location.hash=`#${page}`;
       if (selectedInfo?.page && selectedInfo.page!==page) clearSelection();
@@ -229,6 +230,9 @@ if (preview) {
   window.parent.postMessage({type:'kipeixe:appearance-ready'},location.origin);
 }
 
-fetch((location.hostname==='127.0.0.1'?'http://127.0.0.1:8787':'https://api.restaurantekipeixe.com.br')+'/api/appearance',
-  {cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(data && !preview) render(data);})
-  .catch(()=>{});
+const appearanceRequest = window.__kipeixeAppearancePromise
+  || fetch((location.hostname==='127.0.0.1'?'http://127.0.0.1:8787':'https://api.restaurantekipeixe.com.br')+'/api/appearance',
+    {cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+appearanceRequest.then(data => { if (data && !preview) render(data); })
+  .catch(() => {})
+  .finally(() => { if (!preview) window.__kipeixeAppearanceReveal?.(); });
