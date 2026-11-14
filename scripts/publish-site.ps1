@@ -50,7 +50,7 @@ try {
     if (Test-Path $file) { Copy-Item -LiteralPath $file -Destination (Join-Path $public $name) }
   }
 
-  $extensions = @('.webp', '.jpg', '.jpeg', '.png', '.svg', '.ico', '.json', '.txt', '.xml', '.mp4')
+  $extensions = @('.webp', '.jpg', '.jpeg', '.png', '.svg', '.ico', '.json', '.txt', '.xml', '.mp4', '.woff2')
   foreach ($folder in @('assets', 'ai')) {
     $directory = Join-Path $source $folder
     if (-not (Test-Path $directory)) { continue }
@@ -74,6 +74,9 @@ try {
   }
   if (-not (Test-Path (Join-Path $public 'product-images.js'))) {
     throw 'O indice de fotos de produtos nao foi incluido no pacote.'
+  }
+  if (-not (Test-Path (Join-Path $public 'assets\fonts\righteous-latin.woff2'))) {
+    throw 'Fonte da marca nao incluida no pacote.'
   }
   if (-not (Test-Path (Join-Path $public 'menu-ordering.css'))) {
     throw 'O estilo do novo cardapio nao foi incluido no pacote.'

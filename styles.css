@@ -17,6 +17,14 @@
   --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+@font-face {
+  font-family: 'KipeixeMarca';
+  src: url('assets/fonts/righteous-latin.woff2') format('woff2');
+  font-display: block;
+  font-weight: 400;
+  font-style: normal;
+}
+
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
@@ -82,21 +90,28 @@ img { display: block; max-width: 100%; }
   width: max-content;
   display: inline-flex;
   align-items: center;
-  gap: 11px;
+  gap: 8px;
   text-align: left;
 }
 
 .brand img {
-  width: 143px;
-  height: 52px;
+  width: 43px;
+  height: 49px;
   border-radius: 0;
   object-fit: contain;
 }
 
 .brand span { display: grid; gap: 2px; }
-.brand .brand-identity { justify-items: center; gap: 0; }
-.brand strong { font-size: 17px; line-height: 1; letter-spacing: .14em; }
-.brand small { font-size: 9px; line-height: 1; color: rgba(255,255,255,.78); letter-spacing: .09em; text-transform: uppercase; }
+.brand .brand-identity { justify-items: start; gap: 3px; }
+.brand strong {
+  font-family: 'KipeixeMarca', 'Arial Black', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .015em;
+  color: #ef081d;
+}
+.brand small { font-size: 9px; line-height: 1; color: rgba(255,255,255,.86); letter-spacing: .075em; text-transform: uppercase; }
 
 .desktop-tabs {
   display: flex;
@@ -1078,9 +1093,9 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   }
   .site-main { padding-top: 66px; }
   .site-page { min-height: calc(100vh - 66px - 68px); }
-  .brand img { width: 129px; height: 47px; }
-  .brand strong { font-size: 15px; }
-  .brand small { display: none; }
+  .brand img { width: 38px; height: 44px; }
+  .brand strong { font-size: 21px; }
+  .brand small { display: block; font-size: 8px; }
   .header-order { padding: 8px; }
   .header-order span { display: none; }
   .header-order b { min-width: 30px; height: 30px; }
