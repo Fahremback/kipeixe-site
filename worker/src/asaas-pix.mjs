@@ -41,7 +41,11 @@ export async function createAsaasPix(order, env, mode) {
   if (!keysResponse.ok) throw new Error(`Asaas Pix: consulta de chaves HTTP ${keysResponse.status}.`);
   const first = (keys.data || []).find(item => item.status === 'ACTIVE' &&
     /^[0-9a-f-]{36}$/i.test(item.id));
-  if (!first) throw new Error('Asaas: cadastre e ative uma chave Pix na conta para exibir o QR Code.');
+  if (!first) {
+    const error = new Error('Asaas: cadastre e ative uma chave Pix na conta para exibir o QR Code.');
+    error.code = 'PIX_KEY_UNAVAILABLE';
+    throw error;
+  }
 
   const response = await fetch(`${url}/pix/qrCodes/static`, {
     method: 'POST', headers, signal: AbortSignal.timeout(15000),

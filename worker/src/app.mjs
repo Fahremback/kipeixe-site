@@ -109,6 +109,10 @@ export function asaasErrorDetails(payload) {
   };
 }
 
+export function asaasDefinitivelyRejected(httpStatus) {
+  return [400, 401, 403, 422].includes(httpStatus);
+}
+
 export function asaasCheckoutPayload(order, billingTypes) {
   return {
     billingTypes,
@@ -313,15 +317,26 @@ async function createOrder(request, env, origin, ctx) {
   }
   try {
     if (billingTypes.length === 1 && billingTypes[0] === 'PIX') {
-      const pix = await createAsaasPix(order, env, settings.paymentMode);
-      const expiresAt = new Date(Date.now() + 3600_000).toISOString();
-      await env.DB.prepare(`UPDATE orders SET pix_qr_id=?, pix_payload=?, pix_image=?, pix_expires_at=?,
-        payment_status='PENDING', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-        .bind(pix.id, pix.payload, pix.encodedImage, expiresAt, order.id).run();
-      return reply({ orderId: order.id, paymentMethod: 'PIX',
-        pix: { payload: pix.payload, image: pix.encodedImage, expiresAt },
-        totalCents: order.totalCents, scheduledFor: schedule,
-        paymentMode: settings.paymentMode }, 201, origin);
+      let pix = null;
+      try {
+        pix = await createAsaasPix(order, env, settings.paymentMode);
+      } catch (error) {
+        // A hosted Asaas Pix checkout does not require the restaurant's own
+        // active Pix address key. Fall back ONLY when the key lookup explicitly
+        // confirms none is available, never after an uncertain create/timeout.
+        if (error?.code !== 'PIX_KEY_UNAVAILABLE') throw error;
+        console.info('Pix QR key unavailable; falling back to hosted Asaas checkout.', order.id);
+      }
+      if (pix) {
+        const expiresAt = new Date(Date.now() + 3600_000).toISOString();
+        await env.DB.prepare(`UPDATE orders SET pix_qr_id=?, pix_payload=?, pix_image=?, pix_expires_at=?,
+          payment_status='PENDING', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+          .bind(pix.id, pix.payload, pix.encodedImage, expiresAt, order.id).run();
+        return reply({ orderId: order.id, paymentMethod: 'PIX',
+          pix: { payload: pix.payload, image: pix.encodedImage, expiresAt },
+          totalCents: order.totalCents, scheduledFor: schedule,
+          paymentMode: settings.paymentMode }, 201, origin);
+      }
     }
     const checkout = await createAsaasCheckout(order, env, settings.paymentMode, billingTypes);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
@@ -333,7 +348,8 @@ async function createOrder(request, env, origin, ctx) {
         paymentMode: settings.paymentMode,
       }).catch(error => console.warn('Meta CAPI checkout:', error.message)));
     }
-    return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, totalCents: order.totalCents,
+    return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, paymentMethod: billingTypes[0],
+      totalCents: order.totalCents,
       scheduledFor: schedule, paymentMode: settings.paymentMode }, 201, origin);
   } catch (error) {
     const providerStatus = Number.isInteger(error?.asaasHttpStatus) ? error.asaasHttpStatus : null;
@@ -355,9 +371,11 @@ async function createOrder(request, env, origin, ctx) {
       .bind('sistema', 'ASAAS_CHECKOUT_FAILED', order.id,
         JSON.stringify({ reason, billingTypes: methodSummary, itemCount: order.items.length })).run()
       .catch(e => console.warn('Asaas diagnostic logging failed:', e.name));
-    // A creation may have reached Asaas even when the response was lost.
-    await env.DB.prepare("UPDATE orders SET payment_status='REVIEW', updated_at=CURRENT_TIMESTAMP WHERE id=? AND checkout_id IS NULL AND payment_status='CREATING'")
-      .bind(order.id).run();
+    // Explicit provider validation/auth denials mean no checkout was created.
+    // Only ambiguous network failures remain in REVIEW to prevent duplicates.
+    const definitelyRejected = asaasDefinitivelyRejected(providerStatus);
+    await env.DB.prepare("UPDATE orders SET payment_status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND checkout_id IS NULL AND payment_status='CREATING'")
+      .bind(definitelyRejected ? 'FAILED' : 'REVIEW', order.id).run();
     const message = providerStatus === 401
       ? 'Asaas recusou a API Key de produção (HTTP 401). O restaurante precisa revisar as credenciais.'
       : providerStatus === 403
@@ -368,7 +386,8 @@ async function createOrder(request, env, origin, ctx) {
       : billingTypes[0] === 'PIX' && reason.startsWith('Asaas')
       ? 'Pix indisponível: ' + reason
       : 'Pagamento não confirmado. Não faça outro pedido antes de consultar o restaurante.';
-    return reply({ error: message, orderId: order.id, paymentStatus: 'REVIEW' }, 502, origin);
+    return reply({ error: message, orderId: order.id,
+      paymentStatus: definitelyRejected ? 'FAILED' : 'REVIEW' }, 502, origin);
   }
 }
 
@@ -386,7 +405,7 @@ async function readOrder(request, env, origin, id) {
   const { access_hash, ...data } = row;
   return reply({ orderId: data.id, paymentStatus: data.payment_status, orderStatus: data.fulfillment_status,
     totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
-    paymentMethod: data.pix_qr_id ? 'PIX' : 'CREDIT_CARD',
+    paymentMethod: data.pix_qr_id ? 'PIX' : data.checkout_url ? 'ASAAS_CHECKOUT' : null,
     pix: data.pix_qr_id && data.payment_status === 'PENDING'
       ? { payload: data.pix_payload, image: data.pix_image, expiresAt: data.pix_expires_at } : null,
     scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,

@@ -1285,6 +1285,8 @@
 
   function showOrderStatus(title, message, link = '') {
     if (!onlineStatus) return;
+    const changed = onlineStatus.hidden || onlineStatusTitle.textContent !== title ||
+      onlineStatusMessage.textContent !== message;
     onlineStatus.hidden = false;
     onlineStatusTitle.textContent = title;
     onlineStatusMessage.textContent = message;
@@ -1293,6 +1295,9 @@
       if (link && /^https:\/\/(?:sandbox\.)?asaas\.com\//.test(link)) onlineStatusLink.href = link;
     }
     if (onlineStatusRefresh) onlineStatusRefresh.hidden = !currentOrder;
+    // This notice used to render far above the payment button and was invisible
+    // to customers already scrolled to the final checkout step.
+    if (changed) onlineStatus.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }
 
   async function checkOrderStatus() {
@@ -1304,7 +1309,7 @@
       });
       if (!response.ok) throw Error('Não foi possível consultar o pedido.');
       const data = await response.json();
-      if (currentOrder?.reviewUnresolved && ['PAID', 'EXPIRED', 'CANCELED'].includes(data.paymentStatus)) {
+      if (currentOrder?.reviewUnresolved && ['PAID', 'EXPIRED', 'CANCELED', 'FAILED'].includes(data.paymentStatus)) {
         currentOrder.reviewUnresolved = false;
         safeStorage.set('kipeixe_current_order_v2', currentOrder);
       }
@@ -1313,6 +1318,7 @@
       const paymentText = data.paymentStatus === 'PAID' ? '' :
         data.paymentStatus === 'PENDING' ? ' Pagamento ainda não confirmado.' :
         data.paymentStatus === 'CANCELED' || data.paymentStatus === 'EXPIRED' ? ' Pagamento encerrado.' :
+        data.paymentStatus === 'FAILED' ? ' A cobrança não foi criada. Você pode tentar novamente.' :
         data.paymentStatus === 'REVIEW' ? ' Pagamento não confirmado. Aguarde conferência do restaurante.' : '';
       const refundText = data.refundStatus === 'REVIEW' ? ' Estorno precisa de conferência do restaurante.' :
         data.refundStatus === 'REQUESTED' ? ' Estorno solicitado.' :
@@ -1421,9 +1427,12 @@
     if (paymentBusy) return;
     if (whatsappActive()) { startWhatsappCheckout(); return; }
     if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
-      showOrderStatus('Pedido aguardando conferência',
-        'Já existe um pedido com pagamento pendente. Confira o Pix antes de criar outra cobrança.');
       await checkOrderStatus();
+      showOrderStatus(currentOrder?.reviewUnresolved || currentOrder?.pixPending
+        ? 'Pedido aguardando conferência' : 'Pedido anterior atualizado',
+        currentOrder?.reviewUnresolved || currentOrder?.pixPending
+          ? 'Já existe um pedido com pagamento pendente. Confira o status antes de criar outra cobrança.'
+          : 'O pagamento anterior foi encerrado ou confirmado. Confira a situação antes de fazer um novo pedido.');
       if (currentOrder?.pixPending && availablePix) openPix();
       return;
     }
@@ -1503,7 +1512,8 @@
       }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
-      if (paymentMethod === 'PIX') { currentOrder.hasPix = true; currentOrder.pixPending = true; }
+      const inlinePix = paymentMethod === 'PIX' && Boolean(result.pix?.payload && result.pix?.image);
+      if (inlinePix) { currentOrder.hasPix = true; currentOrder.pixPending = true; }
       safeStorage.set('kipeixe_current_order_v2', currentOrder);
       track('InitiateCheckout', {
         value: cartValue(), currency: 'BRL', num_items: cartCount(),
@@ -1511,7 +1521,7 @@
           id: item.id, quantity: item.qty, item_price: item.price
         }))
       });
-      if (paymentMethod === 'PIX') {
+      if (inlinePix) {
         if (!displayPix(result.pix, result.totalCents)) throw Error('QR Code inválido retornado pelo Asaas. Consulte o pedido antes de tentar novamente.');
         updatePixProgress('PENDING');
         showOrderStatus('Aguardando Pix', 'Escaneie o QR Code ou copie o código Pix para pagar.');
@@ -1520,6 +1530,11 @@
         return;
       }
       if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
+      if (paymentMethod === 'PIX') {
+        showOrderStatus('Abrindo Pix no Asaas',
+          'O QR Code será exibido na página segura do Asaas. Nenhum valor foi cobrado ainda.',
+          result.checkoutUrl);
+      }
       window.location.assign(result.checkoutUrl);
     } catch (error) {
       showOrderStatus('Pagamento indisponível', error.message);

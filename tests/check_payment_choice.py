@@ -66,6 +66,8 @@ def run():
             assert page.locator('[data-online-hint]').is_hidden()
             page.locator('[data-online-checkout]').click()
             assert "Confira os dados" in page.locator('[data-online-status-title]').inner_text()
+            assert page.locator('[data-order-form] [data-online-status]').is_visible()
+            assert page.locator('[data-online-checkout] + [data-online-status]').count() == 1
             assert api_calls == [], "Invalid form unexpectedly sent a real order"
             page.locator('[data-order-form] input[name="name"]').fill("Teste automatizado")
             page.locator('[data-order-form] input[name="phone"]').fill("45999999999")

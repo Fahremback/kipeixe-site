@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { asaasCheckoutItems, asaasCheckoutBillingTypes, asaasErrorDetails, asaasCheckoutPayload } from '../src/app.mjs';
+import { asaasCheckoutItems, asaasCheckoutBillingTypes, asaasErrorDetails,
+  asaasCheckoutPayload, asaasDefinitivelyRejected } from '../src/app.mjs';
+
+test('explicit Asaas rejections can be retried; ambiguous timeouts require review', () => {
+  for (const code of [400, 401, 403, 422]) assert.equal(asaasDefinitivelyRejected(code), true);
+  for (const code of [408, 409, 429, 500, 502, 503, null])
+    assert.equal(asaasDefinitivelyRejected(code), false);
+});
 
 test('checkout items respect Asaas 30-character name limit', () => {
   const fullName = 'Filé de tilápia crocante ao molho especial (porção grande)';

@@ -42,7 +42,8 @@ test('Pix cannot show fabricated or partial QR codes', async t => {
   t.after(() => { globalThis.fetch = original; });
   globalThis.fetch = async () => Response.json({ data: [] });
   await assert.rejects(createAsaasPix(order, { ASAAS_PRODUCTION_API_KEY: 'fake' }, 'production'),
-    /cadastre e ative uma chave Pix/);
+    error => error.code === 'PIX_KEY_UNAVAILABLE' &&
+      /cadastre e ative uma chave Pix/.test(error.message));
 });
 
 test('webhook only accepts a received Pix from the matching QR, amount and type', async () => {
