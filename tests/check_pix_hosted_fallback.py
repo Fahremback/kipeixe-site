@@ -54,6 +54,13 @@ def main():
                             "checkoutUrl": "https://asaas.com/checkoutSession/show?id=test-hosted-pix-123456789",
                             "totalCents": 600
                         }, 201
+                    elif "/api/orders/" in path and route.request.method == "GET":
+                        data, status = {
+                            "orderId": "01234567-89ab-4cde-8f01-234567890abc",
+                            "orderStatus": "AWAITING_PAYMENT",
+                            "paymentStatus": "FAILED",
+                            "checkoutUrl": None,
+                        }, 200
                     else:
                         route.fulfill(status=404, body="Unexpected API route")
                         return
@@ -94,6 +101,31 @@ def main():
             assert page.locator('[data-pix-status-note]').is_visible()
             assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com cartão'
             print("Missing Asaas Pix key: card selected automatically PASS")
+            page.close()
+
+            # A user whose last Asaas attempt definitively failed must be able
+            # to retry with a single click, after safely confirming its state.
+            page = browser.new_page(viewport={"width": 390, "height": 850})
+            page.add_init_script("""localStorage.setItem('kipeixe_current_order_v2', JSON.stringify({
+                orderId:'01234567-89ab-4cde-8f01-234567890abc',
+                accessToken:'abcde012-3456-4789-abcd-ef1234567890', reviewUnresolved:true
+            }));""")
+            page.route("http://127.0.0.1:8787/**", api)
+            page.route("https://asaas.com/**", lambda route: route.fulfill(
+                status=200, content_type="text/html", body="<title>Retry mock</title>"
+            ))
+            page.goto(origin + "/#cardapio", wait_until="domcontentloaded")
+            page.get_by_role("button", name="Adicionar Água sem gás ao pedido").click()
+            page.locator("[data-quick-checkout]").click()
+            page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
+            page.locator('input[name="name"]').fill('Retry test')
+            page.locator('input[name="phone"]').fill('45999999999')
+            previous = len(requests)
+            page.locator('[data-online-checkout]').click()
+            page.wait_for_function("location.hostname === 'asaas.com'")
+            assert len(requests) == previous + 1
+            assert requests[-1]["paymentMethod"] == "CREDIT_CARD"
+            print("Failed Asaas order: one-click retry PASS")
             page.close()
             browser.close()
     finally:

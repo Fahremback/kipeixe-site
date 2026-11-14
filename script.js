@@ -1377,8 +1377,10 @@
         clearInterval(statusInterval);
         statusInterval = null;
       }
+      return data.paymentStatus;
     } catch {
       showOrderStatus('Pedido registrado', 'Atualização temporariamente indisponível. Tente novamente.');
+      return null;
     }
   }
 
@@ -1436,14 +1438,17 @@
     if (paymentBusy) return;
     if (whatsappActive()) { startWhatsappCheckout(); return; }
     if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
-      await checkOrderStatus();
-      showOrderStatus(currentOrder?.reviewUnresolved || currentOrder?.pixPending
-        ? 'Pedido aguardando conferência' : 'Pedido anterior atualizado',
-        currentOrder?.reviewUnresolved || currentOrder?.pixPending
-          ? 'Já existe um pedido com pagamento pendente. Confira o status antes de criar outra cobrança.'
-          : 'O pagamento anterior foi encerrado ou confirmado. Confira a situação antes de fazer um novo pedido.');
-      if (currentOrder?.pixPending && availablePix) openPix();
-      return;
+      const lastPaymentStatus = await checkOrderStatus();
+      if (!['FAILED', 'EXPIRED', 'CANCELED'].includes(lastPaymentStatus)) {
+        showOrderStatus(lastPaymentStatus === 'PAID' ? 'Pedido anterior pago' : 'Pedido aguardando conferência',
+          lastPaymentStatus === 'PAID'
+            ? 'O pagamento anterior foi confirmado. Confira seu pedido antes de pagar novamente.'
+            : 'Já existe um pedido com pagamento pendente. Confira o status antes de criar outra cobrança.');
+        if (currentOrder?.pixPending && availablePix) openPix();
+        return;
+      }
+      // The previous attempt ended without a payable checkout. Retry this
+      // button click normally instead of forcing the buyer to click again.
     }
     if (!storeConfig?.onlinePaymentEnabled) {
       showOrderStatus('Pagamento indisponível', 'O serviço de pagamento não está disponível. Nenhum pedido foi enviado.');
