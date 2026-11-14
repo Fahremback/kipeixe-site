@@ -5,6 +5,30 @@ function asaasHeaders(key) {
     'User-Agent': 'Kipeixe-Orders/2.1' };
 }
 
+const pixKeyStatusCache = new Map();
+
+export async function activePixKeyStatus(env, mode) {
+  if (env.PIX_READINESS_PROBE_ENABLED !== 'true') return null;
+  const { key, url } = paymentConfig(env, mode);
+  if (!key) return null;
+  const previous = pixKeyStatusCache.get(mode);
+  if (previous && previous.expiresAt > Date.now()) return previous.value;
+  try {
+    const response = await fetch(url + '/pix/addressKeys?status=ACTIVE&limit=20', {
+      headers: asaasHeaders(key), signal: AbortSignal.timeout(2500),
+    });
+    if (!response.ok) return null;
+    const result = await response.json();
+    if (!Array.isArray(result?.data)) return null;
+    const value = result.data.some(item => item.status === 'ACTIVE' &&
+      /^[0-9a-f-]{36}$/i.test(String(item.id || '')));
+    pixKeyStatusCache.set(mode, { value, expiresAt: Date.now() + 120000 });
+    return value;
+  } catch {
+    return null; // Unknown status must not be misrepresented as missing.
+  }
+}
+
 export function pixRequestBody(order, addressKeyId) {
   if (!/^[0-9a-f-]{36}$/i.test(order.id) || !/^[0-9a-f-]{36}$/i.test(addressKeyId)) {
     throw new Error('Chave Pix não identificada.');

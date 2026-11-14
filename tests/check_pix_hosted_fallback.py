@@ -80,6 +80,21 @@ def main():
                 assert len(requests) == 1 and requests[0]["paymentMethod"] == 'PIX'
                 print(f"Pix hosted fallback and visible errors: {width}px PASS")
                 page.close()
+            # The live Asaas API may report no active Pix key. In that case
+            # customers must be guided to card rather than a failing Pix flow.
+            config["pixReady"] = False
+            page = browser.new_page(viewport={"width": 390, "height": 850})
+            page.route("http://127.0.0.1:8787/**", api)
+            page.goto(origin + "/#cardapio", wait_until="domcontentloaded")
+            page.get_by_role("button", name="Adicionar Água sem gás ao pedido").click()
+            page.locator("[data-quick-checkout]").click()
+            page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
+            assert page.locator('input[name="paymentMethod"][value="PIX"]').is_disabled()
+            assert page.locator('input[name="paymentMethod"][value="CREDIT_CARD"]').is_checked()
+            assert page.locator('[data-pix-status-note]').is_visible()
+            assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com cartão'
+            print("Missing Asaas Pix key: card selected automatically PASS")
+            page.close()
             browser.close()
     finally:
         server.shutdown()

@@ -946,6 +946,15 @@
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
   function syncPaymentCaption() {
+    const pixInput = qs('input[name="paymentMethod"][value="PIX"]', orderForm);
+    const cardInput = qs('input[name="paymentMethod"][value="CREDIT_CARD"]', orderForm);
+    const unavailable = storeConfig?.orderChannel === 'asaas' && storeConfig.pixReady === false;
+    if (pixInput) {
+      pixInput.disabled = unavailable;
+      if (unavailable && pixInput.checked && cardInput) cardInput.checked = true;
+    }
+    const pixNote = qs('[data-pix-status-note]', orderForm);
+    if (pixNote) pixNote.hidden = !unavailable || whatsappActive();
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
     const paymentMethods = qs('[data-payment-methods]', orderForm);
     const paymentHeading = qs('[data-order-channel-title]', orderForm);

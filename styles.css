@@ -1370,6 +1370,20 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   background:#fff4ed;
   box-shadow:0 0 0 1px #ae3b1d;
 }
+.checkout-payment-option input:disabled + span {
+  opacity: .5;
+  cursor: not-allowed;
+  background: #f3eee8;
+  border-color: #d7cec4;
+}
+.checkout-pix-note {
+  display: block;
+  color: #8e351e;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 750;
+}
+.checkout-pix-note[hidden] { display: none !important; }
 .checkout-payment-methods input:checked + span::after{
   content:"✓";
   margin-left:auto;

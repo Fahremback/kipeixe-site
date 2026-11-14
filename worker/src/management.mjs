@@ -4,6 +4,7 @@ import { pbkdf2Sync } from 'node:crypto';
 import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { paymentConfig, paymentConfigured, paymentCredentialStatus, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
+import { activePixKeyStatus } from './asaas-pix.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
 import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
 import { ifoodAdminAction } from './ifood-operations.mjs';
@@ -89,6 +90,8 @@ export async function storeSettings(env) {
 export async function clientConfig(env) {
   const settings = await storeSettings(env);
   const now = new Date();
+  const pixReady = settings.orderChannel === 'asaas' && isPaymentsReady(env, settings.paymentMode)
+    ? await activePixKeyStatus(env, settings.paymentMode) : null;
   const courierReady = settings.deliveryProvider === 'ifood'
     ? ifoodReady(env, settings) : uberReady(env, settings);
   const manualDeliveryViaWhatsapp = settings.orderChannel === 'asaas' &&
@@ -100,6 +103,7 @@ export async function clientConfig(env) {
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
+    pixReady,
     deliveryEnabled: settings.deliveryEnabled,
     manualDeliveryViaWhatsapp,
     deliveryProvider: settings.deliveryProvider,

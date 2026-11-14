@@ -49,7 +49,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261114-payment-feedback" />
+    <link rel="stylesheet" href="styles.css?v=20261114-pix-readiness" />
     <link rel="preload" href="assets/fonts/righteous-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
     <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
@@ -403,6 +403,7 @@
                   <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
                 </label>
               </div>
+              <small class="checkout-pix-note" data-pix-status-note role="status" hidden>Pix temporariamente indisponível: é necessário ativar uma chave Pix na conta Asaas. Selecione cartão de crédito.</small>
               <div class="checkout-payment-total"><span data-order-total-label>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
@@ -482,7 +483,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261114-payment-feedback"></script>
+    <script src="script.js?v=20261114-pix-readiness"></script>
     <script type="module" src="appearance-site.mjs?v=20261114-first-paint"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
