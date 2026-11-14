@@ -89,6 +89,10 @@ export async function storeSettings(env) {
 export async function clientConfig(env) {
   const settings = await storeSettings(env);
   const now = new Date();
+  const courierReady = settings.deliveryProvider === 'ifood'
+    ? ifoodReady(env, settings) : uberReady(env, settings);
+  const manualDeliveryViaWhatsapp = settings.orderChannel === 'asaas' &&
+    settings.deliveryEnabled && !courierReady;
   return {
     orderChannel: settings.orderChannel,
     whatsappNumber: settings.whatsappNumber,
@@ -96,8 +100,8 @@ export async function clientConfig(env) {
       settings.paymentsEnabled && settings.ordersEnabled,
     paymentsConfigured: paymentConfigured(env, settings.paymentMode),
     paymentMode: settings.paymentMode,
-    deliveryEnabled: settings.orderChannel === 'whatsapp' ? settings.deliveryEnabled : settings.deliveryProvider === 'ifood'
-      ? ifoodReady(env, settings) : uberReady(env, settings),
+    deliveryEnabled: settings.deliveryEnabled,
+    manualDeliveryViaWhatsapp,
     deliveryProvider: settings.deliveryProvider,
     uberDirectReady: uberReady(env, settings),
     ifoodShippingReady: ifoodReady(env, settings),
@@ -652,9 +656,8 @@ export async function handleAdmin(request, env, origin, url) {
         throw Error('Uber Direct exige aprovação da conta e credenciais válidas no servidor.');
       if (data.ifoodEnabled && (!ifoodConfigured(env) || env.IFOOD_SHIPPING_ENABLED !== 'true'))
         throw Error('iFood Shipping exige credenciais autorizadas e habilitação no servidor.');
-      if (data.orderChannel === 'asaas' && data.deliveryEnabled &&
-          !(data.deliveryProvider === 'ifood' ? data.ifoodEnabled : data.uberEnabled))
-        throw Error('Ative o serviço de entrega selecionado antes de oferecer entregas.');
+      // When a courier is not yet configured, delivery continues manually via
+      // WhatsApp instead of being hidden or charged without a delivery quote.
       if (!PAYMENT_MODES.has(data.paymentMode) || typeof data.paymentsEnabled !== 'boolean') throw Error('Ambiente Asaas inválido.');
       if (data.orderChannel === 'asaas' && data.paymentsEnabled && !isPaymentsReady(env, data.paymentMode)) {
         throw Error('Asaas não configurado neste ambiente. Configure a chave e o webhook antes de ativar pagamentos.');

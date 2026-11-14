@@ -99,3 +99,29 @@ test('WhatsApp numbers must have country code 55 and complete DDD', () => {
   assert.equal(whatsappPhoneValid('5545123'), false);
   assert.equal(whatsappPhoneValid('https://wa.me/5545999999999'), false);
 });
+
+test('production Asaas handles paid orders while manual delivery stays on WhatsApp', async () => {
+  const { env, values } = fixture({
+    order_channel: 'asaas',
+    delivery_enabled: 'true',
+  });
+  env.ASAAS_PRODUCTION_API_KEY = '$aact_prod_validation-only';
+  env.ASAAS_PRODUCTION_WEBHOOK_TOKEN = 'w'.repeat(40);
+  const config = await clientConfig(env);
+  assert.equal(config.orderChannel, 'asaas');
+  assert.equal(config.onlinePaymentEnabled, true);
+  assert.equal(config.deliveryEnabled, true);
+  assert.equal(config.manualDeliveryViaWhatsapp, true);
+
+  const data = {
+    orderChannel: 'asaas', whatsappNumber: '554535772363',
+    ordersEnabled: true, deliveryEnabled: true, deliveryFeeCents: 0,
+    deliveryProvider: 'uber', uberEnabled: false, ifoodEnabled: false,
+    paymentMode: 'production', paymentsEnabled: true, hours: DEFAULT_HOURS,
+  };
+  const result = await handleAdmin(adminRequest('PUT', data), env, origin,
+    new URL(base + '/api/admin/settings'));
+  assert.equal(result.status, 200);
+  assert.equal(values.get('order_channel'), 'asaas');
+  assert.equal(values.get('delivery_enabled'), 'true');
+});

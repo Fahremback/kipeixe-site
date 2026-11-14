@@ -19,7 +19,8 @@
 
   const qs = (selector, root = document) => root.querySelector(selector);
   const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
-  const whatsappActive = () => storeConfig?.orderChannel === 'whatsapp';
+  const whatsappActive = () => storeConfig?.orderChannel === 'whatsapp' ||
+    (storeConfig?.manualDeliveryViaWhatsapp && orderType?.value === 'Entrega');
 
   const year = qs('[data-year]');
   if (year) year.textContent = new Date().getFullYear();
@@ -539,6 +540,7 @@
   const quickTotal = qs('[data-quick-total]');
   const orderForm = qs('[data-order-form]');
   const orderType = qs('[data-order-type]');
+  let checkoutReady = false;
   const orderChoices = qsa('[data-order-choice]');
   const addressField = qs('[data-address-field]');
   const deliveryQuoteButton = qs('[data-delivery-calculate]');
@@ -786,6 +788,7 @@
     }
     if (notesStep) notesStep.textContent = '05';
     renderCart();
+    if (checkoutReady) syncPaymentCaption();
   };
 
   const setFieldError = (input, errorNode, messageVisible) => {
@@ -953,13 +956,28 @@
         qs('strong', onlineButton).textContent = 'Enviar pedido pelo WhatsApp';
         qs('small', onlineButton).textContent = 'Continuar para a conversa';
       }
-      return;
+    } else if (onlineButton && storeConfig?.onlinePaymentEnabled) {
+      const caption = qs('small', onlineButton);
+      if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
+      const title = qs('strong', onlineButton);
+      if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
     }
-    if (!onlineButton || !storeConfig?.onlinePaymentEnabled) return;
-    const caption = qs('small', onlineButton);
-    if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
-    const title = qs('strong', onlineButton);
-    if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
+    if (onlineButton && storeConfig) {
+      const waReady = storeConfig.acceptsOrders && /^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '');
+      onlineButton.disabled = paymentBusy ||
+        !(whatsappActive() ? waReady : storeConfig.onlinePaymentEnabled);
+    }
+    if (onlineHint && storeConfig) {
+      onlineHint.hidden = whatsappActive() || (storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
+      onlineHint.textContent = storeConfig.onlinePaymentEnabled
+        ? 'Ambiente de testes: nenhum valor real será cobrado.'
+        : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+    }
+    if (checkoutDisclaimer && storeConfig) checkoutDisclaimer.textContent = whatsappActive()
+      ? 'O restaurante confirmará seu pedido, o valor final e o pagamento pelo WhatsApp.'
+      : storeConfig.sandbox
+      ? 'AMBIENTE DE TESTES: cobrança simulada, sem dinheiro real. O restaurante só recebe o pedido após a confirmação do Asaas.'
+      : 'Seu pedido será enviado ao Kipeixe após a confirmação do pagamento e ficará sujeito ao aceite do restaurante.';
   }
   qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
     input.addEventListener('change', syncPaymentCaption));
@@ -984,6 +1002,7 @@
   const phoneInput = qs('input[name="phone"]', orderForm);
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
   let paymentBusy = false;
+  checkoutReady = true;
   let statusInterval = null;
   const pixDrawer = qs('[data-pix-drawer]');
   const pixPanel = qs('.pix-panel', pixDrawer);
