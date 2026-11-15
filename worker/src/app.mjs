@@ -5,7 +5,7 @@ import {
 } from './management.mjs';
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
-import { createAsaasPix, pixPaymentMatches } from './asaas-pix.mjs';
+import { pixPaymentMatches, provisionPixKeyIfRequested } from './asaas-pix.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
   addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
@@ -316,28 +316,8 @@ async function createOrder(request, env, origin, ctx) {
     }
   }
   try {
-    if (billingTypes.length === 1 && billingTypes[0] === 'PIX') {
-      let pix = null;
-      try {
-        pix = await createAsaasPix(order, env, settings.paymentMode);
-      } catch (error) {
-        // A hosted Asaas Pix checkout does not require the restaurant's own
-        // active Pix address key. Fall back ONLY when the key lookup explicitly
-        // confirms none is available, never after an uncertain create/timeout.
-        if (error?.code !== 'PIX_KEY_UNAVAILABLE') throw error;
-        console.info('Pix QR key unavailable; falling back to hosted Asaas checkout.', order.id);
-      }
-      if (pix) {
-        const expiresAt = new Date(Date.now() + 3600_000).toISOString();
-        await env.DB.prepare(`UPDATE orders SET pix_qr_id=?, pix_payload=?, pix_image=?, pix_expires_at=?,
-          payment_status='PENDING', updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-          .bind(pix.id, pix.payload, pix.encodedImage, expiresAt, order.id).run();
-        return reply({ orderId: order.id, paymentMethod: 'PIX',
-          pix: { payload: pix.payload, image: pix.encodedImage, expiresAt },
-          totalCents: order.totalCents, scheduledFor: schedule,
-          paymentMode: settings.paymentMode }, 201, origin);
-      }
-    }
+    // Both Pix and credit card must open the SAME Asaas-hosted checkout flow.
+    // The legacy static QR implementation is retained only for existing orders.
     const checkout = await createAsaasCheckout(order, env, settings.paymentMode, billingTypes);
     await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
       updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
@@ -552,6 +532,7 @@ export default {
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(Promise.all([
       sweepExpired(env), dispatchScheduledReady(env),
+      provisionPixKeyIfRequested(env).catch(error => console.error('Pix setup:', error?.name)),
       reconcilePendingPix(env, ctx),
       dispatchScheduledIFood(env).catch(error => console.warn('iFood dispatch:', error.message)),
       ...(env.IFOOD_SHIPPING_ENABLED === 'true' && ifoodConfigured(env) && env.IFOOD_POLLING

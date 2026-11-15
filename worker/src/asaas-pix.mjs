@@ -7,6 +7,74 @@ function asaasHeaders(key) {
 
 const pixKeyStatusCache = new Map();
 
+// The operator requests the provisioning job exclusively through private D1
+// configuration. No public endpoint, login cookie or Asaas API credential is
+// exposed. The state is claimed before any external mutation, preventing
+// duplicate EVP registrations across overlapping cron invocations.
+export async function provisionPixKeyIfRequested(env) {
+  if (!env.DB) return 'unavailable';
+  const record = await env.DB.prepare(
+    "SELECT value FROM store_settings WHERE key='pix_setup_request'"
+  ).first();
+  if (record?.value !== 'requested') return 'not_requested';
+  const claim = await env.DB.prepare(
+    "UPDATE store_settings SET value='processing' WHERE key='pix_setup_request' AND value='requested'"
+  ).run();
+  if (!claim.meta?.changes) return 'already_claimed';
+
+  let result = 'review';
+  try {
+    const { key, url } = paymentConfig(env, 'production');
+    if (!key) throw new Error('api_key_missing');
+    const headers = asaasHeaders(key);
+    const existingResponse = await fetch(`${url}/pix/addressKeys?limit=100`, {
+      headers, signal: AbortSignal.timeout(12000),
+    });
+    if (!existingResponse.ok) {
+      result = `lookup_http_${existingResponse.status}`;
+      return result;
+    }
+    const existing = await existingResponse.json();
+    if (!Array.isArray(existing?.data)) throw new Error('invalid_key_list');
+    if (existing.data.some(entry => entry.status === 'ACTIVE')) {
+      result = 'already_active';
+      return result;
+    }
+    if (existing.data.some(entry => entry.status === 'AWAITING_ACTIVATION')) {
+      result = 'awaiting_activation';
+      return result;
+    }
+    const created = await fetch(`${url}/pix/addressKeys`, {
+      method: 'POST', headers, body: JSON.stringify({ type: 'EVP' }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!created.ok) {
+      const payload = await created.json().catch(() => ({}));
+      const code = String(payload?.errors?.[0]?.code || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 40);
+      result = `creation_http_${created.status}${code ? '_' + code : ''}`;
+      return result;
+    }
+    result = 'created_awaiting_activation';
+    pixKeyStatusCache.delete('production');
+    return result;
+  } catch (error) {
+    // The request may have succeeded if the network disconnected. Do not
+    // automatically create another key after an ambiguous outcome.
+    result = error?.name === 'TimeoutError' ? 'review_timeout' : 'review_transport';
+    console.warn('Pix provisioning needs review:', error?.name);
+    return result;
+  } finally {
+    await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE store_settings SET value='completed' WHERE key='pix_setup_request' AND value='processing'"
+      ),
+      env.DB.prepare(
+        "INSERT INTO store_settings(key,value) VALUES ('pix_setup_result',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+      ).bind(result),
+    ]);
+  }
+}
+
 export async function activePixKeyStatus(env, mode) {
   if (env.PIX_READINESS_PROBE_ENABLED !== 'true') return null;
   const { key, url } = paymentConfig(env, mode);
