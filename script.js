@@ -953,6 +953,32 @@
 
   const onlineButton = qs('[data-online-checkout]');
   const onlineHint = qs('[data-online-hint]');
+  const debitDocument = qs('[data-debit-document]', orderForm);
+  const debitInput = qs('input[name="cpfCnpj"]', orderForm);
+  const debitError = qs('[data-debit-document-error]', orderForm);
+  const validCpfCnpj = raw => {
+    const number = String(raw || '').replace(/\D/g, '');
+    if (![11, 14].includes(number.length) || /^(\d)\1+$/.test(number)) return false;
+    if (number.length === 11) {
+      const digit = count => {
+        let sum = 0;
+        for (let i = 0; i < count; i++) sum += Number(number[i]) * (count + 1 - i);
+        const d = (sum * 10) % 11;
+        return d === 10 ? 0 : d;
+      };
+      return digit(9) === Number(number[9]) && digit(10) === Number(number[10]);
+    }
+    const digit = count => {
+      let factor = count - 7, sum = 0;
+      for (let i = 0; i < count; i++) {
+        sum += Number(number[i]) * factor--;
+        if (factor < 2) factor = 9;
+      }
+      const mod = sum % 11;
+      return mod < 2 ? 0 : 11 - mod;
+    };
+    return digit(12) === Number(number[12]) && digit(13) === Number(number[13]);
+  };
   function syncPaymentCaption() {
     const pixInput = qs('input[name="paymentMethod"][value="PIX"]', orderForm);
     const cardInput = qs('input[name="paymentMethod"][value="CREDIT_CARD"]', orderForm);
@@ -964,6 +990,9 @@
     const pixOption = qs('[data-payment-pix-option]', orderForm);
     if (pixOption) pixOption.hidden = unavailable;
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
+    if (debitDocument) debitDocument.hidden = whatsappActive() || method !== 'DEBIT_CARD';
+    if (debitInput) debitInput.required = !whatsappActive() && method === 'DEBIT_CARD';
+    if (debitError) debitError.hidden = true;
     const paymentMethods = qs('[data-payment-methods]', orderForm);
     const paymentHeading = qs('[data-order-channel-title]', orderForm);
     if (paymentMethods) paymentMethods.hidden = whatsappOnly();
@@ -977,7 +1006,8 @@
       const caption = qs('small', onlineButton);
       if (caption) caption.textContent = storeConfig.sandbox ? 'Ambiente de teste Asaas' : 'Pagamento seguro · Asaas';
       const title = qs('strong', onlineButton);
-      if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
+      if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão'
+        : method === 'DEBIT_CARD' ? 'Pagar com débito' : 'Pagar com Pix';
     }
     if (onlineButton && storeConfig) {
       onlineButton.disabled = paymentBusy ||
@@ -1502,9 +1532,15 @@
       else if (type === 'Entrega' && !address) addressInput?.focus();
       return;
     }
-    if (!['PIX', 'CREDIT_CARD'].includes(paymentMethod)) {
-      showOrderStatus('Escolha como pagar', 'Selecione Pix ou cartão de crédito antes de continuar.');
+    if (!['PIX', 'CREDIT_CARD', 'DEBIT_CARD'].includes(paymentMethod)) {
+      showOrderStatus('Escolha como pagar', 'Selecione Pix, crédito ou débito antes de continuar.');
       qs('input[name="paymentMethod"]', orderForm)?.focus();
+      return;
+    }
+    const cpfCnpj = String(data.get('cpfCnpj') || '').replace(/\D/g, '');
+    if (paymentMethod === 'DEBIT_CARD' && !validCpfCnpj(cpfCnpj)) {
+      setFieldError(debitInput, debitError, true);
+      debitInput?.focus();
       return;
     }
     if (type === 'Entrega' && (!deliveryQuote || deliveryQuote.address !== address ||
@@ -1528,6 +1564,7 @@
       requestId: crypto.randomUUID(), accessToken: crypto.randomUUID(),
       customer: { name, phone, type, address, notes: String(data.get('notes') || '') },
       mode, scheduledAt, paymentMethod,
+      ...(paymentMethod === 'DEBIT_CARD' ? { cpfCnpj } : {}),
       items: cart.map(item => ({ productId: item.productId || undefined,
         name: item.name, variant: item.variant || '', qty: item.qty })),
       deliveryQuoteId: type === 'Entrega' ? deliveryQuote.quoteId : null,
@@ -1583,7 +1620,10 @@
         openPix();
         return;
       }
-      if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
+      const isAsaasInvoice = /^https:\/\/(?:(?:www\.)?asaas\.com|(?:www\.)?sandbox\.asaas\.com)\/i\/[a-z0-9_-]+\/?$/i.test(result.checkoutUrl || '');
+      const isAsaasCheckout = /^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl || '');
+      if (!(paymentMethod === 'DEBIT_CARD' ? isAsaasInvoice : isAsaasCheckout))
+        throw Error('Link de pagamento inválido.');
       // Both PIX and credit card use the exact same direct navigation.
       window.location.assign(result.checkoutUrl);
     } catch (error) {

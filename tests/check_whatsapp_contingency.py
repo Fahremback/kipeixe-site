@@ -85,7 +85,7 @@ def main():
                     assert page.locator('[data-payment-pix-option]').is_hidden()
                     assert 'cadastre e ative' not in page.content()
                     assert page.get_by_text('Combinar pelo WhatsApp').count() == 0
-                    assert page.locator('input[name="paymentMethod"]').count() == 2
+                    assert page.locator('input[name="paymentMethod"]').count() == 3
                     if mode in ('offline', 'unreachable'):
                         assert page.locator('[data-payment-methods]').is_hidden()
                         assert page.locator('[data-online-checkout] strong').inner_text() == 'Enviar pedido pelo WhatsApp'

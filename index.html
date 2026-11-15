@@ -402,7 +402,21 @@
                   <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
                   <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
                 </label>
+                <label class="checkout-payment-option checkout-payment-debit">
+                  <input type="radio" name="paymentMethod" value="DEBIT_CARD" />
+                  <span><b aria-hidden="true">▣</b><span>Cartão de débito</span></span>
+                </label>
               </div>
+              <label class="modern-field checkout-debit-document" data-debit-document hidden>
+                <span>CPF ou CNPJ do titular</span>
+                <div class="field-control">
+                  <span class="field-icon" aria-hidden="true">▤</span>
+                  <input name="cpfCnpj" type="text" inputmode="numeric" autocomplete="off"
+                    maxlength="18" placeholder="Somente para pagamento no débito"
+                    aria-describedby="debit-document-error" />
+                </div>
+                <small class="field-error" id="debit-document-error" data-debit-document-error hidden>Informe um CPF ou CNPJ válido.</small>
+              </label>
               <div class="checkout-payment-total"><span data-order-total-label>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
@@ -483,7 +497,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261115-direct-asaas-checkout"></script>
+    <script src="script.js?v=20261115-debit-asaas-invoice"></script>
     <script type="module" src="appearance-site.mjs?v=20261114-first-paint"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.

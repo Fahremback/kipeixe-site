@@ -61,7 +61,7 @@ def run():
             assert page.locator('[data-payment-pix-preview], [data-payment-card-preview]').count() == 0
             assert page.get_by_role("radio", name="Pix").is_checked()
             page.locator(".checkout-payment-option").nth(1).click()
-            assert page.get_by_role("radio", name=re.compile("Cartão")).is_checked()
+            assert page.locator('input[name="paymentMethod"][value="CREDIT_CARD"]').is_checked()
             assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com cartão'
             assert page.locator('[data-online-hint]').is_hidden()
             page.locator('[data-online-checkout]').click()

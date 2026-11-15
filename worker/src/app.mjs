@@ -7,6 +7,7 @@ import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.m
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 import { pixPaymentMatches, provisionPixKeyIfRequested } from './asaas-pix.mjs';
 import { expireOrphanedPaymentReviews } from './review-maintenance.mjs';
+import { createDebitInvoice, validCpfCnpj, invoicePaymentMatches } from './asaas-debit.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
   addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
@@ -156,6 +157,59 @@ async function markPixPaid(row, payment, env, ctx, mode) {
   return true;
 }
 
+async function markDebitPaid(row, payment, env, ctx, mode) {
+  if (!invoicePaymentMatches(row, payment) ||
+      row.fulfillment_status !== 'AWAITING_PAYMENT') return false;
+  const paidAt = new Date().toISOString();
+  const deadline = acceptanceDeadline(paidAt, row.scheduled_for);
+  const createdAt = Date.parse(String(row.created_at || '').replace(' ', 'T') + 'Z');
+  const late = deadline <= paidAt || (Number.isFinite(createdAt) &&
+    Date.now() - createdAt > 2 * 60 * 60 * 1000);
+  const state = late ? 'AUTO_REJECTED' : row.scheduled_for ? 'SCHEDULED' : 'AWAITING_ACCEPTANCE';
+  const changed = await env.DB.prepare(`UPDATE orders SET payment_id=?,payment_status='PAID',
+    fulfillment_status=?,paid_at=?,acceptance_deadline=?,
+    refund_status=CASE WHEN ? THEN 'PENDING' ELSE refund_status END,
+    closed_reason=CASE WHEN ? THEN 'Pagamento de cobrança antiga' ELSE closed_reason END,
+    updated_at=CURRENT_TIMESTAMP
+    WHERE id=? AND payment_status IN ('CREATING','PENDING','REVIEW','EXPIRED')
+      AND fulfillment_status='AWAITING_PAYMENT' AND checkout_id IS NULL
+      AND pix_qr_id IS NULL AND (payment_id IS NULL OR payment_id=?)`)
+    .bind(payment.id, state, paidAt, deadline, late ? 1 : 0, late ? 1 : 0,
+      row.id, payment.id).run();
+  if (changed.meta?.changes && late) ctx.waitUntil(refundOrder(env, row.id));
+  if (changed.meta?.changes && !late && mode === 'production' && env.META_CAPI_ACCESS_TOKEN) {
+    ctx.waitUntil(sendMetaOrderEvent(env, {
+      name: 'Purchase', orderId: row.id, amountCents: row.total_cents,
+      phone: row.phone, paymentMode: mode,
+    }).catch(error => console.warn('Meta purchase:', error?.name)));
+  }
+  return Boolean(changed.meta?.changes);
+}
+
+async function reconcileDebitInvoices(env, ctx) {
+  if (!env.DB) return;
+  const rows = (await env.DB.prepare(`SELECT id,payment_id,checkout_id,pix_qr_id,
+    total_cents,phone,payment_status,fulfillment_status,scheduled_for,created_at,asaas_environment
+    FROM orders WHERE payment_id IS NOT NULL AND checkout_id IS NULL
+      AND pix_qr_id IS NULL AND payment_status IN ('CREATING','PENDING','REVIEW','EXPIRED')
+      AND fulfillment_status='AWAITING_PAYMENT'
+      AND created_at >= datetime('now','-72 hours') ORDER BY created_at DESC LIMIT 8`)
+    .all()).results;
+  for (const row of rows) {
+    try {
+      const account = paymentConfig(env, row.asaas_environment);
+      const response = await fetch(account.url + '/payments/' + encodeURIComponent(row.payment_id), {
+        headers: { access_token: account.key, Accept: 'application/json',
+          'User-Agent': 'Kipeixe-Orders/2.1' }, signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) continue;
+      const payment = await response.json();
+      if (invoicePaymentMatches(row, payment))
+        await markDebitPaid(row, payment, env, ctx, row.asaas_environment);
+    } catch (error) { console.warn('Debit reconciliation:', row.id, error?.name); }
+  }
+}
+
 // Backstop when the account's Asaas webhook was configured only for Checkout events.
 async function reconcilePendingPix(env, ctx) {
   if (!env.DB) return;
@@ -227,14 +281,17 @@ async function createOrder(request, env, origin, ctx) {
       !settings.paymentsEnabled || !settings.ordersEnabled) {
     return fail('Pedidos online indisponíveis.', 503, origin);
   }
-  let body, buyer, schedule, priced, billingTypes;
+  let body, buyer, schedule, priced, billingTypes, debitInvoice;
   try {
     if ((Number(request.headers.get('content-length')) || 0) > 25000) return fail('Pedido muito grande.', 413, origin);
     const text = await request.text();
     if (text.length > 25000) return fail('Pedido muito grande.', 413, origin);
     body = JSON.parse(text);
     buyer = validateBuyer(body, settings);
-    billingTypes = asaasCheckoutBillingTypes(body.paymentMethod);
+    debitInvoice = body.paymentMethod === 'DEBIT_CARD';
+    if (debitInvoice && !validCpfCnpj(body.cpfCnpj))
+      throw Error('Informe um CPF ou CNPJ válido para pagar no débito.');
+    billingTypes = debitInvoice ? ['CREDIT_CARD'] : asaasCheckoutBillingTypes(body.paymentMethod);
     schedule = validateFulfillment(body.mode, body.scheduledAt, settings.hours);
     priced = await priceCart(env, body.items);
   } catch (error) {
@@ -317,11 +374,20 @@ async function createOrder(request, env, origin, ctx) {
     }
   }
   try {
-    // Both Pix and credit card must open the SAME Asaas-hosted checkout flow.
-    // The legacy static QR implementation is retained only for existing orders.
-    const checkout = await createAsaasCheckout(order, env, settings.paymentMode, billingTypes);
-    await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
-      updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.checkoutId, checkout.checkoutUrl, order.id).run();
+    let paymentUrl;
+    if (debitInvoice) {
+      const invoice = await createDebitInvoice(order, body.cpfCnpj, env, settings.paymentMode);
+      paymentUrl = invoice.checkoutUrl;
+      await env.DB.prepare(`UPDATE orders SET payment_id=?, checkout_url=?, payment_status='PENDING',
+        updated_at=CURRENT_TIMESTAMP WHERE id=? AND payment_status='CREATING'`)
+        .bind(invoice.paymentId, paymentUrl, order.id).run();
+    } else {
+      const checkout = await createAsaasCheckout(order, env, settings.paymentMode, billingTypes);
+      paymentUrl = checkout.checkoutUrl;
+      await env.DB.prepare(`UPDATE orders SET checkout_id=?, checkout_url=?, payment_status='PENDING',
+        updated_at=CURRENT_TIMESTAMP WHERE id=? AND payment_status='CREATING'`)
+        .bind(checkout.checkoutId, paymentUrl, order.id).run();
+    }
     if (settings.paymentMode === 'production' && env.META_CAPI_ACCESS_TOKEN) {
       ctx.waitUntil(sendMetaOrderEvent(env, {
         name: 'InitiateCheckout', orderId: order.id, amountCents: order.totalCents,
@@ -329,7 +395,8 @@ async function createOrder(request, env, origin, ctx) {
         paymentMode: settings.paymentMode,
       }).catch(error => console.warn('Meta CAPI checkout:', error.message)));
     }
-    return reply({ orderId: order.id, checkoutUrl: checkout.checkoutUrl, paymentMethod: billingTypes[0],
+    return reply({ orderId: order.id, checkoutUrl: paymentUrl,
+      paymentMethod: debitInvoice ? 'DEBIT_CARD' : billingTypes[0],
       totalCents: order.totalCents,
       scheduledFor: schedule, paymentMode: settings.paymentMode }, 201, origin);
   } catch (error) {
@@ -341,7 +408,7 @@ async function createOrder(request, env, origin, ctx) {
         (providerDescription ? ': ' + providerDescription : '')
       : (error?.name === 'TimeoutError' ? 'Timeout ao chamar Asaas' :
         String(error?.message || '').startsWith('Asaas') ? error.message : 'Falha de transporte ou resposta');
-    const methodSummary = billingTypes?.join(',') || 'unknown';
+    const methodSummary = debitInvoice ? 'DEBIT_CARD_INVOICE' : billingTypes?.join(',') || 'unknown';
     console.error('Asaas checkout failed', JSON.stringify({
       orderId: order.id, httpStatus: providerStatus, apiCode: providerCode,
       billingTypes: methodSummary, providerDescription,
@@ -377,7 +444,8 @@ async function readOrder(request, env, origin, id) {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') || '';
   if (!/^[0-9a-f-]{36}$/i.test(token)) return fail('Acesso negado.', 401, origin);
   const row = await env.DB.prepare(`SELECT id, access_hash, payment_status, fulfillment_status, total_cents,
-    delivery_cents, checkout_url, scheduled_for, acceptance_deadline, created_at, refund_status, closed_reason,
+    delivery_cents, checkout_id, payment_id, checkout_url, scheduled_for, acceptance_deadline,
+    created_at, refund_status, closed_reason,
     asaas_environment, pix_qr_id, pix_payload, pix_image, pix_expires_at,
     uber_delivery_id, uber_status, uber_tracking_url,delivery_provider,
     ifood_order_id,ifood_status,ifood_tracking_url,ifood_pickup_code
@@ -386,7 +454,9 @@ async function readOrder(request, env, origin, id) {
   const { access_hash, ...data } = row;
   return reply({ orderId: data.id, paymentStatus: data.payment_status, orderStatus: data.fulfillment_status,
     totalCents: data.total_cents, deliveryCents: data.delivery_cents, checkoutUrl: data.checkout_url,
-    paymentMethod: data.pix_qr_id ? 'PIX' : data.checkout_url ? 'ASAAS_CHECKOUT' : null,
+    paymentMethod: data.pix_qr_id ? 'PIX'
+      : data.payment_id && !data.checkout_id ? 'DEBIT_CARD'
+      : data.checkout_url ? 'ASAAS_CHECKOUT' : null,
     pix: data.pix_qr_id && data.payment_status === 'PENDING'
       ? { payload: data.pix_payload, image: data.pix_image, expiresAt: data.pix_expires_at } : null,
     scheduledFor: data.scheduled_for, acceptanceDeadline: data.acceptance_deadline, refundStatus: data.refund_status,
@@ -414,6 +484,22 @@ async function webhook(request, env, ctx, mode) {
   if (!payload?.id || typeof payload.id !== 'string' || payload.id.length > 200) return fail('Evento inválido.', 400);
   const event = payload.event, checkout = payload.checkout;
   if (!CHECKOUT_EVENTS.has(event)) {
+    if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(event) &&
+        typeof payload.payment?.externalReference === 'string' &&
+        /^[0-9a-f-]{36}$/i.test(payload.payment.externalReference)) {
+      const payment = payload.payment;
+      const row = await env.DB.prepare(`SELECT id,payment_id,checkout_id,pix_qr_id,
+        total_cents,phone,payment_status,fulfillment_status,scheduled_for,created_at
+        FROM orders WHERE id=? AND asaas_environment=?`)
+        .bind(payment.externalReference, mode).first();
+      if (row && row.checkout_id === null && row.pix_qr_id === null &&
+          invoicePaymentMatches(row, payment)) {
+        await env.DB.prepare('INSERT OR IGNORE INTO webhook_events(id,checkout_id,event) VALUES (?,?,?)')
+          .bind(payload.id, payment.id, event).run();
+        await markDebitPaid(row, payment, env, ctx, mode);
+        return reply({ received: true });
+      }
+    }
     if (event === 'PAYMENT_RECEIVED' && payload.payment?.pixQrCodeId) {
       const payment = payload.payment;
       const row = await env.DB.prepare(`SELECT id,pix_qr_id,total_cents,payment_status,
@@ -536,6 +622,7 @@ export default {
       expireOrphanedPaymentReviews(env).catch(error => console.warn('Old review cleanup:', error?.name)),
       provisionPixKeyIfRequested(env).catch(error => console.error('Pix setup:', error?.name)),
       reconcilePendingPix(env, ctx),
+      reconcileDebitInvoices(env, ctx).catch(error => console.warn('Debit polling:', error?.name)),
       dispatchScheduledIFood(env).catch(error => console.warn('iFood dispatch:', error.message)),
       ...(env.IFOOD_SHIPPING_ENABLED === 'true' && ifoodConfigured(env) && env.IFOOD_POLLING
         ? [env.IFOOD_POLLING.get(env.IFOOD_POLLING.idFromName('kipeixe-shipping'))

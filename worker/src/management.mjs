@@ -709,7 +709,7 @@ export async function handleAdmin(request, env, origin, url) {
   if (action && request.method === 'POST') {
     let data;
     try { data = await limitedJson(request); } catch { return fail('JSON inválido.', 400, origin); }
-    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, checkout_id, delivery_provider, uber_delivery_id, uber_status, ifood_order_id, ifood_status FROM orders WHERE id = ?')
+    const row = await env.DB.prepare('SELECT fulfillment_status, payment_status, acceptance_deadline, order_type, checkout_id, payment_id, delivery_provider, uber_delivery_id, uber_status, ifood_order_id, ifood_status FROM orders WHERE id = ?')
       .bind(action[1]).first();
     if (!row || row.payment_status !== 'PAID') return fail('Pedido não pago ou inexistente.', 409, origin);
     if (data.action === 'COMPLETE' && row.order_type === 'Entrega')
@@ -745,11 +745,12 @@ export async function handleAdmin(request, env, origin, url) {
       updated_at = CURRENT_TIMESTAMP WHERE id = ? AND payment_status = 'PAID'
       AND fulfillment_status = ?
       AND (fulfillment_status NOT IN ('AWAITING_ACCEPTANCE','SCHEDULED') OR acceptance_deadline > ?)`)
-      .bind(target, rejecting && row.checkout_id ? 1 : 0, rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
+      .bind(target, rejecting && (row.checkout_id || row.payment_id) ? 1 : 0,
+        rejecting ? 1 : 0, action[1], row.fulfillment_status, new Date().toISOString()).run();
     if (!result.meta.changes) return fail('Pedido foi alterado por outro atendente.', 409, origin);
     await audit(env, actor, data.action, action[1],
       JSON.stringify({ from: row.fulfillment_status, to: target }));
-    if (rejecting && row.checkout_id) await refundOrder(env, action[1]);
+    if (rejecting && (row.checkout_id || row.payment_id)) await refundOrder(env, action[1]);
     const uber = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider !== 'ifood'
       ? await dispatchDelivery(env, action[1]) : null;
     const ifood = target === 'READY' && row.order_type === 'Entrega' && row.delivery_provider === 'ifood'
