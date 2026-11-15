@@ -1537,7 +1537,15 @@
     };
     paymentBusy = true;
     onlineButton.disabled = true;
-    showOrderStatus('Preparando pagamento', 'Validando os preços e criando o checkout seguro.');
+    // Successful payments go straight to Asaas: no intermediate status card,
+    // duplicate "verify payment" action or manual "resume" step.
+    if (onlineStatus) onlineStatus.hidden = true;
+    if (onlineStatusRefresh) onlineStatusRefresh.hidden = true;
+    if (onlineStatusLink) onlineStatusLink.hidden = true;
+    if (onlineWhatsappLink) onlineWhatsappLink.hidden = true;
+    onlineButton.setAttribute('aria-busy', 'true');
+    qs('strong', onlineButton).textContent = 'Abrindo pagamento seguro...';
+    qs('small', onlineButton).textContent = 'Conectando ao Asaas';
     let attemptStatus = 'REVIEW';
     let attemptOrderId = '';
     try {
@@ -1576,14 +1584,12 @@
         return;
       }
       if (!/^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl)) throw Error('Link de pagamento inválido.');
-      if (paymentMethod === 'PIX') {
-        showOrderStatus('Abrindo Pix no Asaas',
-          'O QR Code será exibido na página segura do Asaas. Nenhum valor foi cobrado ainda.',
-          result.checkoutUrl);
-      }
+      // Both PIX and credit card use the exact same direct navigation.
       window.location.assign(result.checkoutUrl);
     } catch (error) {
       paymentBusy = false;
+      onlineButton.removeAttribute('aria-busy');
+      syncPaymentCaption();
       // A failed payment may never strand the sale. For ambiguous outcomes the
       // restaurant must verify the existing charge before accepting payment.
       startWhatsappCheckout({

@@ -37,6 +37,9 @@ def main():
             for width in (390, 1280):
                 page = browser.new_page(viewport={"width": width, "height": 850})
                 requests = []
+                unwanted_notices = []
+                page.on("console", lambda msg: unwanted_notices.append(msg.text)
+                        if "UNWANTED_ASAAS_NOTICE" in msg.text else None)
 
                 def api(route):
                     path = route.request.url.split("?", 1)[0]
@@ -82,8 +85,24 @@ def main():
                 assert requests == []
                 page.locator('input[name="name"]').fill('Teste sem cobrança')
                 page.locator('input[name="phone"]').fill('45999999999')
+                # Observe the entire transition, not just the final page:
+                # direct Asaas checkout must not expose an intermediate
+                # "Abrindo Pix" card or a redundant "Retomar" button.
+                page.evaluate("""() => {
+                  const box = document.querySelector('[data-online-status]');
+                  const title = box.querySelector('[data-online-status-title]');
+                  const resume = box.querySelector('[data-online-status-link]');
+                  const observe = () => {
+                    if (!box.hidden && (title.textContent.includes('Abrindo Pix no Asaas') ||
+                        !resume.hidden)) console.error('UNWANTED_ASAAS_NOTICE');
+                  };
+                  new MutationObserver(observe).observe(box, {
+                    attributes: true, childList: true, subtree: true
+                  });
+                }""")
                 page.locator('[data-online-checkout]').click()
                 page.wait_for_function("location.hostname === 'asaas.com'")
+                assert not unwanted_notices, unwanted_notices
                 assert len(requests) == 1 and requests[0]["paymentMethod"] == 'PIX'
                 print(f"Pix hosted fallback and visible errors: {width}px PASS")
                 page.close()
