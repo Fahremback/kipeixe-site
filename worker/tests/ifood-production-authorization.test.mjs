@@ -90,3 +90,19 @@ test('iFood denial is recorded without exposing credentials', async t => {
   assert.match(result.error, /HTTP 403/);
   assert.equal(db.value.includes(envBase.IFOOD_CLIENT_SECRET), false);
 });
+
+test('real provider 403 means missing app permissions, not a working Shipping authorization', async t => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  const db = database();
+  const deniedEnv = { ...envBase, IFOOD_CLIENT_SECRET: envBase.IFOOD_CLIENT_SECRET + '-denied', DB: db };
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    error: { code: 'Forbidden',
+      message: 'No permissions granted to client ' + envBase.IFOOD_CLIENT_ID },
+  }), { status: 403, headers: { 'content-type': 'application/json' } });
+  const result = await probeIFoodAuthorization(deniedEnv);
+  assert.equal(result.state, 'APP_PERMISSIONS_MISSING');
+  assert.match(result.error, /No permissions granted to client/);
+  assert.doesNotMatch(JSON.stringify(result), new RegExp(envBase.IFOOD_CLIENT_ID));
+  assert.equal(db.writes.length, 1);
+});

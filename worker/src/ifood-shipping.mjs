@@ -72,7 +72,20 @@ async function accessToken(env) {
   try { env.IFOOD_API_LOGGER?.({ method:'POST',
     route:'/authentication/v1.0/oauth/token', status:result.status,
     durationMs:Date.now()-started }); } catch {}
-  if (!result.ok) throw Error('Autenticação iFood HTTP ' + result.status);
+  if (!result.ok) {
+    const body = await result.json().catch(() => ({}));
+    const code = String(body?.error?.code || body?.code || '')
+      .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50);
+    // Replace provider identifiers and never include secrets in diagnostics.
+    const message = String(body?.error?.message || body?.message || '')
+      .replace(/\b[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, '[app]')
+      .replaceAll(env.IFOOD_CLIENT_SECRET, '[secret]')
+      .replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 120);
+    const error = Error('Autenticação iFood HTTP ' + result.status +
+      (code ? ' [' + code + ']' : '') + (message ? ': ' + message : ''));
+    error.status = result.status;
+    throw error;
+  }
   const data = await result.json();
   if (!data.accessToken || typeof data.accessToken !== 'string')
     throw Error('iFood não retornou access token.');
@@ -93,15 +106,18 @@ export async function listAuthorizedIFoodMerchants(env) {
 }
 
 /** One API probe per day while awaiting store authorization; inspect via D1. */
-export async function probeIFoodAuthorization(env, now = Date.now()) {
+export async function probeIFoodAuthorization(env, now = Date.now(), force = false) {
   if (!env.DB || ifoodConfigured(env)) return null;
   const previous = await env.DB.prepare(
     "SELECT value FROM store_settings WHERE key='ifood_authorization_probe'").first();
   try {
-    if (previous?.value && now - Date.parse(JSON.parse(previous.value).checkedAt) < 86400_000)
-      return JSON.parse(previous.value);
+    if (previous?.value) {
+      const prior = JSON.parse(previous.value);
+      if (prior.version === 2 && now - Date.parse(prior.checkedAt) <
+          (force ? 30_000 : 86400_000)) return prior;
+    }
   } catch {}
-  let result = { checkedAt: new Date(now).toISOString(), state: 'CREDENTIALS_MISSING',
+  let result = { version: 2, checkedAt: new Date(now).toISOString(), state: 'CREDENTIALS_MISSING',
     merchants: [] };
   if (ifoodCredentialsConfigured(env)) {
     try {
@@ -109,7 +125,9 @@ export async function probeIFoodAuthorization(env, now = Date.now()) {
       result = { ...result, state: merchants.length ? 'MERCHANT_AUTHORIZED' : 'NO_AUTHORIZED_MERCHANT',
         merchants };
     } catch (error) {
-      result = { ...result, state: 'IFOOD_API_ERROR',
+      result = { ...result, state: Number(error.status) === 403 &&
+        /No permissions granted to client/i.test(error.message)
+        ? 'APP_PERMISSIONS_MISSING' : 'IFOOD_API_ERROR',
         error: String(error.message).slice(0, 160) };
     }
   }

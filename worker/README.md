@@ -180,6 +180,21 @@ Migração 0007_ifood_shipping.sql: cotações e campos de pedido iFood.
 
 ## Homologação iFood — Shipping e Merchant (novembro de 2026)
 
+**Atualização em 15/11/2026:** consulta real, somente leitura, feita do Cloudflare e
+replicada no computador local com o mesmo Client ID do app homologado
+`Kipeixe Entregas`. Ambas falharam no próprio endpoint OAuth
+`/authentication/v1.0/oauth/token` com HTTP 403; no teste local o iFood
+retornou JSON `Forbidden: No permissions granted to client`. A falha precede
+qualquer chamada Shipping ou Merchant, logo não é bloqueio exclusivo da
+rede Cloudflare. O Worker possui Client ID e Secret, mas não tem
+`IFOOD_MERCHANT_ID`; Shipping permanece explicitamente desligado. O painel
+de gestão agora exibe essa condição e oferece verificação manual de acesso;
+uma consulta diária read-only também registra o diagnóstico sem credenciais.
+É necessário o iFood conceder as permissões efetivas ao Client ID homologado
+e a loja Kipeixe autorizar o vínculo no Portal do Parceiro para então ativar
+entregas reais. O suporte do ticket **#36153793** enviou aviso de inatividade
+em 13/11: responder/reabrir o chamado diretamente no Portal Desenvolvedor.
+
 **Procedimento oficial para destravar o merchant:** entrar com a **conta do responsável da loja real** em https://portal.ifood.com.br/ > **Minha Loja > Loja**, obter o **merchant UUID exibido abaixo do nome** e verificar em **Serviços e Soluções** se o **Sob Demanda está contratado/opt-in**. No Developer Portal, Shipping já está selecionado em Detalhes, mas é necessário vincular o merchant real em **Permissões > Pedir autorização** e o proprietário confirmar a solicitação no Portal do Parceiro. A FAQ oficial (https://developer.ifood.com.br/pt-BR/support/faq) especifica esses passos. Sem acesso autenticado à conta da loja ou retorno do suporte #36153793, a autorização não pode ser emitida; não usar merchant de teste em produção.
 
 

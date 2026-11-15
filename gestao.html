@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
   <link rel="stylesheet" href="appearance-admin.css?v=20261110-direct-edit">
   <script src="training-engine.js?v=20261109-training" defer></script>
-  <script src="gestao.js?v=20261115-ifood-authorization" defer></script>
+  <script src="gestao.js?v=20261115-ifood-authorization-v2" defer></script>
   <script type="module" src="appearance-admin.mjs?v=20261110-direct-edit"></script>
   <script src="ifood-ops.js?v=20261107-shipping-homolog" defer></script>
 </head>
@@ -204,6 +204,7 @@
             <h3>iFood — Entrega Fácil</h3>
             <p>Solicita entregadores do iFood para pedidos vendidos diretamente pelo site do Kipeixe.</p>
             <p id="ifood-integration-status" class="environment-status" role="status">Verificando credenciais iFood...</p>
+            <button id="ifood-check-access" type="button">Verificar autorização no iFood</button>
             <label class="check-line"><input name="ifoodEnabled" type="checkbox"> Ativar integração iFood</label>
             <p>Exige credenciais Client ID, Client Secret, Merchant ID, módulo Shipping autorizado e homologação.</p>
             <a href="https://developer.ifood.com.br/pt-BR" target="_blank" rel="noopener noreferrer">Portal Desenvolvedor iFood</a>

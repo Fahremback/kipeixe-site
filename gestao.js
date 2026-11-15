@@ -537,6 +537,7 @@
     const ifoodText = ({
       NO_AUTHORIZED_MERCHANT: 'O aplicativo autenticou no iFood, mas nenhuma loja autorizada foi retornada. Vincule o Kipeixe em Permissões no Portal Desenvolvedor e aprove no Portal do Parceiro.',
       MERCHANT_AUTHORIZED: 'O iFood retornou lojas autorizadas. Confirme a identificação do Kipeixe para vincular o Merchant ID correto.',
+      APP_PERMISSIONS_MISSING: 'O iFood recusou o token (HTTP 403): aplicativo homologado sem permissões concedidas. É necessário regularizar o acesso no Portal Desenvolvedor/Parceiro (ticket #36153793).',
       CREDENTIALS_MISSING: 'Credenciais iFood ausentes no servidor.',
       IFOOD_API_ERROR: 'O iFood recusou a consulta de acesso: ' + (ifoodProbe?.error || 'erro de comunicação'),
     })[ifoodProbe?.state];
@@ -668,6 +669,17 @@
       notify('Configurações salvas com sucesso.');
       await loadSettings();
     } catch (error) { notify(error.message, true); }
+  });
+  $('#ifood-check-access').addEventListener('click', async event => {
+    if (currentRole !== 'owner') return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api('/api/admin/ifood/production-connection');
+      await loadSettings();
+      notify('Permissões do aplicativo iFood verificadas.');
+    } catch (error) { notify(error.message, true); }
+    finally { button.disabled = false; }
   });
 
   async function loadUsers() {

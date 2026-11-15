@@ -6,7 +6,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { paymentConfig, paymentConfigured, paymentCredentialStatus, paymentReady, PAYMENT_MODES } from './asaas-environments.mjs';
 import { activePixKeyStatus } from './asaas-pix.mjs';
 import { uberConfigured, uberReady, dispatchDelivery } from './uber-direct.mjs';
-import { ifoodConfigured, ifoodReady, dispatchIFood } from './ifood-shipping.mjs';
+import { ifoodConfigured, ifoodReady, dispatchIFood, probeIFoodAuthorization } from './ifood-shipping.mjs';
 import { ifoodAdminAction } from './ifood-operations.mjs';
 
 export const ALLOWED_ORIGINS = new Set([
@@ -598,6 +598,11 @@ export async function handleAdmin(request, env, origin, url) {
   }
   const identity = await currentAdmin(request, env);
   if (!identity) return fail('Sessão inválida. Entre novamente.', 401, origin);
+  if (url.pathname === '/api/admin/ifood/production-connection') {
+    if (identity.role !== 'owner') return fail('Acesso exclusivo ao proprietário.', 403, origin);
+    if (request.method !== 'GET') return fail('Método não permitido.', 405, origin);
+    return reply({ connection: await probeIFoodAuthorization(env, Date.now(), true) }, 200, origin);
+  }
   if (url.pathname.startsWith('/api/admin/ifood/')) {
     if (identity.role !== 'owner') return fail('Acesso exclusivo ao proprietário.', 403, origin);
     const result = await ifoodAdminAction(request, env);
