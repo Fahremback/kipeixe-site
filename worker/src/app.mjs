@@ -6,6 +6,7 @@ import {
 import { ORDER_TYPES, validateFulfillment, acceptanceDeadline } from './domain.mjs';
 import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 import { pixPaymentMatches, provisionPixKeyIfRequested } from './asaas-pix.mjs';
+import { expireOrphanedPaymentReviews } from './review-maintenance.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
   addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
@@ -532,6 +533,7 @@ export default {
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(Promise.all([
       sweepExpired(env), dispatchScheduledReady(env),
+      expireOrphanedPaymentReviews(env).catch(error => console.warn('Old review cleanup:', error?.name)),
       provisionPixKeyIfRequested(env).catch(error => console.error('Pix setup:', error?.name)),
       reconcilePendingPix(env, ctx),
       dispatchScheduledIFood(env).catch(error => console.warn('iFood dispatch:', error.message)),
