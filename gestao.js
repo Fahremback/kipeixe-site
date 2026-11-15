@@ -533,9 +533,16 @@
     form.elements.deliveryProvider.value = settings.deliveryProvider || 'uber';
     const ifoodReady = settings.ifoodShippingConfigured && settings.ifoodShippingSystemAvailable;
     const ifoodStatus = $('#ifood-integration-status');
+    const ifoodProbe = settings.ifoodAuthorizationProbe;
+    const ifoodText = ({
+      NO_AUTHORIZED_MERCHANT: 'O aplicativo autenticou no iFood, mas nenhuma loja autorizada foi retornada. Vincule o Kipeixe em Permissões no Portal Desenvolvedor e aprove no Portal do Parceiro.',
+      MERCHANT_AUTHORIZED: 'O iFood retornou lojas autorizadas. Confirme a identificação do Kipeixe para vincular o Merchant ID correto.',
+      CREDENTIALS_MISSING: 'Credenciais iFood ausentes no servidor.',
+      IFOOD_API_ERROR: 'O iFood recusou a consulta de acesso: ' + (ifoodProbe?.error || 'erro de comunicação'),
+    })[ifoodProbe?.state];
     ifoodStatus.textContent = ifoodReady
-      ? 'API iFood configurada. Selecione o operador e ative a integração.'
-      : 'Aguardando credenciais de homologação Shipping/Entrega Fácil.';
+      ? 'API iFood configurada e habilitada. Selecione o operador e ative a integração.'
+      : ifoodText || 'Aguardando vinculação/autorização da loja para Entrega Fácil.';
     ifoodStatus.classList.toggle('is-ready', ifoodReady);
     const uberReady = settings.uberDirectConfigured && settings.uberDirectSystemAvailable;
     const uberStatus = $('#uber-integration-status');

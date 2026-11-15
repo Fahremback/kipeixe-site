@@ -4,11 +4,12 @@ const API = 'https://merchant-api.ifood.com.br';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let auth = { token: '', expires: 0, signature: '' };
 
-export const ifoodConfigured = env => Boolean(
-  UUID.test(env.IFOOD_MERCHANT_ID || '') &&
+export const ifoodCredentialsConfigured = env => Boolean(
   UUID.test(env.IFOOD_CLIENT_ID || '') &&
   env.IFOOD_CLIENT_SECRET && env.IFOOD_CLIENT_SECRET.length >= 20 &&
   !env.IFOOD_CLIENT_SECRET.includes('NAO_CONFIGURADO'));
+export const ifoodConfigured = env => Boolean(
+  UUID.test(env.IFOOD_MERCHANT_ID || '') && ifoodCredentialsConfigured(env));
 export const ifoodReady = (env, settings) => Boolean(
   env.IFOOD_SHIPPING_ENABLED === 'true' && ifoodConfigured(env) &&
   settings.ifoodEnabled && settings.deliveryEnabled);
@@ -57,7 +58,7 @@ export function quoteDetails(data, now = Date.now()) {
 }
 
 async function accessToken(env) {
-  if (!ifoodConfigured(env)) throw Error('Credenciais iFood não configuradas.');
+  if (!ifoodCredentialsConfigured(env)) throw Error('Credenciais iFood não configuradas.');
   const signature = env.IFOOD_CLIENT_ID + ':' + env.IFOOD_CLIENT_SECRET;
   if (auth.token && Date.now() < auth.expires && auth.signature === signature) return auth.token;
   const started = Date.now();
@@ -78,6 +79,45 @@ async function accessToken(env) {
   auth = { token: data.accessToken, signature,
     expires: Date.now() + Math.max(30, Number(data.expiresIn || 3600) - 120) * 1000 };
   return data.accessToken;
+}
+
+/** Read-only merchant discovery. Does not enable Shipping or register an order. */
+export async function listAuthorizedIFoodMerchants(env) {
+  if (!ifoodCredentialsConfigured(env)) throw Error('Credenciais do app iFood ausentes.');
+  const list = await ifoodRequest(env, '/merchant/v1.0/merchants?size=50');
+  if (!Array.isArray(list)) throw Error('iFood retornou lista de lojas inválida.');
+  return list.filter(item => UUID.test(item?.id || '')).map(item => ({
+    id: item.id, name: String(item.name || '').slice(0, 80),
+    corporateName: String(item.corporateName || '').slice(0, 100),
+  }));
+}
+
+/** One API probe per day while awaiting store authorization; inspect via D1. */
+export async function probeIFoodAuthorization(env, now = Date.now()) {
+  if (!env.DB || ifoodConfigured(env)) return null;
+  const previous = await env.DB.prepare(
+    "SELECT value FROM store_settings WHERE key='ifood_authorization_probe'").first();
+  try {
+    if (previous?.value && now - Date.parse(JSON.parse(previous.value).checkedAt) < 86400_000)
+      return JSON.parse(previous.value);
+  } catch {}
+  let result = { checkedAt: new Date(now).toISOString(), state: 'CREDENTIALS_MISSING',
+    merchants: [] };
+  if (ifoodCredentialsConfigured(env)) {
+    try {
+      const merchants = await listAuthorizedIFoodMerchants(env);
+      result = { ...result, state: merchants.length ? 'MERCHANT_AUTHORIZED' : 'NO_AUTHORIZED_MERCHANT',
+        merchants };
+    } catch (error) {
+      result = { ...result, state: 'IFOOD_API_ERROR',
+        error: String(error.message).slice(0, 160) };
+    }
+  }
+  await env.DB.prepare(`INSERT INTO store_settings(key,value)
+    VALUES ('ifood_authorization_probe',?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value`)
+    .bind(JSON.stringify(result)).run();
+  return result;
 }
 
 export async function ifoodRequest(env, route, { method = 'GET', body = null, headers = {} } = {}) {

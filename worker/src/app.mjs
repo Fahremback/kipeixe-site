@@ -11,7 +11,7 @@ import { createDebitInvoice, validCpfCnpj, invoicePaymentMatches } from './asaas
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
   addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
-  ifoodConfigured } from './ifood-shipping.mjs';
+  ifoodConfigured, probeIFoodAuthorization } from './ifood-shipping.mjs';
 import { sendMetaOrderEvent } from './meta-capi.mjs';
 
 const SITE = 'https://restaurantekipeixe.com.br/';
@@ -620,6 +620,7 @@ export default {
     ctx.waitUntil(Promise.all([
       sweepExpired(env), dispatchScheduledReady(env),
       expireOrphanedPaymentReviews(env).catch(error => console.warn('Old review cleanup:', error?.name)),
+      probeIFoodAuthorization(env).catch(error => console.warn('iFood authorization probe:', error?.name)),
       provisionPixKeyIfRequested(env).catch(error => console.error('Pix setup:', error?.name)),
       reconcilePendingPix(env, ctx),
       reconcileDebitInvoices(env, ctx).catch(error => console.warn('Debit polling:', error?.name)),

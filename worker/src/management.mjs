@@ -642,6 +642,12 @@ export async function handleAdmin(request, env, origin, url) {
       uberDirectSystemAvailable: env.UBER_DIRECT_ENABLED === 'true',
       ifoodShippingConfigured: ifoodConfigured(env),
       ifoodShippingSystemAvailable: env.IFOOD_SHIPPING_ENABLED === 'true',
+      ifoodAuthorizationProbe: await env.DB.prepare(
+        "SELECT value FROM store_settings WHERE key='ifood_authorization_probe'")
+        .first().then(row => {
+          try { return row?.value ? JSON.parse(row.value) : null; }
+          catch { return null; }
+        }),
     }, 200, origin);
     if (request.method !== 'PUT') return fail('Método não permitido.', 405, origin);
     let data, hours;
