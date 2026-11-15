@@ -91,15 +91,15 @@ def main():
                 page.evaluate("""() => {
                   const box = document.querySelector('[data-online-status]');
                   const title = box.querySelector('[data-online-status-title]');
-                  const resume = box.querySelector('[data-online-status-link]');
                   const observe = () => {
-                    if (!box.hidden && (title.textContent.includes('Abrindo Pix no Asaas') ||
-                        !resume.hidden)) console.error('UNWANTED_ASAAS_NOTICE');
+                    if (!box.hidden && title.textContent.includes('Abrindo Pix no Asaas'))
+                      console.error('UNWANTED_ASAAS_NOTICE');
                   };
                   new MutationObserver(observe).observe(box, {
                     attributes: true, childList: true, subtree: true
                   });
                 }""")
+                assert page.locator('[data-online-status-link], [data-online-status-refresh]').count() == 0
                 page.locator('[data-online-checkout]').click()
                 page.wait_for_function("location.hostname === 'asaas.com'")
                 assert not unwanted_notices, unwanted_notices

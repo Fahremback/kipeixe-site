@@ -602,6 +602,8 @@
 
   const cartCount = () => cart.reduce((sum, item) => sum + item.qty, 0);
   const cartValue = () => cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const cartSignature = () => JSON.stringify(cart.map(item =>
+    [item.id, item.qty, item.price]).sort((a, b) => a[0].localeCompare(b[0])));
 
   const syncMenuControls = () => {
     qsa('[data-menu-qty-controls]', menuItems).forEach((control) => {
@@ -1042,18 +1044,20 @@
   const onlineStatus = qs('[data-online-status]');
   const onlineStatusTitle = qs('[data-online-status-title]');
   const onlineStatusMessage = qs('[data-online-status-message]');
-  const onlineStatusRefresh = qs('[data-online-status-refresh]');
   const onlinePixOpen = qs('[data-online-pix-open]');
-  const onlineWhatsappLink = qs('[data-online-whatsapp-link]');
-  const onlineStatusLink = qs('[data-online-status-link]');
   const uberTrackingLink = qs('[data-uber-tracking]');
   const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
   const phoneError = qs('[data-phone-error]');
   const phoneInput = qs('input[name="phone"]', orderForm);
   let currentOrder = safeStorage.get('kipeixe_current_order_v2', null);
+  // Only the official hosted Asaas checkout or invoice may be resumed.
+  const trustedAsaasCheckout = value => typeof value === 'string' && (
+    /^https:\/\/(?:www\.)?(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=[a-z0-9_-]+$/i.test(value) ||
+    /^https:\/\/(?:www\.)?(?:sandbox\.)?asaas\.com\/i\/[a-z0-9_-]+\/?$/i.test(value));
   let paymentBusy = false;
   checkoutReady = true;
   let statusInterval = null;
+  let awaitingAsaasReturn = false;
   const pixDrawer = qs('[data-pix-drawer]');
   const pixPanel = qs('.pix-panel', pixDrawer);
   const pixImage = qs('[data-pix-image]', pixDrawer);
@@ -1325,7 +1329,6 @@
   }
 
   const orderMessages = {
-    AWAITING_PAYMENT: ['Aguardando pagamento', 'Finalize o pagamento no Asaas. O restaurante só recebe o pedido depois disso.'],
     AWAITING_ACCEPTANCE: ['Pagamento recebido', 'Seu pedido aguarda a confirmação do restaurante por até 30 minutos.'],
     SCHEDULED: ['Pedido agendado', 'Pagamento recebido. O restaurante ainda precisa aceitar o horário solicitado.'],
     PREPARING: ['Pedido aceito', 'A cozinha está preparando seu pedido.'],
@@ -1335,21 +1338,11 @@
     AUTO_REJECTED: ['Prazo esgotado', 'O pedido foi recusado automaticamente. O estorno será solicitado ao Asaas.']
   };
 
-  function showOrderStatus(title, message, link = '') {
+  function showOrderStatus(title, message) {
     if (!onlineStatus) return;
-    const changed = onlineStatus.hidden || onlineStatusTitle.textContent !== title ||
-      onlineStatusMessage.textContent !== message;
     onlineStatus.hidden = false;
     onlineStatusTitle.textContent = title;
     onlineStatusMessage.textContent = message;
-    if (onlineStatusLink) {
-      onlineStatusLink.hidden = !link;
-      if (link && /^https:\/\/(?:sandbox\.)?asaas\.com\//.test(link)) onlineStatusLink.href = link;
-    }
-    if (onlineStatusRefresh) onlineStatusRefresh.hidden = !currentOrder;
-    // This notice used to render far above the payment button and was invisible
-    // to customers already scrolled to the final checkout step.
-    if (changed) onlineStatus.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }
 
   async function checkOrderStatus() {
@@ -1363,6 +1356,18 @@
       const data = await response.json();
       if (currentOrder?.reviewUnresolved && ['PAID', 'EXPIRED', 'CANCELED', 'FAILED'].includes(data.paymentStatus)) {
         currentOrder.reviewUnresolved = false;
+        safeStorage.set('kipeixe_current_order_v2', currentOrder);
+      }
+      if (trustedAsaasCheckout(data.checkoutUrl) && data.paymentStatus === 'PENDING' &&
+          currentOrder?.checkoutUrl !== data.checkoutUrl) {
+        currentOrder.checkoutUrl = data.checkoutUrl;
+        safeStorage.set('kipeixe_current_order_v2', currentOrder);
+      }
+      if (currentOrder && data.paymentStatus !== currentOrder.lastPaymentStatus) {
+        currentOrder.lastPaymentStatus = data.paymentStatus;
+        if (data.paymentStatus === 'PAID' && !currentOrder.cartSignature) {
+          currentOrder.cartSignature = cartSignature();
+        }
         safeStorage.set('kipeixe_current_order_v2', currentOrder);
       }
       const [title, description] = orderMessages[data.orderStatus] ||
@@ -1390,8 +1395,20 @@
           REVIEW: 'solicitação em verificação', FAILED: 'restaurante verificando a entrega',
         }[data.ifoodStatus] || 'em acompanhamento') +
           '. Para receber, confirme os últimos 4 dígitos do seu telefone com o entregador.' : '';
-      showOrderStatus(title, description + paymentText + refundText + courierText + ifoodText,
-        data.paymentStatus === 'PENDING' ? data.checkoutUrl : '');
+      // Payment confirmation takes place on Asaas. Do not add an extra
+      // waiting screen or duplicate payment controls on the Kipeixe checkout.
+      if (data.paymentStatus === 'PENDING' || data.paymentStatus === 'CREATING') {
+        if (onlineStatus) onlineStatus.hidden = true;
+      } else if (data.paymentStatus === 'PAID' && data.orderStatus === 'AWAITING_PAYMENT') {
+        showOrderStatus('Pagamento confirmado', 'Seu pedido foi enviado ao restaurante.');
+      } else if (data.paymentStatus === 'REVIEW') {
+        showOrderStatus('Pagamento em conferência', 'A equipe vai verificar a cobrança antes de liberar o pedido.');
+      } else if (data.paymentStatus === 'FAILED' || data.paymentStatus === 'EXPIRED' ||
+          data.paymentStatus === 'CANCELED') {
+        showOrderStatus('Pagamento não concluído', 'Selecione a forma de pagamento e tente novamente.');
+      } else {
+        showOrderStatus(title, description + paymentText + refundText + courierText + ifoodText);
+      }
       if (data.paymentMethod === 'PIX') {
         if (data.pix) displayPix(data.pix, data.totalCents);
         updatePixProgress(data.paymentStatus);
@@ -1420,9 +1437,14 @@
         clearInterval(statusInterval);
         statusInterval = null;
       }
+      if (awaitingAsaasReturn &&
+          ['PAID', 'FAILED', 'CANCELED', 'EXPIRED', 'REVIEW'].includes(data.paymentStatus)) {
+        awaitingAsaasReturn = false;
+        openCart(false);
+      }
       return data.paymentStatus;
     } catch {
-      showOrderStatus('Pedido registrado', 'Atualização temporariamente indisponível. Tente novamente.');
+      showOrderStatus('Consulta indisponível', 'Não foi possível verificar seu pedido. Tente novamente.');
       return null;
     }
   }
@@ -1479,12 +1501,6 @@
     }
     lines.push('', 'Por favor, confirmem meu pedido e as condições de pagamento.');
     const url = `https://wa.me/${whatsappNumber()}?text=${encodeURIComponent(lines.join('\n'))}`;
-    if (onlineWhatsappLink) {
-      onlineWhatsappLink.href = url;
-      onlineWhatsappLink.hidden = false;
-    }
-    showOrderStatus('Continuar no WhatsApp',
-      'Seu pedido está preparado. Confira e envie a mensagem para o restaurante.');
     // A mensagem é apenas preenchida. O cliente precisa enviá-la no WhatsApp.
     window.location.assign(url);
   }
@@ -1492,14 +1508,36 @@
   async function startOnlineCheckout() {
     if (paymentBusy) return;
     if (whatsappActive()) { startWhatsappCheckout(); return; }
-    if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
+    if (currentOrder?.orderId && currentOrder?.accessToken) {
       const lastPaymentStatus = await checkOrderStatus();
       if (lastPaymentStatus === 'PAID') {
-        showOrderStatus('Pedido anterior pago',
-          'O pagamento anterior foi confirmado. Confira seu pedido antes de pagar novamente.');
+        if (!currentOrder.cartSignature || currentOrder.cartSignature === cartSignature()) {
+          showOrderStatus('Pagamento confirmado', 'Seu pedido anterior já foi encaminhado ao restaurante.');
+          return;
+        }
+        // A changed cart is a new order, not a second charge for the paid cart.
+        currentOrder = null;
+        safeStorage.set('kipeixe_current_order_v2', null);
+      }
+      if (lastPaymentStatus === 'PENDING') {
+        if (currentOrder.cartSignature && currentOrder.cartSignature !== cartSignature()) {
+          showOrderStatus('Pagamento anterior em aberto',
+            'Conclua o pagamento anterior antes de modificar o pedido.');
+          return;
+        }
+        if (trustedAsaasCheckout(currentOrder.checkoutUrl)) {
+          window.location.assign(currentOrder.checkoutUrl);
+          return;
+        }
+        if (currentOrder.hasPix && availablePix) {
+          openPix();
+          return;
+        }
+        showOrderStatus('Não foi possível retomar o pagamento',
+          'Confira o pedido com o restaurante antes de fazer outra cobrança.');
         return;
       }
-      if (!['FAILED', 'EXPIRED', 'CANCELED'].includes(lastPaymentStatus)) {
+      if (lastPaymentStatus !== 'PAID' && !['FAILED', 'EXPIRED', 'CANCELED'].includes(lastPaymentStatus)) {
         startWhatsappCheckout({
           paymentAttempted: true, paymentUncertain: true,
           orderId: currentOrder?.orderId,
@@ -1577,9 +1615,6 @@
     // Successful payments go straight to Asaas: no intermediate status card,
     // duplicate "verify payment" action or manual "resume" step.
     if (onlineStatus) onlineStatus.hidden = true;
-    if (onlineStatusRefresh) onlineStatusRefresh.hidden = true;
-    if (onlineStatusLink) onlineStatusLink.hidden = true;
-    if (onlineWhatsappLink) onlineWhatsappLink.hidden = true;
     onlineButton.setAttribute('aria-busy', 'true');
     qs('strong', onlineButton).textContent = 'Abrindo pagamento seguro...';
     qs('small', onlineButton).textContent = 'Conectando ao Asaas';
@@ -1601,7 +1636,8 @@
         throw Error(result.error || 'Falha ao iniciar pagamento.');
       }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
-      currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
+      currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken,
+        cartSignature: cartSignature(), paymentMethod };
       attemptStatus = 'PENDING';
       const inlinePix = paymentMethod === 'PIX' && Boolean(result.pix?.payload && result.pix?.image);
       if (inlinePix) { currentOrder.hasPix = true; currentOrder.pixPending = true; }
@@ -1620,10 +1656,13 @@
         openPix();
         return;
       }
-      const isAsaasInvoice = /^https:\/\/(?:(?:www\.)?asaas\.com|(?:www\.)?sandbox\.asaas\.com)\/i\/[a-z0-9_-]+\/?$/i.test(result.checkoutUrl || '');
-      const isAsaasCheckout = /^https:\/\/(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=/.test(result.checkoutUrl || '');
+      const isAsaasInvoice = /^https:\/\/(?:www\.)?(?:sandbox\.)?asaas\.com\/i\/[a-z0-9_-]+\/?$/i.test(result.checkoutUrl || '');
+      const isAsaasCheckout = /^https:\/\/(?:www\.)?(?:sandbox\.)?asaas\.com\/checkoutSession\/show\?id=[a-z0-9_-]+$/i.test(result.checkoutUrl || '');
       if (!(paymentMethod === 'DEBIT_CARD' ? isAsaasInvoice : isAsaasCheckout))
         throw Error('Link de pagamento inválido.');
+      currentOrder.checkoutUrl = result.checkoutUrl;
+      currentOrder.paymentMethod = paymentMethod;
+      safeStorage.set('kipeixe_current_order_v2', currentOrder);
       // Both PIX and credit card use the exact same direct navigation.
       window.location.assign(result.checkoutUrl);
     } catch (error) {
@@ -1638,8 +1677,6 @@
       });
     }
   }
-
-  onlineStatusRefresh?.addEventListener('click', checkOrderStatus);
 
   orderForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1662,7 +1699,9 @@
   refreshStore().then(() => {
     const returned = new URLSearchParams(location.search);
     if (currentOrder?.orderId && (returned.has('retorno') || returned.has('pedido'))) {
-      openCart();
+      // Do not force-open checkout just to display "waiting for payment".
+      // Open only for a real confirmation or an actionable payment error.
+      awaitingAsaasReturn = true;
       checkOrderStatus();
       if (!statusInterval) statusInterval = setInterval(checkOrderStatus, 12000);
     }

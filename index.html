@@ -49,7 +49,7 @@
     <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <title>Cardápio Kipeixe | Faça seu pedido em Foz do Iguaçu</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261110-transparent" />
-    <link rel="stylesheet" href="styles.css?v=20261115-whatsapp-contingency" />
+    <link rel="stylesheet" href="styles.css?v=20261115-seamless-asaas-return" />
     <link rel="preload" href="assets/fonts/righteous-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="appearance-theme.css?v=20261109-editor" />
     <link rel="stylesheet" href="menu-ordering.css?v=20261110-horizontal-rails" />
@@ -423,17 +423,12 @@
               <span><strong>Conectando pagamento...</strong><small>Verificando disponibilidade</small></span>
               <b aria-hidden="true">→</b>
             </button>
-            <div class="online-order-status" data-online-status role="status" aria-live="polite" hidden>
+            <div class="checkout-feedback" data-online-status role="status" aria-live="polite" hidden>
               <strong data-online-status-title></strong>
               <p data-online-status-message></p>
-              <div class="online-order-actions">
-                <button data-online-status-refresh type="button" hidden>Verificar pagamento</button>
-                <button data-online-pix-open type="button" hidden>Mostrar QR Code Pix</button>
-                <a data-online-whatsapp-link href="https://wa.me/554535772363" hidden>Continuar pelo WhatsApp</a>
-                <a data-online-status-link href="https://asaas.com" target="_blank" rel="noopener noreferrer" hidden>Retomar pagamento</a>
-                <a data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entregador Uber</a>
-              </div>
             </div>
+            <button class="checkout-pix-reopen" data-online-pix-open type="button" hidden>Mostrar QR Code Pix</button>
+            <a class="checkout-tracking-link" data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entrega</a>
             <small class="checkout-online-hint" data-online-hint role="status">Consultando o serviço de pagamento.</small>
             <small class="checkout-disclaimer" data-checkout-disclaimer>Seu pedido só é encaminhado ao restaurante após a confirmação do pagamento. O restaurante ainda precisa aceitar o pedido.</small>
           </form>
@@ -497,7 +492,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261115-debit-asaas-invoice"></script>
+    <script src="script.js?v=20261115-seamless-asaas-return"></script>
     <script type="module" src="appearance-site.mjs?v=20261114-first-paint"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.
