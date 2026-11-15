@@ -85,6 +85,35 @@ test('known CPF reuses existing Asaas customer instead of creating duplicate', a
   assert.equal(paths.length, 2);
 });
 
+test('new debit customers also receive verified delivery address without fake email', async t => {
+  const old = globalThis.fetch;
+  t.after(() => { globalThis.fetch = old; });
+  let customerBody;
+  globalThis.fetch = async (url, options) => {
+    if (url.includes('/customers?')) return Response.json({ data: [] });
+    if (url.endsWith('/customers')) {
+      customerBody = JSON.parse(options.body);
+      return Response.json({ id: 'cus_1234567890' });
+    }
+    if (url.endsWith('/payments')) return Response.json({
+      id: paymentId, invoiceUrl, externalReference: id,
+    });
+    throw Error('Unexpected route');
+  };
+  await createDebitInvoice({
+    ...order, type: 'Entrega', ifoodAddress: {
+      streetName: 'Rua das Palmeiras', streetNumber: '121', neighborhood: 'Centro',
+      postalCode: '85850000', city: 'Foz do Iguaçu',
+    },
+  }, '52998224725', { ASAAS_PRODUCTION_API_KEY: 'test-api-key' }, 'production');
+  assert.equal(customerBody.address, 'Rua das Palmeiras');
+  assert.equal(customerBody.addressNumber, 121);
+  assert.equal(customerBody.province, 'Centro');
+  assert.equal(customerBody.postalCode, '85850000');
+  assert.equal(customerBody.email, undefined);
+  assert.equal(customerBody.city, undefined); // City is not accepted by customer creation.
+});
+
 test('payment matching rejects wrong reference, mismatch amount or status', () => {
   const dbOrder = {
     id, payment_id: paymentId, checkout_id: null, pix_qr_id: null, total_cents: 2300,

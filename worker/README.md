@@ -180,6 +180,17 @@ Migração 0007_ifood_shipping.sql: cotações e campos de pedido iFood.
 
 ## Homologação iFood — Shipping e Merchant (novembro de 2026)
 
+### Pré-preenchimento do pagador no Asaas
+
+O checkout hospedado de Pix/crédito envia `customerData` com nome e telefone
+informados no formulário. Para entregas, envia campos verificáveis de endereço
+(logradouro, número, bairro, CEP, complemento e município quando disponível).
+Não inventa CPF, e-mail ou endereço para pedidos de retirada/consumo no local.
+O débito continua usando a fatura do Asaas e envia o endereço ao cadastrar um
+novo cliente, preservando clientes já cadastrados. O Asaas pode solicitar
+campos faltantes no checkout; a confirmação financeira continua exclusivamente
+via webhook/conciliação, nunca pelo retorno do navegador.
+
 **Atualização em 15/11/2026:** consulta real, somente leitura, feita do Cloudflare e
 replicada no computador local com o mesmo Client ID do app homologado
 `Kipeixe Entregas`. Ambas falharam no próprio endpoint OAuth

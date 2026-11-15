@@ -1,32 +1,10 @@
 import { paymentConfig } from './asaas-environments.mjs';
+import { checkoutCustomerAddress } from './asaas-customer.mjs';
+import { validCpfCnpj } from './cpf-validation.mjs';
 
 const digits = value => String(value || '').replace(/\D/g, '');
 
-export function validCpfCnpj(raw) {
-  const value = digits(raw);
-  if (![11, 14].includes(value.length) || /^(\d)\1+$/.test(value)) return false;
-  const check = (base) => {
-    let sum = 0;
-    for (let i = 0; i < base; i++)
-      sum += Number(value[i]) * (base + 1 - i);
-    const digit = (sum * 10) % 11;
-    return Number(value[base]) === (digit === 10 ? 0 : digit);
-  };
-  if (value.length === 11) {
-    return check(9) && check(10);
-  }
-  const calc = (count) => {
-    let weight = count - 7;
-    let sum = 0;
-    for (let i = 0; i < count; i++) {
-      sum += Number(value[i]) * weight--;
-      if (weight < 2) weight = 9;
-    }
-    const mod = sum % 11;
-    return mod < 2 ? 0 : 11 - mod;
-  };
-  return Number(value[12]) === calc(12) && Number(value[13]) === calc(13);
-}
+export { validCpfCnpj };
 
 export function validInvoiceUrl(raw, mode) {
   if (typeof raw !== 'string') return false;
@@ -119,6 +97,8 @@ export async function createDebitInvoice(order, cpfCnpj, env, mode) {
     const customer = await asaasPost(account.url + '/customers', account.key, {
       name: order.name, cpfCnpj: taxId,
       mobilePhone: digits(order.phone).replace(/^55(?=\d{10,11}$)/, ''),
+      ...Object.fromEntries(Object.entries(checkoutCustomerAddress(order))
+        .filter(([key]) => key !== 'city')),
       externalReference: order.id, notificationDisabled: true,
     });
     customerId = customer.id;

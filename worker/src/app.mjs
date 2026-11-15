@@ -8,6 +8,7 @@ import { paymentConfig, PAYMENT_MODES } from './asaas-environments.mjs';
 import { pixPaymentMatches, provisionPixKeyIfRequested } from './asaas-pix.mjs';
 import { expireOrphanedPaymentReviews } from './review-maintenance.mjs';
 import { createDebitInvoice, validCpfCnpj, invoicePaymentMatches } from './asaas-debit.mjs';
+import { checkoutCustomerData } from './asaas-customer.mjs';
 import { uberReady, quoteDelivery, normalizedAddress, uberWebhook, dispatchScheduledReady } from './uber-direct.mjs';
 import { ifoodReady, quoteIFood, validateAddress as validateIFoodAddress,
   addressText as ifoodAddressText, syncIFoodEvents, dispatchScheduledIFood,
@@ -116,6 +117,7 @@ export function asaasDefinitivelyRejected(httpStatus) {
 }
 
 export function asaasCheckoutPayload(order, billingTypes) {
+  const customerData = checkoutCustomerData(order);
   return {
     billingTypes,
     chargeTypes: ['DETACHED'],
@@ -127,6 +129,7 @@ export function asaasCheckoutPayload(order, billingTypes) {
       expiredUrl: SITE + '?pedido=' + order.id + '&retorno=expirado#cardapio',
     },
     items: asaasCheckoutItems(order),
+    ...(Object.keys(customerData).length ? { customerData } : {}),
   };
 }
 
@@ -347,6 +350,10 @@ async function createOrder(request, env, origin, ctx) {
   const order = {
     ...buyer, ...priced, deliveryCents, totalCents: priced.subtotalCents + deliveryCents,
     id: crypto.randomUUID(), requestId, accessToken, scheduledFor: schedule,
+    ...(debitInvoice ? { cpfCnpj: digits(body.cpfCnpj) } : {}),
+    ...(buyer.type === 'Entrega' && settings.deliveryProvider === 'ifood'
+      && deliveryQuote?.address_json
+      ? { ifoodAddress: JSON.parse(deliveryQuote.address_json) } : {}),
   };
   try {
     await env.DB.prepare(`INSERT INTO orders
