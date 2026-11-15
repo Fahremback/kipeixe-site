@@ -394,7 +394,7 @@
                 </div>
               </div>
               <div class="checkout-payment-methods" data-payment-methods role="radiogroup" aria-label="Escolha como pagar">
-                <label class="checkout-payment-option">
+                <label class="checkout-payment-option" data-payment-pix-option>
                   <input type="radio" name="paymentMethod" value="PIX" checked />
                   <span><b aria-hidden="true">◇</b><span>Pix</span></span>
                 </label>
@@ -402,8 +402,11 @@
                   <input type="radio" name="paymentMethod" value="CREDIT_CARD" />
                   <span><b aria-hidden="true">▣</b><span>Cartão de crédito</span></span>
                 </label>
+                <label class="checkout-payment-option checkout-payment-whatsapp">
+                  <input type="radio" name="paymentMethod" value="WHATSAPP" />
+                  <span><b aria-hidden="true">◉</b><span>Combinar pelo WhatsApp</span></span>
+                </label>
               </div>
-              <small class="checkout-pix-note" data-pix-status-note role="status" hidden>Pix temporariamente indisponível: é necessário ativar uma chave Pix na conta Asaas. Selecione cartão de crédito.</small>
               <div class="checkout-payment-total"><span data-order-total-label>Total do pedido</span><strong data-payment-total>R$ 0,00</strong></div>
             </div>
             <button class="online-payment-button" data-online-checkout type="submit" disabled>
@@ -416,6 +419,7 @@
               <div class="online-order-actions">
                 <button data-online-status-refresh type="button" hidden>Verificar pagamento</button>
                 <button data-online-pix-open type="button" hidden>Mostrar QR Code Pix</button>
+                <a data-online-whatsapp-link href="https://wa.me/554535772363" hidden>Continuar pelo WhatsApp</a>
                 <a data-online-status-link href="https://asaas.com" target="_blank" rel="noopener noreferrer" hidden>Retomar pagamento</a>
                 <a data-uber-tracking href="https://www.ubereats.com/" target="_blank" rel="noopener noreferrer" hidden>Acompanhar entregador Uber</a>
               </div>
@@ -483,7 +487,7 @@
     <script src="menu-data.js?v=20261015-tilapia55"></script>
     <script src="product-images.js?v=20261110-real-photos"></script>
     <script src="store-hours.js?v=20261106-1"></script>
-    <script src="script.js?v=20261114-payment-retry"></script>
+    <script src="script.js?v=20261115-whatsapp-contingency"></script>
     <script type="module" src="appearance-site.mjs?v=20261114-first-paint"></script>
     <script>
       // WebMCP is optional; only activate in browsers that expose its native API.

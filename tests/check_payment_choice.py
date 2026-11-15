@@ -260,20 +260,22 @@ def run():
                 )
             failing_page = browser.new_page()
             failing_page.route("http://127.0.0.1:8787/**", rejection_route)
+            failing_page.route("https://wa.me/**", lambda route: route.fulfill(
+                status=200, content_type='text/html', body='<title>WhatsApp intercepted</title>'))
             failing_page.goto(local_origin + "/#cardapio", wait_until="domcontentloaded")
             failing_page.get_by_role("button", name="Adicionar Água sem gás ao pedido").click()
             failing_page.locator('[data-quick-checkout]').click()
             failing_page.wait_for_function("!document.querySelector('[data-online-checkout]').disabled")
             failing_page.locator('[data-order-form] input[name="name"]').fill("Teste de falha")
             failing_page.locator('[data-order-form] input[name="phone"]').fill("45999999999")
-            failing_page.locator('[data-online-checkout]').click()
-            failing_page.wait_for_function(
-                "JSON.parse(localStorage.getItem('kipeixe_current_order_v2') || 'null')?.reviewUnresolved === true"
-            )
+            with failing_page.expect_request(lambda req: req.url.startswith('https://wa.me/')) as first_fallback:
+                failing_page.locator('[data-online-checkout]').click()
             assert len(rejected_orders) == 1
-            assert "HTTP 401" in failing_page.locator('[data-online-status-message]').inner_text()
-            failing_page.locator('[data-online-checkout]').click()
-            assert len(rejected_orders) == 1, "Review status must prevent a duplicate checkout"
+            text = parse_qs(urlparse(first_fallback.value.url).query)['text'][0]
+            assert "HTTP 401" not in text
+            assert "Verifiquem qualquer cobrança" in text
+            assert "Teste de falha" in text
+            assert len(rejected_orders) == 1, "Fallback must not create duplicate Asaas orders"
             browser.close()
     finally:
         server.shutdown()

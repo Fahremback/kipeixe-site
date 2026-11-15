@@ -19,8 +19,15 @@
 
   const qs = (selector, root = document) => root.querySelector(selector);
   const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
-  const whatsappActive = () => storeConfig?.orderChannel === 'whatsapp' ||
+  const DEFAULT_WHATSAPP = '554535772363';
+  const whatsappNumber = () => storeConfig?.whatsappNumber || DEFAULT_WHATSAPP;
+  const whatsappReady = () => storeConfig?.acceptsOrders !== false &&
+    /^55[1-9]\d{9,10}$/.test(whatsappNumber());
+  const whatsappOnly = () => !storeConfig?.onlinePaymentEnabled ||
+    storeConfig?.orderChannel === 'whatsapp' ||
     (storeConfig?.manualDeliveryViaWhatsapp && orderType?.value === 'Entrega');
+  const whatsappActive = () => whatsappOnly() ||
+    qs('input[name="paymentMethod"]:checked', orderForm)?.value === 'WHATSAPP';
 
   const year = qs('[data-year]');
   if (year) year.textContent = new Date().getFullYear();
@@ -953,12 +960,12 @@
       pixInput.disabled = unavailable;
       if (unavailable && pixInput.checked && cardInput) cardInput.checked = true;
     }
-    const pixNote = qs('[data-pix-status-note]', orderForm);
-    if (pixNote) pixNote.hidden = !unavailable || whatsappActive();
+    const pixOption = qs('[data-payment-pix-option]', orderForm);
+    if (pixOption) pixOption.hidden = unavailable;
     const method = qs('input[name="paymentMethod"]:checked', orderForm)?.value;
     const paymentMethods = qs('[data-payment-methods]', orderForm);
     const paymentHeading = qs('[data-order-channel-title]', orderForm);
-    if (paymentMethods) paymentMethods.hidden = whatsappActive();
+    if (paymentMethods) paymentMethods.hidden = whatsappOnly();
     if (paymentHeading) paymentHeading.textContent = whatsappActive() ? 'Resumo do pedido' : 'Forma de pagamento';
     if (whatsappActive()) {
       if (onlineButton) {
@@ -972,15 +979,14 @@
       if (title) title.textContent = method === 'CREDIT_CARD' ? 'Pagar com cartão' : 'Pagar com Pix';
     }
     if (onlineButton && storeConfig) {
-      const waReady = storeConfig.acceptsOrders && /^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '');
       onlineButton.disabled = paymentBusy ||
-        !(whatsappActive() ? waReady : storeConfig.onlinePaymentEnabled);
+        !(whatsappActive() ? whatsappReady() : storeConfig.onlinePaymentEnabled);
     }
     if (onlineHint && storeConfig) {
       onlineHint.hidden = whatsappActive() || (storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
       onlineHint.textContent = storeConfig.onlinePaymentEnabled
         ? 'Ambiente de testes: nenhum valor real será cobrado.'
-        : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+        : 'Finalize seu pedido diretamente com nossa equipe pelo WhatsApp.';
     }
     if (checkoutDisclaimer && storeConfig) checkoutDisclaimer.textContent = whatsappActive()
       ? 'O restaurante confirmará seu pedido, o valor final e o pagamento pelo WhatsApp.'
@@ -989,7 +995,10 @@
       : 'Seu pedido será enviado ao Kipeixe após a confirmação do pagamento e ficará sujeito ao aceite do restaurante.';
   }
   qsa('input[name="paymentMethod"]', orderForm).forEach(input =>
-    input.addEventListener('change', syncPaymentCaption));
+    input.addEventListener('change', () => {
+      syncAddressField();
+      syncPaymentCaption();
+    }));
   const hoursService = window.KIPEIXE_HOURS;
   const immediateInput = qs('input[name="mode"][value="immediate"]', orderForm);
   const scheduledInput = qs('input[name="mode"][value="scheduled"]', orderForm);
@@ -1004,6 +1013,7 @@
   const onlineStatusMessage = qs('[data-online-status-message]');
   const onlineStatusRefresh = qs('[data-online-status-refresh]');
   const onlinePixOpen = qs('[data-online-pix-open]');
+  const onlineWhatsappLink = qs('[data-online-whatsapp-link]');
   const onlineStatusLink = qs('[data-online-status-link]');
   const uberTrackingLink = qs('[data-uber-tracking]');
   const checkoutDisclaimer = qs('[data-checkout-disclaimer]');
@@ -1216,11 +1226,23 @@
   }
 
   async function refreshStore() {
-    if (location.hostname !== '127.0.0.1' && window.KIPEIXE_API_ENABLED !== true) {
-      storeConfig = null;
-      if (onlineButton) onlineButton.disabled = true;
-      if (onlineHint) onlineHint.textContent = 'Pagamento ainda não disponível.';
+    const manualFallback = () => {
+      // Even if the API is unreachable, the restaurant can still receive a
+      // pre-filled order directly in its established WhatsApp account.
+      storeConfig = {
+        orderChannel: 'whatsapp', onlinePaymentEnabled: false,
+        whatsappNumber: DEFAULT_WHATSAPP, acceptsOrders: true,
+        deliveryEnabled: true, openingHours: hoursService?.DEFAULT_HOURS,
+      };
+      const deliveryChoice = qs('[data-order-choice="Entrega"]');
+      if (deliveryChoice) deliveryChoice.hidden = false;
       syncSchedule();
+      syncAddressField();
+      syncPaymentCaption();
+      renderCart();
+    };
+    if (location.hostname !== '127.0.0.1' && window.KIPEIXE_API_ENABLED !== true) {
+      manualFallback();
       return;
     }
     try {
@@ -1232,14 +1254,13 @@
       storeConfig = await configResponse.json();
       syncSchedule();
       updateMenuFromApi((await catalogResponse.json()).categories);
-      if (onlineButton) onlineButton.disabled = paymentBusy || !(storeConfig.orderChannel === 'whatsapp'
-        ? storeConfig.acceptsOrders && /^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')
-        : storeConfig.onlinePaymentEnabled);
+      if (onlineButton) onlineButton.disabled = paymentBusy || !(whatsappActive()
+        ? whatsappReady() : storeConfig.onlinePaymentEnabled);
       if (onlineHint) {
         onlineHint.hidden = whatsappActive() || (storeConfig.onlinePaymentEnabled && !storeConfig.sandbox);
         onlineHint.textContent = storeConfig.onlinePaymentEnabled
           ? 'Ambiente de testes: nenhum valor real será cobrado.'
-          : 'Pagamentos temporariamente indisponíveis. Nenhum pedido será enviado.';
+          : 'Finalize seu pedido diretamente com nossa equipe pelo WhatsApp.';
       }
       const deliveryChoice = qs('[data-order-choice="Entrega"]');
       if (deliveryChoice) deliveryChoice.hidden = !storeConfig.deliveryEnabled;
@@ -1268,16 +1289,7 @@
       syncAddressField();
       renderCart();
     } catch {
-      // Falha fechada: checkout não envia pedidos por outro canal silenciosamente.
-      storeConfig = null;
-      if (onlineButton) {
-        onlineButton.disabled = true;
-        qs('strong', onlineButton).textContent = 'Pagamento indisponível';
-        qs('small', onlineButton).textContent = 'Falha ao conectar ao Asaas. Tente novamente.';
-      }
-      if (onlineHint) onlineHint.textContent = 'Não foi possível consultar o serviço de pagamento. Nenhum pedido foi realizado.';
-      if (onlineHint) onlineHint.hidden = false;
-      syncSchedule();
+      manualFallback();
     }
   }
 
@@ -1384,8 +1396,8 @@
     }
   }
 
-  function startWhatsappCheckout() {
-    if (!storeConfig?.acceptsOrders || !/^55[1-9]\d{9,10}$/.test(storeConfig.whatsappNumber || '')) {
+  function startWhatsappCheckout({ paymentAttempted = false, paymentUncertain = false, orderId = '' } = {}) {
+    if (!whatsappReady()) {
       showOrderStatus('Pedidos indisponíveis', 'Não foi possível abrir o atendimento pelo WhatsApp.');
       return;
     }
@@ -1428,8 +1440,20 @@
     lines.push('', `*Total dos itens:* ${currency.format(cartValue())}`);
     if (type === 'Entrega') lines.push('*Taxa de entrega:* a confirmar');
     if (notes) lines.push('', `*Observações:* ${notes}`);
+    if (paymentAttempted) {
+      lines.push('', paymentUncertain
+        ? '*ATENÇÃO: pagamento online não confirmado. Verifiquem qualquer cobrança antes de cobrar ou preparar este pedido.*'
+        : '*Pagamento online não concluído. Combinar pagamento diretamente no atendimento.*');
+      if (/^[0-9a-f-]{36}$/i.test(orderId)) lines.push(`*Referência de conferência:* ${orderId}`);
+    }
     lines.push('', 'Por favor, confirmem meu pedido e as condições de pagamento.');
-    const url = `https://wa.me/${storeConfig.whatsappNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+    const url = `https://wa.me/${whatsappNumber()}?text=${encodeURIComponent(lines.join('\n'))}`;
+    if (onlineWhatsappLink) {
+      onlineWhatsappLink.href = url;
+      onlineWhatsappLink.hidden = false;
+    }
+    showOrderStatus('Continuar no WhatsApp',
+      'Seu pedido está preparado. Confira e envie a mensagem para o restaurante.');
     // A mensagem é apenas preenchida. O cliente precisa enviá-la no WhatsApp.
     window.location.assign(url);
   }
@@ -1439,19 +1463,21 @@
     if (whatsappActive()) { startWhatsappCheckout(); return; }
     if (currentOrder?.reviewUnresolved || currentOrder?.pixPending) {
       const lastPaymentStatus = await checkOrderStatus();
-      if (!['FAILED', 'EXPIRED', 'CANCELED'].includes(lastPaymentStatus)) {
-        showOrderStatus(lastPaymentStatus === 'PAID' ? 'Pedido anterior pago' : 'Pedido aguardando conferência',
-          lastPaymentStatus === 'PAID'
-            ? 'O pagamento anterior foi confirmado. Confira seu pedido antes de pagar novamente.'
-            : 'Já existe um pedido com pagamento pendente. Confira o status antes de criar outra cobrança.');
-        if (currentOrder?.pixPending && availablePix) openPix();
+      if (lastPaymentStatus === 'PAID') {
+        showOrderStatus('Pedido anterior pago',
+          'O pagamento anterior foi confirmado. Confira seu pedido antes de pagar novamente.');
         return;
       }
-      // The previous attempt ended without a payable checkout. Retry this
-      // button click normally instead of forcing the buyer to click again.
+      if (!['FAILED', 'EXPIRED', 'CANCELED'].includes(lastPaymentStatus)) {
+        startWhatsappCheckout({
+          paymentAttempted: true, paymentUncertain: true,
+          orderId: currentOrder?.orderId,
+        });
+        return;
+      }
     }
     if (!storeConfig?.onlinePaymentEnabled) {
-      showOrderStatus('Pagamento indisponível', 'O serviço de pagamento não está disponível. Nenhum pedido foi enviado.');
+      startWhatsappCheckout();
       return;
     }
     if (!validateScheduleChoice()) return;
@@ -1511,12 +1537,16 @@
     paymentBusy = true;
     onlineButton.disabled = true;
     showOrderStatus('Preparando pagamento', 'Validando os preços e criando o checkout seguro.');
+    let attemptStatus = 'REVIEW';
+    let attemptOrderId = '';
     try {
       const response = await fetch(`${API}/api/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attempt)
       });
       const result = await response.json();
+      attemptStatus = result?.paymentStatus === 'FAILED' ? 'FAILED' : 'REVIEW';
+      attemptOrderId = String(result?.orderId || '');
       if (!response.ok) {
         if (result?.paymentStatus === 'REVIEW' && /^[0-9a-f-]{36}$/i.test(result.orderId || '')) {
           currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken, reviewUnresolved: true };
@@ -1526,6 +1556,7 @@
       }
       if (result.paymentMode !== storeConfig.paymentMode) throw Error('Ambiente de pagamento mudou. Atualize o cardápio.');
       currentOrder = { orderId: result.orderId, accessToken: attempt.accessToken };
+      attemptStatus = 'PENDING';
       const inlinePix = paymentMethod === 'PIX' && Boolean(result.pix?.payload && result.pix?.image);
       if (inlinePix) { currentOrder.hasPix = true; currentOrder.pixPending = true; }
       safeStorage.set('kipeixe_current_order_v2', currentOrder);
@@ -1551,9 +1582,13 @@
       }
       window.location.assign(result.checkoutUrl);
     } catch (error) {
-      showOrderStatus('Pagamento indisponível', error.message);
       paymentBusy = false;
-      await refreshStore();
+      // A failed payment may never strand the sale. For ambiguous outcomes the
+      // restaurant must verify the existing charge before accepting payment.
+      startWhatsappCheckout({
+        paymentAttempted: true, paymentUncertain: attemptStatus !== 'FAILED',
+        orderId: attemptOrderId || currentOrder?.orderId || '',
+      });
     }
   }
 
