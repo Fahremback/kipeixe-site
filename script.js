@@ -26,8 +26,9 @@
   const whatsappOnly = () => !storeConfig?.onlinePaymentEnabled ||
     storeConfig?.orderChannel === 'whatsapp' ||
     (storeConfig?.manualDeliveryViaWhatsapp && orderType?.value === 'Entrega');
-  const whatsappActive = () => whatsappOnly() ||
-    qs('input[name="paymentMethod"]:checked', orderForm)?.value === 'WHATSAPP';
+  // WhatsApp is a fallback for unavailable payments or manual delivery,
+  // never a third payment option while Asaas is available.
+  const whatsappActive = () => whatsappOnly();
 
   const year = qs('[data-year]');
   if (year) year.textContent = new Date().getFullYear();

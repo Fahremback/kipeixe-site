@@ -1,4 +1,4 @@
-"""Browser regression for manual and automatic sales fallback.
+"""Browser regression for automatic sales fallback.
 
 All payment requests are intercepted. No real orders or payments are created.
 """
@@ -35,7 +35,7 @@ def main():
         'manualDeliveryViaWhatsapp': True,
         'openingHours': {str(i): {'open': '00:00', 'close': '23:59'} for i in range(7)}
     }
-    scenario = {'mode': 'manual', 'orders': []}
+    scenario = {'mode': 'failed', 'orders': []}
 
     def api(route):
         path = urlparse(route.request.url).path
@@ -68,7 +68,7 @@ def main():
             browser = p.chromium.launch(headless=True,
                 executable_path=r'C:\Program Files\Google\Chrome\Application\chrome.exe')
             for width in (390, 1280):
-                for mode in ('manual', 'failed', 'review', 'offline', 'unreachable'):
+                for mode in ('failed', 'review', 'offline', 'unreachable'):
                     scenario['mode'] = mode
                     scenario['orders'] = []
                     config['onlinePaymentEnabled'] = mode != 'offline'
@@ -84,10 +84,9 @@ def main():
                     page.wait_for_function('!document.querySelector("[data-online-checkout]").disabled')
                     assert page.locator('[data-payment-pix-option]').is_hidden()
                     assert 'cadastre e ative' not in page.content()
-                    if mode == 'manual':
-                        page.locator('.checkout-payment-whatsapp').click()
-                        assert page.locator('[data-online-checkout] strong').inner_text() == 'Enviar pedido pelo WhatsApp'
-                    elif mode in ('offline', 'unreachable'):
+                    assert page.get_by_text('Combinar pelo WhatsApp').count() == 0
+                    assert page.locator('input[name="paymentMethod"]').count() == 2
+                    if mode in ('offline', 'unreachable'):
                         assert page.locator('[data-payment-methods]').is_hidden()
                         assert page.locator('[data-online-checkout] strong').inner_text() == 'Enviar pedido pelo WhatsApp'
                     else:

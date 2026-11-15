@@ -99,7 +99,7 @@ def main():
             assert page.locator('input[name="paymentMethod"][value="PIX"]').is_disabled()
             assert page.locator('input[name="paymentMethod"][value="CREDIT_CARD"]').is_checked()
             assert page.locator('[data-payment-pix-option]').is_hidden()
-            assert page.locator('input[name="paymentMethod"][value="WHATSAPP"]').is_visible()
+            assert page.locator('input[name="paymentMethod"][value="WHATSAPP"]').count() == 0
             assert 'chave Pix' not in page.content()
             assert page.locator('[data-online-checkout] strong').inner_text() == 'Pagar com cartão'
             print("Missing Asaas Pix key: card selected automatically PASS")
