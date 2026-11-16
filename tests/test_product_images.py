@@ -19,7 +19,7 @@ match = re.search(r"window\.KIPEIXE_PRODUCT_PHOTOS\s*=\s*Object\.freeze\((\{.*\}
 assert match, "Product photo index is not readable"
 photo_index = json.loads(match.group(1))
 
-assert len(photo_index) >= 90
+assert len(photo_index) >= 70
 assert set(photo_index).issubset(valid), "Mapping contains a nonexistent menu item"
 
 for item, url in photo_index.items():
@@ -39,8 +39,28 @@ for key, filename in {
     "porcoes|feijao": "feijao",
     "porcoes|lambari": "lambari",
     "porcoes|tilapia em postas": "tilapia-postas",
+    "carnes|file mignon a parmegiana": "file-mignon-parmegiana",
+    "frango|frango a passarinho": "frango-passarinho-completo",
+    "frango|espaguete a bolonhesa": "espaguete-bolonhesa",
+    "porcoes|calabresa": "calabresa-acebolada",
+    "porcoes|mandioca": "mandioca-frita",
+    "lanches|x-bacon": "x-bacon",
+    "lanches|x-calabresa": "x-calabresa",
+    "bebidas|heineken": "heineken-lata",
+    "bebidas|pepsi black": "refrigerante-pepsi-black",
+    "sucos|maracuja": "suco-maracuja",
+    "vinhos|jarra de vinho": "vinho-jarra",
+    "vinhos|reservado malbec": "vinho-reservado-malbec",
 }.items():
     assert photo_index[key].endswith(f"/kipeixe/{filename}.webp"), key
+
+for key in (
+    "frango|frango a milanesa", "porcoes|molho rose",
+    "porcoes|molho tartaro", "saladas|palmito",
+    "sucos|uva", "bebidas|agua h2o",
+    "lanches|x-egg", "coqueteis|rubro mojito",
+):
+    assert key not in photo_index, f"Unverified image exposed for {key}"
 
 assert (ROOT / "index.html").read_text(encoding="utf-8").index('src="product-images.js') < \
        (ROOT / "index.html").read_text(encoding="utf-8").index('src="script.js')

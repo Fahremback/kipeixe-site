@@ -114,7 +114,7 @@
   const photoLightboxImage = qs('[data-photo-lightbox-image]');
   const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
-  const MENU_ASSET_VERSION = '20261009-7';
+  const MENU_ASSET_VERSION = '20261116-menuphotos';
   const FALLBACK_DISH_IMAGE = 'assets/produtos/prato-completo.webp';
   const versionAsset = (path) => path
     ? `${path}${path.includes('?') ? '&' : '?'}v=${MENU_ASSET_VERSION}`
@@ -172,8 +172,9 @@
   const renderMenuItem = (item, category, showCategory = false) => {
     let actions = '';
     const photoSrc = itemImage(item.name, category.id);
+    const packagedPhoto = ['bebidas', 'sucos', 'vinhos'].includes(category.id);
     const photo = photoSrc
-      ? `<button type="button" class="menu-entry-photo-button" data-photo-zoom
+      ? `<button type="button" class="menu-entry-photo-button${packagedPhoto ? ' is-product-packaging' : ''}" data-photo-zoom
           data-photo-src="${escapeHtml(versionAsset(photoSrc))}"
           data-photo-name="${escapeHtml(item.name)}"
           aria-label="Ampliar foto de ${escapeHtml(item.name)}">
