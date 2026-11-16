@@ -114,7 +114,7 @@
   const photoLightboxImage = qs('[data-photo-lightbox-image]');
   const photoTitle = qs('[data-photo-title]');
   let currentCategory = 0;
-  const MENU_ASSET_VERSION = '20261116-comet-autosave';
+  const MENU_ASSET_VERSION = '20261116-illustrative-catalog';
   const FALLBACK_DISH_IMAGE = 'assets/produtos/prato-completo.webp';
   const versionAsset = (path) => path
     ? `${path}${path.includes('?') ? '&' : '?'}v=${MENU_ASSET_VERSION}`
@@ -138,10 +138,10 @@
     coqueteis: onlineProductImage('mojito')
   };
 
-  // Mapeamento auditado item por item. Se não há foto realmente compatível,
-  // o item fica sem miniatura em vez de exibir outro produto ou outra marca.
-  // Image paths are catalogued in product-images.js (original menu photos first).
+  // Fotos próprias e imagens ilustrativas semelhantes, devidamente identificadas.
+  // Os vínculos das fotos próprias são preservados.
   const ITEM_PHOTOS = window.KIPEIXE_PRODUCT_PHOTOS || {};
+  const ILLUSTRATIVE_PHOTOS = window.KIPEIXE_ILLUSTRATIVE_PHOTOS || {};
 
   const itemImage = (name, categoryId) =>
     ITEM_PHOTOS[`${categoryId}|${normalize(name)}`] ?? '';
@@ -172,14 +172,17 @@
   const renderMenuItem = (item, category, showCategory = false) => {
     let actions = '';
     const photoSrc = itemImage(item.name, category.id);
+    const isIllustrative = Boolean(ILLUSTRATIVE_PHOTOS[category.id + '|' + normalize(item.name)]);
     const packagedPhoto = ['bebidas', 'sucos', 'vinhos'].includes(category.id);
     const photo = photoSrc
-      ? `<button type="button" class="menu-entry-photo-button${packagedPhoto ? ' is-product-packaging' : ''}" data-photo-zoom
+      ? `<button type="button" class="menu-entry-photo-button${packagedPhoto ? ' is-product-packaging' : ''}${isIllustrative ? ' is-illustrative' : ''}" data-photo-zoom
           data-photo-src="${escapeHtml(versionAsset(photoSrc))}"
           data-photo-name="${escapeHtml(item.name)}"
-          aria-label="Ampliar foto de ${escapeHtml(item.name)}">
+          ${isIllustrative ? 'data-photo-illustrative=""' : ''}
+          aria-label="${isIllustrative ? 'Ampliar imagem ilustrativa de' : 'Ampliar foto de'} ${escapeHtml(item.name)}">
           <img class="menu-entry-photo" src="${escapeHtml(versionAsset(photoSrc))}"
-            alt="${escapeHtml(item.name)}" loading="lazy" decoding="async">
+            alt="${isIllustrative ? 'Imagem ilustrativa de ' : ''}${escapeHtml(item.name)}" loading="lazy" decoding="async">
+          ${isIllustrative ? '<span class="menu-entry-photo-note">Ilustrativa</span>' : ''}
         </button>`
       : '<div class="menu-entry-photo-placeholder" aria-hidden="true"><span>KIPEIXE</span></div>';
 
@@ -447,7 +450,7 @@
   prevCategory?.addEventListener('click', () => renderCategory(currentCategory - 1));
   nextCategory?.addEventListener('click', () => renderCategory(currentCategory + 1));
 
-  const openPhoto = (src, name = '') => {
+  const openPhoto = (src, name = '', isIllustrative = false) => {
     if (!photoLightbox || !photoLightboxImage || !src) return;
     const product = MENU.flatMap((category) => category.items)
       .find((item) => normalize(item.name) === normalize(name));
@@ -462,8 +465,12 @@
       });
     }
     photoLightboxImage.src = src;
-    photoLightboxImage.alt = name ? `Foto ampliada de ${name}` : 'Foto ampliada do prato';
-    if (photoTitle) photoTitle.textContent = name || 'Prato do Kipeixe';
+    photoLightboxImage.alt = name
+      ? `${isIllustrative ? 'Imagem ilustrativa' : 'Foto'} ampliada de ${name}`
+      : 'Foto ampliada do prato';
+    if (photoTitle) photoTitle.textContent = isIllustrative
+      ? `${name} · Imagem ilustrativa`
+      : name || 'Prato do Kipeixe';
     photoLightbox.classList.add('is-open');
     photoLightbox.setAttribute('aria-hidden', 'false');
     document.body.classList.add('photo-open');
@@ -481,7 +488,8 @@
     const zoomTrigger = event.target.closest('[data-photo-zoom]');
     if (zoomTrigger) {
       event.preventDefault();
-      openPhoto(zoomTrigger.dataset.photoSrc, zoomTrigger.dataset.photoName);
+      openPhoto(zoomTrigger.dataset.photoSrc, zoomTrigger.dataset.photoName,
+        zoomTrigger.hasAttribute('data-photo-illustrative'));
       return;
     }
 

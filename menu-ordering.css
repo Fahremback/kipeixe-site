@@ -264,6 +264,25 @@
 .menu-page .menu-entry-photo-button.is-product-packaging { background: #fafaf8; }
 .menu-page .menu-entry-photo-button.is-product-packaging .menu-entry-photo { object-fit: contain; box-sizing: border-box; padding: 4px; }
 .menu-page .menu-entry-photo-button > span { display: none; }
+/* Fotos ilustrativas representam o tipo de prato, não sua porção exata. */
+.menu-page .menu-entry-photo-button.is-illustrative { position: relative; }
+.menu-page .menu-entry-photo-button > .menu-entry-photo-note {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  left: 5px;
+  bottom: 5px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: rgba(30, 26, 22, .86);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .015em;
+  pointer-events: none;
+}
+
 .menu-page .menu-entry-photo-placeholder {
   display: grid;
   place-items: center;

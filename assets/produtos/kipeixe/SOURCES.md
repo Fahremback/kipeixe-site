@@ -55,4 +55,4 @@ O arquivo baixado em 30/10/2026 continha apenas 14 fotos, algumas com códigos h
 | vinhos|reservado malbec | Comet 452 | assets/produtos/kipeixe/salvo/452.webp |
 | vinhos|taca de vinho | Comet 100 | assets/produtos/kipeixe/salvo/100.webp |
 
-Demais fotos genéricas sem vínculo comprovado foram retiradas do índice de produtos.
+As fotos ilustrativas adicionadas posteriormente estão documentadas em ../ilustrativas/SOURCES.md e são identificadas no cardápio.
