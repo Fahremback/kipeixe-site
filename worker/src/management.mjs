@@ -531,6 +531,108 @@ function validateProduct(data) {
     active: data.active === false ? 0 : 1, sortOrder: Number.isInteger(data.sortOrder) ? data.sortOrder : 0 };
 }
 
+// Atomic catalog operations. A validated selection is committed together or not at all.
+export async function bulkProductRoute(request, env, origin, actor) {
+  if (request.method !== 'POST') return fail('Método não permitido.', 405, origin);
+  let data;
+  try { data = await limitedJson(request, 24000); }
+  catch { return fail('Solicitação inválida.', 400, origin); }
+  const ids = data?.ids;
+  const allowed = new Set(['activate', 'deactivate', 'archive', 'restore', 'move', 'adjust_price']);
+  if (!allowed.has(data?.action) || !Array.isArray(ids) || ids.length < 1 ||
+      ids.length > 250 || ids.some(id => typeof id !== 'string' ||
+        !/^[\w-]{2,90}$/.test(id)) || new Set(ids).size !== ids.length)
+    return fail('Seleção inválida. Escolha entre 1 e 250 produtos distintos.', 422, origin);
+
+  const action = data.action;
+  let targetCategory = null, percentage = null, amountCents = null;
+  if (action === 'move') {
+    if (typeof data.categoryId !== 'string' || !/^[\w-]{2,90}$/.test(data.categoryId))
+      return fail('Categoria de destino inválida.', 422, origin);
+    const cat = await env.DB.prepare('SELECT id FROM categories WHERE id = ?')
+      .bind(data.categoryId).first();
+    if (!cat) return fail('Categoria não encontrada.', 422, origin);
+    targetCategory = cat.id;
+  }
+  if (action === 'adjust_price') {
+    if (data.mode === 'percent' && typeof data.percentage === 'number' &&
+        Number.isFinite(data.percentage) && data.percentage >= -95 &&
+        data.percentage <= 500 && Math.abs(Math.round(data.percentage * 100) - data.percentage * 100) < 0.000001)
+      percentage = data.percentage;
+    else if (data.mode === 'amount' && Number.isInteger(data.amountCents) &&
+        data.amountCents >= -50000 && data.amountCents <= 50000 &&
+        data.amountCents !== 0) amountCents = data.amountCents;
+    else return fail('Ajuste inválido. Informe uma porcentagem ou um valor em reais.', 422, origin);
+    if (percentage === 0) return fail('O ajuste deve alterar os preços.', 422, origin);
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = (await env.DB.prepare(`SELECT id, archived, active, category_id,
+    price_cents, variants_json FROM products WHERE id IN (${placeholders})`)
+    .bind(...ids).all()).results;
+  const byId = new Map(rows.map(row => [row.id, row]));
+  if (byId.size !== ids.length) return fail('A seleção contém produtos que não existem mais. Atualize a lista.', 409, origin);
+
+  const statements = [];
+  const changedIds = [];
+  let skipped = 0;
+  for (const id of ids) {
+    const p = byId.get(id);
+    let query, args;
+    if (action === 'archive') {
+      if (p.archived) { skipped++; continue; }
+      query = 'UPDATE products SET archived=1,active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?';
+      args = [id];
+    } else if (action === 'restore') {
+      if (!p.archived) { skipped++; continue; }
+      // Restored records remain unavailable until explicitly reactivated.
+      query = 'UPDATE products SET archived=0,active=0,updated_at=CURRENT_TIMESTAMP WHERE id=?';
+      args = [id];
+    } else if (action === 'activate' || action === 'deactivate') {
+      const active = action === 'activate' ? 1 : 0;
+      if (p.archived || p.active === active) { skipped++; continue; }
+      query = 'UPDATE products SET active=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND archived=0';
+      args = [active, id];
+    } else if (action === 'move') {
+      if (p.category_id === targetCategory) { skipped++; continue; }
+      query = 'UPDATE products SET category_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=?';
+      args = [targetCategory, id];
+    } else if (action === 'adjust_price') {
+      if (p.archived) { skipped++; continue; }
+      let variants;
+      try { variants = JSON.parse(p.variants_json); }
+      catch { return fail('Existe um produto com variações inválidas. Nenhum preço foi alterado.', 409, origin); }
+      if (!Array.isArray(variants)) return fail('Variações inválidas.', 409, origin);
+      if (p.price_cents === null && !variants.length) { skipped++; continue; }
+      const adjust = price => percentage !== null
+        ? Math.round(price * (1 + percentage / 100)) : price + amountCents;
+      const price = p.price_cents === null ? null : adjust(p.price_cents);
+      const changedVariants = variants.map(v => ({ ...v, priceCents: adjust(v.priceCents) }));
+      if (!canPrice(price) || changedVariants.some(v => !canPrice(v.priceCents) || v.priceCents === null))
+        return fail('O ajuste deixaria um preço fora do intervalo permitido (R$ 1 a R$ 5.000). Nenhum produto foi alterado.', 422, origin);
+      if (price === p.price_cents &&
+          changedVariants.every((v, i) => v.priceCents === variants[i].priceCents)) {
+        skipped++; continue;
+      }
+      query = 'UPDATE products SET price_cents=?,variants_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND archived=0';
+      args = [price, json(changedVariants), id];
+    }
+    statements.push(env.DB.prepare(query).bind(...args));
+    changedIds.push(id);
+  }
+  const details = {
+    action, requested: ids.length, updated: statements.length, skipped, changedIds,
+    ...(targetCategory ? { categoryId: targetCategory } : {}),
+    ...(percentage !== null ? { percentage } : {}),
+    ...(amountCents !== null ? { amountCents } : {}),
+  };
+  statements.push(env.DB.prepare(
+    'INSERT INTO audit_log(actor,action,subject,details) VALUES (?,?,?,?)')
+    .bind(actor, 'PRODUCT_BULK_' + action.toUpperCase(), `${ids.length} products`, json(details)));
+  await env.DB.batch(statements);
+  return reply({ ok: true, total: ids.length, updated: details.updated, skipped }, 200, origin);
+}
+
 async function productRoute(request, env, origin, url, actor) {
   const match = /^\/api\/admin\/products(?:\/([\w-]+))?$/.exec(url.pathname);
   if (!match) return null;
@@ -789,6 +891,8 @@ export async function handleAdmin(request, env, origin, url) {
     await audit(env, actor, 'REFUND_RETRY', retry[1], String(success));
     return reply({ ok: success, needsReview: !success }, 200, origin);
   }
+  if (url.pathname === '/api/admin/products/bulk')
+    return bulkProductRoute(request, env, origin, actor);
   const product = await productRoute(request, env, origin, url, actor);
   if (product) return product;
   const category = await categoryRoute(request, env, origin, url, actor);

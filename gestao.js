@@ -77,6 +77,10 @@
   function showLogin() {
     $('#dashboard-view').hidden = true;
     $('#login-view').hidden = false;
+    $('#catalog-bulk-modal').hidden = true;
+    $('#product-editor').hidden = true;
+    $('#catalog-editor-backdrop').hidden = true;
+    document.body.classList.remove('catalog-dialog-open');
     users = [];
     currentUsername = '';
     currentRole = '';
@@ -394,19 +398,198 @@
   }, 1000);
   setInterval(loadOrders, 8000);
 
+  // Catalogue selection persists between pages/filters; bulk edits always send exact IDs.
+  const selectedProducts = new Set();
+  let catalogPage = 1, catalogPageSize = 25, pendingBulk = null, bulkSaving = false;
+  const productState = product => product.archived ? 'archived'
+    : product.active && categories.find(c => c.id === product.category_id)?.active !== 0
+      ? 'active' : 'inactive';
+  const catalogFold = text => String(text ?? '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  const catalogPrice = product => product.price_cents ??
+    (product.variants?.length ? Math.min(...product.variants.map(v => v.priceCents)) : null);
+  function visibleProducts() {
+    const query = catalogFold($('#product-search').value.trim());
+    const categoryId = $('#product-category-filter').value;
+    const status = $('#product-status-filter').value;
+    const sort = $('#product-sort').value;
+    const result = products.filter(p =>
+      (!categoryId || p.category_id === categoryId) &&
+      (status === 'all' || productState(p) === status) &&
+      (!query || catalogFold(p.name).includes(query) ||
+        catalogFold(categories.find(c => c.id === p.category_id)?.title).includes(query)));
+    if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    if (sort === 'price-asc' || sort === 'price-desc') result.sort((a, b) => {
+      const aPrice = catalogPrice(a), bPrice = catalogPrice(b);
+      if (aPrice === null) return 1;
+      if (bPrice === null) return -1;
+      return (sort === 'price-asc' ? 1 : -1) * (aPrice - bPrice);
+    });
+    return result;
+  }
+  function currentCatalogPage(rows) {
+    catalogPage = Math.min(catalogPage, Math.max(1, Math.ceil(rows.length / catalogPageSize)));
+    return rows.slice((catalogPage - 1) * catalogPageSize, catalogPage * catalogPageSize);
+  }
+  function updateBulkInputs() {
+    const count = selectedProducts.size;
+    $('#catalog-bulk-bar').hidden = count === 0;
+    $('#bulk-selected-count').textContent = `${count} ${count === 1 ? 'produto selecionado' : 'produtos selecionados'}`;
+    const action = $('#bulk-action').value;
+    $('#bulk-category-wrap').hidden = action !== 'move';
+    $('#bulk-price-mode-wrap').hidden = action !== 'adjust_price';
+    $('#bulk-price-value-wrap').hidden = action !== 'adjust_price';
+    $('#bulk-review').disabled = !count || !action || bulkSaving;
+  }
   function renderProducts() {
-    const query = $('#product-search').value.toLowerCase().trim();
-    const category = $('#product-category-filter').value;
-    const visible = products.filter(p => !p.archived && (!category || p.category_id === category) &&
-      (!query || p.name.toLowerCase().includes(query) || categories.find(c => c.id === p.category_id)?.title.toLowerCase().includes(query)));
-    $('#products-list').innerHTML = visible.length ? visible.map(p => {
-      const cat = categories.find(c => c.id === p.category_id)?.title || '';
-      const variants = p.variants.length ? p.variants.map(v => `${esc(v.label)} ${money(v.priceCents)}`).join(' • ') : '';
-      return `<div class="product-row ${p.active ? '' : 'off'}"><div class="details"><strong>${esc(p.name)}</strong>
-        <small>${esc(cat)} • ${p.active ? 'Disponível' : 'Indisponível'} ${variants}</small></div>
-        <span class="money">${p.price_cents === null ? (variants ? 'Variações' : 'Sob consulta') : money(p.price_cents)}</span>
-        <button data-edit-product="${esc(p.id)}" type="button">Editar</button></div>`;
-    }).join('') : '<div class="empty-state">Nenhum produto encontrado.</div>';
+    const counts = { all: products.length, active: 0, inactive: 0, archived: 0 };
+    for (const p of products) counts[productState(p)]++;
+    for (const state of Object.keys(counts)) {
+      $('#catalog-count-' + state).textContent = counts[state];
+    }
+    $$('#products-view [data-catalog-view]').forEach(button => {
+      const isActive = button.dataset.catalogView === $('#product-status-filter').value;
+      button.classList.toggle('is-current', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+    const filtered = visibleProducts(), pageItems = currentCatalogPage(filtered);
+    const stateText = { active: 'À venda', inactive: 'Indisponível', archived: 'Arquivado' };
+    $('#products-list').innerHTML = pageItems.length ? pageItems.map(p => {
+      const category = categories.find(c => c.id === p.category_id)?.title || 'Sem categoria';
+      const state = productState(p);
+      const inactiveCategory = categories.find(c => c.id === p.category_id)?.active === 0;
+      const variants = p.variants?.length || 0;
+      const price = catalogPrice(p);
+      return `<tr class="${selectedProducts.has(p.id) ? 'is-selected' : ''}" data-product-row="${esc(p.id)}">
+        <td class="catalog-select-cell"><input type="checkbox" data-select-product="${esc(p.id)}"
+          aria-label="Selecionar ${esc(p.name)}" ${selectedProducts.has(p.id) ? 'checked' : ''}></td>
+        <td><strong class="catalog-product-name">${esc(p.name)}</strong>
+          <small class="catalog-product-sub">${esc(p.description || 'Sem descrição')}</small></td>
+        <td class="catalog-category">${esc(category)}</td>
+        <td class="catalog-price">${price === null ? 'Sob consulta' : money(price)}
+          ${variants ? `<small>${variants} ${variants === 1 ? 'variação' : 'variações'}</small>` : ''}</td>
+        <td><span class="catalog-status ${state}">${inactiveCategory && !p.archived ? 'Categoria oculta' : stateText[state]}</span></td>
+        <td><button type="button" class="catalog-row-action" ${state === 'archived'
+            ? `data-restore-product="${esc(p.id)}"`
+            : `data-edit-product="${esc(p.id)}"`}>${state === 'archived' ? 'Restaurar' : 'Editar'}</button></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" class="catalog-empty">Nenhum produto encontrado com esses filtros.</td></tr>';
+    const pageCount = Math.max(1, Math.ceil(filtered.length / catalogPageSize));
+    const start = filtered.length ? (catalogPage - 1) * catalogPageSize + 1 : 0;
+    const end = Math.min(filtered.length, catalogPage * catalogPageSize);
+    $('#catalog-results').textContent = `Exibindo ${start}–${end} de ${filtered.length} ${filtered.length === 1 ? 'produto' : 'produtos'}`;
+    $('#catalog-page-label').textContent = `${catalogPage} / ${pageCount}`;
+    $('#catalog-page-prev').disabled = catalogPage <= 1;
+    $('#catalog-page-next').disabled = catalogPage >= pageCount;
+    const pageSelected = pageItems.filter(p => selectedProducts.has(p.id)).length;
+    const selectPage = $('#products-select-page');
+    selectPage.checked = Boolean(pageItems.length && pageSelected === pageItems.length);
+    selectPage.indeterminate = Boolean(pageSelected && pageSelected < pageItems.length);
+    selectPage.disabled = pageItems.length === 0;
+    const notSelected = filtered.some(p => !selectedProducts.has(p.id));
+    $('#catalog-select-filtered').hidden = !filtered.length || !notSelected;
+    $('#catalog-select-filtered').textContent = `Selecionar todos os ${filtered.length} resultados`;
+    updateBulkInputs();
+  }
+  function closeCatalogEditor() {
+    $('#product-editor').hidden = true;
+    $('#catalog-editor-backdrop').hidden = true;
+    document.body.classList.remove('catalog-dialog-open');
+  }
+  function closeBulkReview() {
+    $('#catalog-bulk-modal').hidden = true;
+    $('#catalog-bulk-phrase').value = '';
+    pendingBulk = null;
+    document.body.classList.remove('catalog-dialog-open');
+  }
+  function readBulkPayload() {
+    const ids = [...selectedProducts];
+    const action = $('#bulk-action').value;
+    if (!ids.length || !action) throw Error('Selecione produtos e uma ação.');
+    if (ids.length > 250) throw Error('Selecione no máximo 250 produtos por operação.');
+    const payload = { ids, action };
+    if (action === 'move') {
+      payload.categoryId = $('#bulk-category').value;
+      if (!categories.some(c => c.id === payload.categoryId)) throw Error('Selecione a categoria de destino.');
+    }
+    if (action === 'adjust_price') {
+      const raw = $('#bulk-price-value').value.trim();
+      if (!raw) throw Error('Informe o ajuste de preço, positivo ou negativo.');
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount === 0) throw Error('O valor de reajuste deve ser diferente de zero.');
+      payload.mode = $('#bulk-price-mode').value;
+      if (payload.mode === 'percent') {
+        if (amount < -95 || amount > 500 || Math.abs(Math.round(amount * 100) - amount * 100) > 0.000001)
+          throw Error('Porcentagem permitida: -95% até +500%, com duas casas decimais.');
+        payload.percentage = amount;
+      } else {
+        if (Math.abs(amount) > 500 || Math.round(amount * 100) === 0)
+          throw Error('Valor máximo de ajuste: R$ 500,00.');
+        payload.amountCents = Math.round(amount * 100);
+      }
+    }
+    return payload;
+  }
+  const bulkLabels = {
+    activate: ['Disponibilizar produtos', 'Os produtos selecionados ficarão disponíveis para compra.'],
+    deactivate: ['Pausar venda', 'Os produtos selecionados deixarão de aparecer no cardápio público até serem reativados.'],
+    archive: ['Arquivar produtos', 'Os produtos serão retirados do catálogo público. É possível restaurá-los depois.'],
+    restore: ['Restaurar produtos', 'Os arquivados voltarão ao catálogo como indisponíveis. A venda não será ativada automaticamente.'],
+    move: ['Alterar categoria', 'Os produtos selecionados serão movidos para a nova categoria.'],
+    adjust_price: ['Reajustar preços', 'O ajuste modifica preços únicos e todas as variações, preservando os produtos sem preço.'],
+  };
+  function previewBulk() {
+    try {
+      const payload = readBulkPayload();
+      pendingBulk = payload;
+      const [title, description] = bulkLabels[payload.action];
+      const selected = products.filter(p => selectedProducts.has(p.id));
+      const count = selected.length;
+      $('#catalog-bulk-modal-title').textContent = title;
+      $('#catalog-bulk-modal-description').textContent = `${count} ${count === 1 ? 'produto selecionado' : 'produtos selecionados'}. ${description}`;
+      const extra = payload.action === 'move'
+        ? `Categoria: ${categories.find(c => c.id === payload.categoryId)?.title}`
+        : payload.action === 'adjust_price'
+          ? payload.mode === 'percent'
+            ? `Reajuste: ${payload.percentage > 0 ? '+' : ''}${payload.percentage}%`
+            : `Reajuste: ${payload.amountCents > 0 ? '+' : '−'}${money(Math.abs(payload.amountCents))}`
+          : '';
+      const sample = selected.slice(0, 4).map(p => p.name).join(' · ');
+      $('#catalog-bulk-modal-detail').innerHTML =
+        `<strong>${esc(extra || (count + ' itens incluídos'))}</strong><small>${esc(sample)}${count > 4 ? ' · …' : ''}</small>`;
+      const requiresPhrase = payload.action === 'archive' && count >= 20;
+      $('#catalog-bulk-phrase-label').hidden = !requiresPhrase;
+      $('#catalog-bulk-phrase').value = '';
+      $('#catalog-bulk-apply').textContent = payload.action === 'archive' ? 'Arquivar produtos' : 'Confirmar alteração';
+      $('#catalog-bulk-apply').disabled = requiresPhrase;
+      $('#catalog-bulk-modal').hidden = false;
+      document.body.classList.add('catalog-dialog-open');
+      (requiresPhrase ? $('#catalog-bulk-phrase') : $('#catalog-bulk-cancel')).focus();
+    } catch (error) { notify(error.message, true); }
+  }
+  async function applyBulk() {
+    if (!pendingBulk || bulkSaving) return;
+    if (!$('#catalog-bulk-phrase-label').hidden && $('#catalog-bulk-phrase').value.trim() !== 'ARQUIVAR') return;
+    bulkSaving = true;
+    $('#catalog-bulk-apply').disabled = true;
+    $('#catalog-bulk-apply').textContent = 'Aplicando...';
+    try {
+      const result = await api('/api/admin/products/bulk', {
+        method: 'POST', body: JSON.stringify(pendingBulk),
+      });
+      closeBulkReview();
+      selectedProducts.clear();
+      $('#bulk-action').value = '';
+      $('#bulk-price-value').value = '';
+      await loadCatalog();
+      notify(`${result.updated} ${result.updated === 1 ? 'produto atualizado' : 'produtos atualizados'}. ${result.skipped ? result.skipped + ' sem mudanças.' : 'Alterações salvas.'}`);
+    } catch (error) { notify(error.message, true); }
+    finally {
+      bulkSaving = false;
+      $('#catalog-bulk-apply').disabled = false;
+      $('#catalog-bulk-apply').textContent = 'Confirmar alteração';
+      updateBulkInputs();
+    }
   }
   function fillVariantList(variants) {
     $('#variants-list').innerHTML = variants.map(v => `<div class="variant-row">
@@ -418,6 +601,8 @@
     const p = products.find(item => item.id === id);
     const editor = $('#product-editor');
     editor.hidden = false;
+    $('#catalog-editor-backdrop').hidden = false;
+    document.body.classList.add('catalog-dialog-open');
     $('#editor-title').textContent = p ? 'Editar produto' : 'Novo produto';
     editor.elements.id.value = p?.id || '';
     editor.elements.name.value = p?.name || '';
@@ -427,7 +612,7 @@
     editor.elements.active.checked = p ? Boolean(p.active) : true;
     $('#archive-product').hidden = !p;
     fillVariantList(p?.variants || []);
-    editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    editor.elements.name.focus({ preventScroll: true });
   }
   async function loadCatalog() {
     const data = await api('/api/admin/catalog');
@@ -436,20 +621,92 @@
     const categoryOptions = categories.map(c => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join('');
     $('#product-category-filter').innerHTML = '<option value="">Todas as categorias</option>' + categoryOptions;
     $('#product-editor').elements.categoryId.innerHTML = categoryOptions;
+    $('#bulk-category').innerHTML = '<option value="">Categoria de destino...</option>' + categoryOptions;
+    const ids = new Set(products.map(p => p.id));
+    [...selectedProducts].forEach(id => { if (!ids.has(id)) selectedProducts.delete(id); });
     $('#categories-list').innerHTML = categories.map(c => `<div class="category-line" data-cat="${esc(c.id)}">
       <input aria-label="Nome da categoria" value="${esc(c.title)}">
       <label class="check-line"><input type="checkbox" aria-label="Categoria disponível" ${c.active ? 'checked' : ''}> Ativa</label>
       <button type="button" class="subtle-btn" data-save-cat="${esc(c.id)}">Salvar</button></div>`).join('');
     renderProducts();
   }
-  $('#product-search').addEventListener('input', renderProducts);
-  $('#product-category-filter').addEventListener('change', renderProducts);
-  $('#products-list').addEventListener('click', event => {
+  function resetCatalogPage() { catalogPage = 1; renderProducts(); }
+  $('#product-search').addEventListener('input', resetCatalogPage);
+  $('#product-category-filter').addEventListener('change', resetCatalogPage);
+  $('#product-status-filter').addEventListener('change', resetCatalogPage);
+  $('#product-sort').addEventListener('change', resetCatalogPage);
+  $('#catalog-page-size').addEventListener('change', event => {
+    catalogPageSize = Number(event.target.value) || 25;
+    resetCatalogPage();
+  });
+  $('#catalog-page-prev').addEventListener('click', () => { catalogPage--; renderProducts(); });
+  $('#catalog-page-next').addEventListener('click', () => { catalogPage++; renderProducts(); });
+  $$('#products-view [data-catalog-view]').forEach(button => {
+    button.addEventListener('click', () => {
+      $('#product-status-filter').value = button.dataset.catalogView;
+      resetCatalogPage();
+    });
+  });
+  $('#products-select-page').addEventListener('change', event => {
+    currentCatalogPage(visibleProducts()).forEach(p =>
+      event.target.checked ? selectedProducts.add(p.id) : selectedProducts.delete(p.id));
+    renderProducts();
+  });
+  $('#products-list').addEventListener('change', event => {
+    if (!event.target.matches('[data-select-product]')) return;
+    const id = event.target.dataset.selectProduct;
+    if (event.target.checked) selectedProducts.add(id);
+    else selectedProducts.delete(id);
+    renderProducts();
+  });
+  $('#catalog-select-filtered').addEventListener('click', () => {
+    const filtered = visibleProducts();
+    if (new Set([...selectedProducts, ...filtered.map(p => p.id)]).size > 250) {
+      notify('Selecione no máximo 250 produtos por operação.', true);
+      return;
+    }
+    filtered.forEach(p => selectedProducts.add(p.id));
+    renderProducts();
+  });
+  $('#bulk-clear-selection').addEventListener('click', () => {
+    selectedProducts.clear();
+    $('#bulk-action').value = '';
+    renderProducts();
+  });
+  $('#bulk-action').addEventListener('change', updateBulkInputs);
+  $('#bulk-review').addEventListener('click', previewBulk);
+  $('#catalog-bulk-cancel').addEventListener('click', closeBulkReview);
+  $('#catalog-bulk-modal').addEventListener('click', event => {
+    if (event.target.id === 'catalog-bulk-modal' && !bulkSaving) closeBulkReview();
+  });
+  $('#catalog-bulk-phrase').addEventListener('input', event => {
+    $('#catalog-bulk-apply').disabled = event.target.value.trim() !== 'ARQUIVAR';
+  });
+  $('#catalog-bulk-apply').addEventListener('click', applyBulk);
+  $('#catalog-editor-backdrop').addEventListener('click', closeCatalogEditor);
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (!$('#catalog-bulk-modal').hidden && !bulkSaving) closeBulkReview();
+    else if (!$('#product-editor').hidden) closeCatalogEditor();
+  });
+  $('#products-list').addEventListener('click', async event => {
+    const restore = event.target.closest('[data-restore-product]');
+    if (restore) {
+      restore.disabled = true;
+      try {
+        await api('/api/admin/products/bulk', {
+          method: 'POST', body: JSON.stringify({ ids: [restore.dataset.restoreProduct], action: 'restore' }),
+        });
+        notify('Produto restaurado como indisponível. Ative a venda quando estiver pronto.');
+        await loadCatalog();
+      } catch (error) { notify(error.message, true); restore.disabled = false; }
+      return;
+    }
     const button = event.target.closest('[data-edit-product]');
     if (button) editProduct(button.dataset.editProduct);
   });
   $('#new-product').addEventListener('click', () => editProduct());
-  $('#close-editor').addEventListener('click', () => $('#product-editor').hidden = true);
+  $('#close-editor').addEventListener('click', closeCatalogEditor);
   $('#add-variant').addEventListener('click', () => {
     const list = $('#variants-list');
     list.insertAdjacentHTML('beforeend', `<div class="variant-row">
@@ -481,7 +738,7 @@
       });
       notify('Produto salvo. O cardápio público será atualizado.');
       await loadCatalog();
-      $('#product-editor').hidden = true;
+      closeCatalogEditor();
     } catch (error) { notify(error.message, true); }
   });
   $('#archive-product').addEventListener('click', async () => {
@@ -489,7 +746,7 @@
     if (!id || !confirm('Arquivar este produto e removê-lo do cardápio público?')) return;
     try {
       await api(`/api/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      notify('Produto arquivado.'); $('#product-editor').hidden = true;
+      notify('Produto arquivado.'); closeCatalogEditor();
       await loadCatalog();
     } catch (error) { notify(error.message, true); }
   });

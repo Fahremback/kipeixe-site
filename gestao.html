@@ -9,9 +9,10 @@
   <link rel="icon" href="favicon.ico?v=20261110-transparent" type="image/x-icon">
   <link rel="stylesheet" href="gestao.css?v=20261113-whatsapp-checkout">
   <link rel="stylesheet" href="gestao-unified.css?v=20261109-compact-all">
+  <link rel="stylesheet" href="catalog-management.css?v=20261116-bulk-catalog">
   <link rel="stylesheet" href="appearance-admin.css?v=20261110-direct-edit">
   <script src="training-engine.js?v=20261109-training" defer></script>
-  <script src="gestao.js?v=20261115-ifood-authorization-v2" defer></script>
+  <script src="gestao.js?v=20261116-bulk-catalog" defer></script>
   <script type="module" src="appearance-admin.mjs?v=20261110-direct-edit"></script>
   <script src="ifood-ops.js?v=20261107-shipping-homolog" defer></script>
 </head>
@@ -150,13 +151,94 @@
       <section id="products-view" class="view" hidden>
         <div class="section-heading"><div><span class="eyebrow">CONTROLE DO CARDÁPIO</span><h2>Produtos e preços</h2></div>
           <button id="new-product" class="primary-btn small" type="button">+ Novo produto</button></div>
+        <div class="catalog-overview" aria-label="Resumo do catálogo">
+          <button class="catalog-metric is-current" type="button" data-catalog-view="all"><span>Catálogo</span><strong id="catalog-count-all">—</strong><small>Total de produtos</small></button>
+          <button class="catalog-metric" type="button" data-catalog-view="active"><span>À venda</span><strong id="catalog-count-active">—</strong><small>Visíveis no site</small></button>
+          <button class="catalog-metric" type="button" data-catalog-view="inactive"><span>Indisponíveis</span><strong id="catalog-count-inactive">—</strong><small>Pausados</small></button>
+          <button class="catalog-metric" type="button" data-catalog-view="archived"><span>Arquivados</span><strong id="catalog-count-archived">—</strong><small>Fora do catálogo</small></button>
+        </div>
         <div class="catalog-layout">
-          <div class="catalog-list">
-            <div class="toolbar"><input id="product-search" type="search" placeholder="Buscar nome ou categoria...">
-              <select id="product-category-filter"><option value="">Todas as categorias</option></select></div>
-            <div id="products-list"></div>
-          </div>
-          <form id="product-editor" class="editor-card" hidden>
+          <section class="catalog-list catalog-table-card" aria-label="Produtos do cardápio">
+            <div class="catalog-toolbar">
+              <label class="catalog-search">
+                <span class="sr-only">Buscar produtos</span>
+                <input id="product-search" type="search" placeholder="Buscar produtos pelo nome ou categoria..." autocomplete="off">
+              </label>
+              <label><span class="sr-only">Filtrar categoria</span>
+                <select id="product-category-filter"><option value="">Todas as categorias</option></select>
+              </label>
+              <label><span class="sr-only">Filtrar situação</span>
+                <select id="product-status-filter">
+                  <option value="all">Todos os estados</option><option value="active">À venda</option>
+                  <option value="inactive">Indisponíveis</option><option value="archived">Arquivados</option>
+                </select>
+              </label>
+              <label><span class="sr-only">Ordenar produtos</span>
+                <select id="product-sort"><option value="catalog">Ordem do cardápio</option>
+                  <option value="name">Nome A–Z</option><option value="price-asc">Menor preço</option>
+                  <option value="price-desc">Maior preço</option></select>
+              </label>
+            </div>
+            <div class="catalog-bulk-bar" id="catalog-bulk-bar" hidden>
+              <div class="catalog-bulk-count"><strong id="bulk-selected-count">0 selecionados</strong>
+                <button type="button" class="text-btn" id="bulk-clear-selection">Limpar seleção</button>
+              </div>
+              <div class="catalog-bulk-controls">
+                <label><span class="sr-only">Ação para os selecionados</span>
+                  <select id="bulk-action">
+                    <option value="">Escolha uma ação</option>
+                    <optgroup label="Disponibilidade">
+                      <option value="activate">Disponibilizar no cardápio</option>
+                      <option value="deactivate">Pausar venda</option>
+                    </optgroup>
+                    <optgroup label="Organização">
+                      <option value="move">Mudar categoria</option>
+                      <option value="archive">Arquivar selecionados</option>
+                      <option value="restore">Restaurar arquivados</option>
+                    </optgroup>
+                    <optgroup label="Preços">
+                      <option value="adjust_price">Reajustar preços</option>
+                    </optgroup>
+                  </select>
+                </label>
+                <label id="bulk-category-wrap" hidden><span class="sr-only">Nova categoria</span>
+                  <select id="bulk-category"></select>
+                </label>
+                <label id="bulk-price-mode-wrap" hidden><span class="sr-only">Tipo de reajuste</span>
+                  <select id="bulk-price-mode"><option value="percent">Porcentagem (%)</option><option value="amount">Valor em R$</option></select>
+                </label>
+                <label id="bulk-price-value-wrap" hidden><span class="sr-only">Reajuste positivo ou negativo</span>
+                  <input id="bulk-price-value" type="number" step="0.01" placeholder="+10 ou -10">
+                </label>
+                <button type="button" id="bulk-review" class="primary-btn small" disabled>Revisar alteração</button>
+              </div>
+            </div>
+            <div class="catalog-table-scroll">
+              <table class="catalog-table">
+                <thead><tr>
+                  <th class="catalog-select-cell"><input id="products-select-page" type="checkbox" aria-label="Selecionar produtos da página"></th>
+                  <th>Produto</th><th>Categoria</th><th>Preço</th><th>Situação</th><th class="catalog-edit-col"><span class="sr-only">Editar</span></th>
+                </tr></thead>
+                <tbody id="products-list"></tbody>
+              </table>
+            </div>
+            <footer class="catalog-table-footer">
+              <div class="catalog-list-meta"><span id="catalog-results">Carregando...</span>
+                <button type="button" id="catalog-select-filtered" class="text-btn" hidden>Selecionar todos os resultados</button>
+              </div>
+              <div class="catalog-pagination">
+                <label><span>Por página</span><select id="catalog-page-size">
+                  <option value="25">25</option><option value="50">50</option><option value="100">100</option>
+                </select></label>
+                <button type="button" id="catalog-page-prev" aria-label="Página anterior" class="subtle-btn">‹</button>
+                <span id="catalog-page-label">1 / 1</span>
+                <button type="button" id="catalog-page-next" aria-label="Próxima página" class="subtle-btn">›</button>
+              </div>
+            </footer>
+          </section>
+        </div>
+        <div id="catalog-editor-backdrop" class="catalog-drawer-backdrop" hidden></div>
+          <form id="product-editor" class="editor-card catalog-editor-drawer" role="dialog" aria-modal="true" aria-labelledby="editor-title" hidden>
             <div class="editor-heading"><h3 id="editor-title">Editar produto</h3><button type="button" id="close-editor" class="text-btn">Fechar</button></div>
             <input type="hidden" name="id">
             <label>Nome do produto<input name="name" required maxlength="120"></label>
@@ -168,6 +250,20 @@
             <label class="check-line"><input name="active" type="checkbox" checked> Disponível para os clientes</label>
             <div class="editor-actions"><button type="submit" class="primary-btn">Salvar produto</button><button type="button" id="archive-product" class="danger-outline">Arquivar</button></div>
           </form>
+        <div id="catalog-bulk-modal" class="catalog-modal-backdrop" hidden>
+          <section role="dialog" aria-modal="true" aria-labelledby="catalog-bulk-modal-title" class="catalog-modal">
+            <div class="catalog-modal-symbol" aria-hidden="true">▦</div>
+            <h3 id="catalog-bulk-modal-title">Confirmar alteração</h3>
+            <p id="catalog-bulk-modal-description"></p>
+            <div id="catalog-bulk-modal-detail" class="catalog-modal-detail"></div>
+            <label id="catalog-bulk-phrase-label" hidden>Digite ARQUIVAR para confirmar
+              <input id="catalog-bulk-phrase" type="text" autocomplete="off" placeholder="ARQUIVAR">
+            </label>
+            <div class="catalog-modal-actions">
+              <button type="button" class="subtle-btn" id="catalog-bulk-cancel">Cancelar</button>
+              <button type="button" class="primary-btn" id="catalog-bulk-apply">Confirmar</button>
+            </div>
+          </section>
         </div>
         <details class="categories-box"><summary>Gerenciar categorias</summary>
           <div id="categories-list"></div>
