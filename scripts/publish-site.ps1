@@ -38,7 +38,7 @@ try {
   $publicFiles = @(
     'index.html', 'visite.html', 'visite.css', 'reservas.mjs',
     'placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs',
-    'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css',
+    'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css', 'catalog-management.css',
     'training-engine.js', 'ifood-ops.js', 'styles.css', 'menu-ordering.css', 'script.js', 'store-hours.js',
     'menu-data.js', 'product-images.js', 'meta-pixel.js', 'webmcp.js', 'favicon.ico',
     'appearance-config.mjs', 'appearance-site.mjs', 'appearance-theme.css',
@@ -78,6 +78,9 @@ try {
   if (-not (Test-Path (Join-Path $public 'assets\fonts\righteous-latin.woff2'))) {
     throw 'Fonte da marca nao incluida no pacote.'
   }
+  if (-not (Test-Path (Join-Path $public 'catalog-management.css'))) {
+    throw 'O estilo de gestao em lote nao foi incluido no pacote.'
+  }
   if (-not (Test-Path (Join-Path $public 'menu-ordering.css'))) {
     throw 'O estilo do novo cardapio nao foi incluido no pacote.'
   }
@@ -105,7 +108,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Falha na publicacao Cloudflare Pages.' }
   } finally { Pop-Location }
 
-  foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/ifood-ops.js', '/gestao-unified.css', '/menu-ordering.css', '/product-images.js',
+  foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/ifood-ops.js', '/gestao-unified.css', '/catalog-management.css', '/menu-ordering.css', '/product-images.js',
       '/appearance-config.mjs', '/appearance-site.mjs', '/appearance-admin.mjs',
       '/appearance-theme.css', '/appearance-admin.css', '/visite.html', '/visite.css', '/reservas.mjs',
       '/placar-presencial.html', '/placar.css', '/placar-ui.mjs', '/placar-data.mjs',
