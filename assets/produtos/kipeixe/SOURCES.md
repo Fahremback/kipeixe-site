@@ -1,67 +1,58 @@
-# Fotos originais do cardapio Kipeixe
+# Proveniência das fotos do cardápio — Kipeixe
 
-Extraidas dos arquivos locais do cardapio e convertidas para WebP sem alterar o conteudo.
+Fonte principal: salvamento automático do gerador no navegador Comet (05/11/2026, 13:31:30, horário local).
+Banco de dados: mesa-projects-v1, registro de autossalvamento do gerador de cardápio.
+As imagens de fotos[codigo] foram recuperadas de IndexedDB e convertidas para WebP.
+O arquivo baixado em 30/10/2026 continha apenas 14 fotos, algumas com códigos herdados incompatíveis com os produtos atuais.
 
-| Foto publicada | Arquivo original |
-|---|---|
-| tilapia-milanesa.webp | produtos/pp1/Tilápia à milanesa - 01.jpeg |
-| tilapia-parmegiana.webp | produtos/pp2/Tilápia à parmegiana - prato completo.png |
-| tilapia-dore.webp | produtos/pp2/Tilápia à dorê.png |
-| camarao-milanesa.webp | gerador-cardapio/.test/project-user-backup.json: fotos 012 |
-| sashimi-completo.webp | produtos/pp2/Sashimi completo - travessa.png |
-| tilapia-vinagrete.webp | produtos/pp1/Tilápia à vinagrete - prato completo.jpeg |
-| bistecao-casa.webp | produtos/pp2/Bistecão à moda da casa.png |
-| file-mignon-fritas.webp | produtos/pp2/Filé mignon com fritas.png |
-| picanha-completa.webp | produtos/pp1/Picanha completa.jpeg |
-| frango-grelhado.webp | produtos/pp1/Frango grelhado.jpeg |
-| tilapia-porcao.webp | produtos/pp1/Tilápia - porção.png |
-| tilapia-postas.webp | produtos/pp1/Peixe em postas - tilapia - 01.jpeg |
-| camarao-porcao.webp | produtos/pp2/Camarão.png |
-| feijao.webp | gerador-cardapio/.test/project-user-backup.json: fotos 018 |
-| lambari.webp | gerador-cardapio/.test/project-user-backup.json: fotos 019 |
-| batata-frita.webp | produtos/pp1/Batata frita.jpeg |
-| farofa.webp | produtos/pp2/Farofa.png |
-| pirao.webp | produtos/pp1/Pirão.jpeg |
-| vinagrete.webp | produtos/pp1/Vinagrete.jpeg |
-| salada-mista.webp | produtos/pp2/Salada mista.png |
+| Produto no site | Código no salvamento | Caminho WebP |
+|---|---|---|
+| bebidas|heineken | Comet 15 | assets/produtos/kipeixe/salvo/15.webp |
+| carnes|bistecao a moda da casa | Comet 236 | assets/produtos/kipeixe/salvo/236.webp |
+| carnes|file mignon a parmegiana | Comet 239 | assets/produtos/kipeixe/salvo/239.webp |
+| carnes|file mignon com fritas | Comet 240 | assets/produtos/kipeixe/salvo/240.webp |
+| carnes|picanha completa | Comet 241 | assets/produtos/kipeixe/salvo/241.webp |
+| frango|espaguete a bolonhesa | Comet 263 | assets/produtos/kipeixe/salvo/263.webp |
+| frango|espaguete alho e oleo | Comet 264 | assets/produtos/kipeixe/salvo/264.webp |
+| frango|frango a passarinho | Comet 245 | assets/produtos/kipeixe/salvo/245.webp |
+| frango|frango grelhado | Arquivo original do cardápio | assets/produtos/kipeixe/frango-grelhado.webp |
+| lanches|x-bacon | Comet 271 | assets/produtos/kipeixe/salvo/271.webp |
+| lanches|x-burguer | Comet 269 | assets/produtos/kipeixe/salvo/269.webp |
+| lanches|x-calabresa | Comet 274 | assets/produtos/kipeixe/salvo/274.webp |
+| lanches|x-salada | Comet 268 | assets/produtos/kipeixe/salvo/268.webp |
+| peixes|camarao a milanesa | Comet 206 | assets/produtos/kipeixe/salvo/206.webp |
+| peixes|sashimi completo | Comet 214 | assets/produtos/kipeixe/salvo/214.webp |
+| peixes|tilapia a dore | Comet 202 | assets/produtos/kipeixe/salvo/202.webp |
+| peixes|tilapia a milanesa | Comet 199 | assets/produtos/kipeixe/salvo/199.webp |
+| peixes|tilapia a parmegiana | Comet 201 | assets/produtos/kipeixe/salvo/201.webp |
+| peixes|tilapia a vinagrete | Comet 215 | assets/produtos/kipeixe/salvo/215.webp |
+| peixes|tilapia grelhada | Comet 200 | assets/produtos/kipeixe/salvo/200.webp |
+| porcoes|arroz | Comet 166 | assets/produtos/kipeixe/salvo/166.webp |
+| porcoes|batata frita | Comet 160 | assets/produtos/kipeixe/salvo/160.webp |
+| porcoes|calabresa | Comet 129 | assets/produtos/kipeixe/salvo/129.webp |
+| porcoes|camarao | Comet 130 | assets/produtos/kipeixe/salvo/130.webp |
+| porcoes|farofa | Comet 134 | assets/produtos/kipeixe/salvo/134.webp |
+| porcoes|feijao | Comet 137 | assets/produtos/kipeixe/salvo/137.webp |
+| porcoes|lambari | Foto legada 019 (lambari, conferida visualmente) | assets/produtos/kipeixe/salvo/019.webp |
+| porcoes|mandioca | Comet 163 | assets/produtos/kipeixe/salvo/163.webp |
+| porcoes|picanha | Comet 141 | assets/produtos/kipeixe/salvo/141.webp |
+| porcoes|pirao | Comet 154 | assets/produtos/kipeixe/salvo/154.webp |
+| porcoes|polenta | Comet 157 | assets/produtos/kipeixe/salvo/157.webp |
+| porcoes|tilapia | Comet 144 | assets/produtos/kipeixe/salvo/144.webp |
+| porcoes|tilapia em postas | Comet 147 | assets/produtos/kipeixe/salvo/147.webp |
+| porcoes|vinagrete | Comet 153 | assets/produtos/kipeixe/salvo/153.webp |
+| saladas|salada mista grande | Arquivo original do cardápio | assets/produtos/kipeixe/salada-mista.webp |
+| saladas|salada mista media | Arquivo original do cardápio | assets/produtos/kipeixe/salada-mista.webp |
+| saladas|salada mista pequena | Arquivo original do cardápio | assets/produtos/kipeixe/salada-mista.webp |
+| sucos|abacaxi | Comet 43 | assets/produtos/kipeixe/salvo/43.webp |
+| sucos|acerola | Comet 45 | assets/produtos/kipeixe/salvo/45.webp |
+| sucos|laranja | Comet 51 | assets/produtos/kipeixe/salvo/51.webp |
+| sucos|limao | Comet 53 | assets/produtos/kipeixe/salvo/53.webp |
+| sucos|maracuja | Comet 58 | assets/produtos/kipeixe/salvo/58.webp |
+| sucos|morango | Comet 64 | assets/produtos/kipeixe/salvo/64.webp |
+| vinhos|casillero del diablo red blend | Comet 94 | assets/produtos/kipeixe/salvo/94.webp |
+| vinhos|jarra de vinho | Comet 99 | assets/produtos/kipeixe/salvo/99.webp |
+| vinhos|reservado malbec | Comet 452 | assets/produtos/kipeixe/salvo/452.webp |
+| vinhos|taca de vinho | Comet 100 | assets/produtos/kipeixe/salvo/100.webp |
 
-O mapeamento entre os nomes dos produtos e as imagens do site fica no arquivo product-images.js.
-
-## Fotografias complementares (16/11/2026)
-
-Imagens conferidas visualmente e importadas dos arquivos locais em Downloads; bebidas em lata recortadas por marca da foto de linha de refrigerantes 350 ml.
-
-| Arquivo WebP | Origem local |
-|---|---|
-| file-mignon-parmegiana.webp | Downloads/Filé à Parmegiana com Fritas e Arroz.png |
-| frango-passarinho-completo.webp | Downloads/Frango à Passarinho com Fritas e Salada.png |
-| espaguete-alho-oleo.webp | Downloads/Espaguete Alho e Óleo na Panela.png |
-| espaguete-bolonhesa.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 13_24_04.png |
-| calabresa-acebolada.webp | Downloads/Calabresa Acebolada com Farofa e Bacon.png |
-| mandioca-frita.webp | Downloads/Travessa de Mandioca Frita Dourada.png |
-| polenta-frita.webp | Downloads/Polenta frita crocante com ervas.png |
-| arroz-branco.webp | Downloads/Arroz branco com salsa em travessa oval.png |
-| x-salada.webp | Downloads/x_salada.png |
-| x-burguer.webp | Downloads/x_burguer.png |
-| x-bacon.webp | Downloads/x_bacon.png |
-| x-calabresa.webp | Downloads/x_calabresa.png |
-| vinho-jarra.webp | Downloads/Jarra de Vinho Tinto em Vidro Facetado.png |
-| vinho-taca.webp | Downloads/Taça de vinho tinto em estúdio.png |
-| vinho-reservado-malbec.webp | Downloads/reservado_malbec.png |
-| vinho-casillero-red-blend.webp | Downloads/casillero_del_diablo_red_blend.png |
-| heineken-lata.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 15_24_14-7.png |
-| suco-abacaxi.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_21-1.png |
-| suco-acerola.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_22-2.png |
-| suco-laranja.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_22-3.png |
-| suco-limao.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_22-4.png |
-| suco-maracuja.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_24-5.png |
-| suco-morango.webp | Downloads/Imagem do ChatGPT 3 de nov. de 2026, 16_05_24-6.png |
-| refrigerante-fanta-laranja.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-fanta-uva.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-guarana-antarctica.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-schweppes-citrus.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-pepsi.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-pepsi-black.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-| refrigerante-pepsi-twist.webp | Downloads/Linha de Refrigerantes com Condensação Realista.png (recorte individual) |
-
-Nota: no backup do gerador de 30/10/2026, diversos codigos em otos nao correspondem mais aos codigos atuais dos itens. Conferir o conteudo visual e o nome do prato antes de vincular qualquer imagem. Exemplo: otos.001 tem comida, mas o item codigo 1 e agua sem gas.
+Demais fotos genéricas sem vínculo comprovado foram retiradas do índice de produtos.
