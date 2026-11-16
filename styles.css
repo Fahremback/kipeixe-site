@@ -668,12 +668,56 @@ img { display: block; max-width: 100%; }
 .page-hero img { width: 100%; height: 100%; min-height: 470px; object-fit: cover; }
 
 .gallery-shell { padding-block: 80px 100px; }
-.photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
-.photo-grid figure { position: relative; min-height: 300px; margin: 0; overflow: hidden; border-radius: 14px; background: #ddd; }
-.photo-grid figure.wide { grid-column: span 2; }
-.photo-grid img { width: 100%; height: 100%; min-height: 300px; object-fit: cover; transition: transform .35s ease; }
+/* Galeria em mosaico: cada célula tem foto, inclusive o lado direito inferior. */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(4, clamp(105px, 11vw, 155px));
+  grid-template-areas:
+    "lago lago lago lago salao salao"
+    "lago lago lago lago salao salao"
+    "interno interno externo externo entrada entrada"
+    "interno interno externo externo fachada fachada";
+  gap: 12px;
+}
+.photo-grid .gallery-lake { grid-area: lago; }
+.photo-grid .gallery-dining { grid-area: salao; }
+.photo-grid .gallery-interior { grid-area: interno; }
+.photo-grid .gallery-outdoor { grid-area: externo; }
+.photo-grid .gallery-entrance { grid-area: entrada; }
+.photo-grid .gallery-facade { grid-area: fachada; }
+.photo-grid figure {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ddd;
+}
+.photo-grid img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
 .photo-grid figure:hover img { transform: scale(1.025); }
-.photo-grid figcaption { position: absolute; left: 14px; bottom: 14px; padding: 7px 10px; border-radius: 999px; background: rgba(43,32,25,.8); color: #fff; font-size: 11px; font-weight: 800; backdrop-filter: blur(8px); }
+.photo-grid figcaption {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  max-width: calc(100% - 28px);
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(43,32,25,.8);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
+}
 
 /* Fishing */
 .fishing-hero {
@@ -1211,9 +1255,18 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .page-hero img { min-height: 290px; max-height: 45vh; }
   .gallery-shell { padding-block: 56px 72px; }
   .section-intro.split { grid-template-columns: 1fr; gap: 12px; }
-  .photo-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .photo-grid figure, .photo-grid img { min-height: 190px; }
-  .photo-grid figure.wide { grid-column: span 2; }
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, clamp(108px, 32vw, 195px));
+    grid-template-areas:
+      "lago lago"
+      "lago lago"
+      "salao interno"
+      "salao externo"
+      "entrada fachada";
+    gap: 8px;
+  }
+  .photo-grid figcaption { left: 8px; bottom: 8px; max-width: calc(100% - 16px); padding: 6px 8px; font-size: 10px; }
 
   .fishing-hero { min-height: 640px; }
   .fishing-hero > img { object-position: 55% center; }
