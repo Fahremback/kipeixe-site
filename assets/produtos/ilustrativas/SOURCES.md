@@ -3,6 +3,27 @@
 Essas imagens são **referências visuais**, não provas da apresentação exata do prato vendido.
 As 47 fotos originais permanecem vinculadas aos produtos do salvamento de 05/11/2026.
 
+## Auditoria de correspondência — 16/11/2026
+
+Sete ilustrações foram substituídas após comparação visual com o nome e a descrição do item.
+**Nenhuma das 47 fotos diretamente vinculadas pelo gerador foi alterada.**
+Os novos recortes são apenas referências ilustrativas, não a apresentação garantida do prato.
+
+| Imagem WebP | Origem e licença |
+|---|---|
+| `banana-empanada-real.webp` | [Banana empanada](https://commons.wikimedia.org/wiki/File:Banana_empanada.jpg), Melsj, CC BY-SA 4.0 — fotografia redimensionada e convertida |
+| `suco-de-uva-sem-alcool.webp` | [Glass of grape juice](https://commons.wikimedia.org/wiki/File:Glass_of_grape_juice.jpeg), Oyp, CC BY-SA 3.0 — fotografia redimensionada e convertida |
+| `frango-a-milanesa-real.webp` | [Chicken milanesa of Argentina](https://commons.wikimedia.org/wiki/File:Chicken_milanesa_of_Argentina.jpg), Federico L., CC BY-SA 3.0 — fotografia redimensionada e convertida |
+| `bisteca-com-acompanhamentos.webp` | `Downloads/Bisteca Grelhada com Fritas e Farofa.png`, arquivo local do projeto, convertido em WebP |
+| `porcao-frango-a-passarinho.webp` | Recorte de `kipeixe/salvo/245.webp`, foto vinculada ao frango à passarinho no gerador |
+| `porcao-file-mignon.webp` | Recorte de `kipeixe/salvo/240.webp`, foto vinculada ao filé mignon com fritas no gerador |
+| `sinfonia-ingredientes.webp` | Montagem ilustrativa de `salvo/199.webp` (tilápia à milanesa), `salvo/206.webp` (camarão), `salvo/200.webp` (tilápia grelhada) e `online/salmon.webp` (Pexels, vide SOURCES.md dessa pasta) |
+
+As três fotos provenientes do Wikimedia Commons, inclusive suas versões derivadas em WebP, são disponibilizadas sob as respectivas licenças Creative Commons de atribuição e compartilhamento pela mesma licença.
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) ·
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
+Os créditos e licenças ficam também acessíveis na página pública `creditos-fotos.html`.
+
 ## Recortes e arquivos adicionais
 
 | Arquivo | Origem |
@@ -37,7 +58,7 @@ fotos de latas nas imagens anteriormente preparadas de refrigerantes a partir do
 | bebidas|pepsi twist | assets/produtos/kipeixe/refrigerante-pepsi-twist.webp |
 | bebidas|schweppes citrus | assets/produtos/kipeixe/refrigerante-schweppes-citrus.webp |
 | carnes|bisteca de porco | assets/produtos/online/pork-chop.webp |
-| carnes|bisteca de porco a tropeira | assets/produtos/online/pork-chop.webp |
+| carnes|bisteca de porco a tropeira | assets/produtos/ilustrativas/bisteca-com-acompanhamentos.webp |
 | carnes|file mignon a milanesa | assets/produtos/ilustrativas/empanado-com-fritas.webp |
 | carnes|file mignon a parana | assets/produtos/ilustrativas/milanesa-recheada-molho.webp |
 | coqueteis|adicional de frutas | assets/produtos/online/mixed-fruit.webp |
@@ -55,20 +76,20 @@ fotos de latas nas imagens anteriormente preparadas de refrigerantes a partir do
 | coqueteis|mojito | assets/produtos/online/mojito.webp |
 | coqueteis|pina colada | assets/produtos/online/pina-colada.webp |
 | coqueteis|rubro mojito | assets/produtos/ilustrativas/coquetel-frutas-vermelhas.webp |
-| frango|frango a milanesa | assets/produtos/ilustrativas/empanado-com-fritas.webp |
+| frango|frango a milanesa | assets/produtos/ilustrativas/frango-a-milanesa-real.webp |
 | lanches|x-egg | assets/produtos/online/bacon-egg-burger.webp |
 | lanches|x-frango | assets/produtos/online/chicken-burger.webp |
 | lanches|x-tudo | assets/produtos/online/bacon-egg-burger.webp |
 | peixes|salmao ao molho fino | assets/produtos/online/salmon.webp |
-| peixes|sinfonia de kipeixe | assets/produtos/online/brazilian-seafood.webp |
+| peixes|sinfonia de kipeixe | assets/produtos/ilustrativas/sinfonia-ingredientes.webp |
 | peixes|surubi a milanesa | assets/produtos/online/fried-fish-fillets.webp |
 | peixes|surubi grelhado | assets/produtos/online/grilled-fish.webp |
 | peixes|tilapia a brasileira | assets/produtos/online/grilled-fish.webp |
-| porcoes|banana a milanesa | assets/produtos/online/fried-banana.webp |
+| porcoes|banana a milanesa | assets/produtos/ilustrativas/banana-empanada-real.webp |
 | porcoes|bolinho de bacalhau | assets/produtos/online/croquettes.webp |
 | porcoes|creme de alho | assets/produtos/ilustrativas/creme-alho.webp |
-| porcoes|file mignon | assets/produtos/online/steak.webp |
-| porcoes|frango a passarinho | assets/produtos/online/fried-chicken.webp |
+| porcoes|file mignon | assets/produtos/ilustrativas/porcao-file-mignon.webp |
+| porcoes|frango a passarinho | assets/produtos/ilustrativas/porcao-frango-a-passarinho.webp |
 | porcoes|molho rose | assets/produtos/ilustrativas/molho-rose.webp |
 | porcoes|molho tartaro | assets/produtos/ilustrativas/molho-tartaro.webp |
 | porcoes|pacu em postas | assets/produtos/ilustrativas/postas-de-peixe-generico.webp |
@@ -80,7 +101,7 @@ fotos de latas nas imagens anteriormente preparadas de refrigerantes a partir do
 | sucos|adicional de leite | assets/produtos/online/milk.webp |
 | sucos|manga | assets/produtos/online/mango-juice.webp |
 | sucos|suco no copo | assets/produtos/online/orange-juice.webp |
-| sucos|uva | assets/produtos/online/grape-juice.webp |
+| sucos|uva | assets/produtos/ilustrativas/suco-de-uva-sem-alcool.webp |
 | vinhos|120 santa rita sauvignon blanc | assets/produtos/ilustrativas/vinho-branco-generico.webp |
 | vinhos|casa amada carmenere | assets/produtos/ilustrativas/vinho-tinto-generico.webp |
 | vinhos|estacao 36 bordo demi-sec | assets/produtos/ilustrativas/vinho-tinto-generico.webp |

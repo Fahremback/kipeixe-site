@@ -70,6 +70,36 @@ for key, photo in {
     assert index[key] == photo, key
     assert key in illustrative
 
+# Visual audit: reject specific mismatches (not only file existence).
+corrected = {
+    'carnes|bisteca de porco a tropeira': 'bisteca-com-acompanhamentos.webp',
+    'frango|frango a milanesa': 'frango-a-milanesa-real.webp',
+    'peixes|sinfonia de kipeixe': 'sinfonia-ingredientes.webp',
+    'porcoes|banana a milanesa': 'banana-empanada-real.webp',
+    'porcoes|file mignon': 'porcao-file-mignon.webp',
+    'porcoes|frango a passarinho': 'porcao-frango-a-passarinho.webp',
+    'sucos|uva': 'suco-de-uva-sem-alcool.webp',
+}
+for key, filename in corrected.items():
+    assert index[key] == 'assets/produtos/ilustrativas/' + filename, key
+    assert key in illustrative, f'Corrected reference must stay labeled illustrative: {key}'
+    assert (ROOT / index[key]).stat().st_size < 300_000, key
+
+for key, bad in {
+    'porcoes|banana a milanesa': 'fried-banana.webp',
+    'sucos|uva': 'grape-juice.webp',
+    'porcoes|frango a passarinho': 'fried-chicken.webp',
+}.items():
+    assert not index[key].endswith(bad), key
+
+credits = (ROOT / 'creditos-fotos.html').read_text(encoding='utf-8')
+assert 'href="/creditos-fotos.html"' in (ROOT / 'index.html').read_text(encoding='utf-8')
+assert 'creativecommons.org/licenses/by-sa/4.0' in credits
+assert 'creativecommons.org/licenses/by-sa/3.0' in credits
+for asset in ('banana-empanada-real.webp','suco-de-uva-sem-alcool.webp',
+              'frango-a-milanesa-real.webp'):
+    assert asset in credits, asset
+
 saved_files = {p.name for p in (ROOT / 'assets/produtos/kipeixe/salvo').glob('*.webp')}
 used_saved = {Path(path).name for path in index.values() if '/salvo/' in path}
 assert saved_files == used_saved
@@ -78,8 +108,8 @@ html = (ROOT / 'index.html').read_text(encoding='utf-8')
 script = (ROOT / 'script.js').read_text(encoding='utf-8')
 css = (ROOT / 'menu-ordering.css').read_text(encoding='utf-8')
 assert html.index('src="product-images.js') < html.index('src="script.js')
-assert '20261116-illustrative-catalog' in html
-assert '20261116-illustrative-catalog' in script
+assert '20261116-matched-photos' in html
+assert '20261116-matched-photos' in script
 assert 'data-photo-illustrative' in script and 'Imagem ilustrativa' in script
 assert '.menu-entry-photo-note' in css
 

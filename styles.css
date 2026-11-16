@@ -1131,6 +1131,7 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
 .footer > div { display: grid; gap: 2px; }
 .footer strong { letter-spacing: .15em; }
 .footer span { color: rgba(255,255,255,.55); font-size: 12px; }
+.footer-links { display: flex; gap: 20px; align-items: center; }
 .footer-admin { font-size: 12px; color: rgba(255,255,255,.76); text-decoration: underline; text-underline-offset: 3px; }
 .footer-admin:hover { color: #fff; }
 
@@ -1285,7 +1286,8 @@ body.has-cart-items .site-main { padding-bottom: 100px; }
   .footer { min-height: 78px; padding: 18px 16px; display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; }
   .footer > div span { display: none; }
   .footer > span { text-align: right; }
-  .footer-admin { grid-column: 1 / -1; text-align: right; font-size: 11px; }
+  .footer-links { grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+  .footer-admin { text-align: right; font-size: 11px; }
 
   .quick-checkout {
     bottom: calc(68px + 10px + env(safe-area-inset-bottom, 0px));

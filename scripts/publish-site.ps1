@@ -36,7 +36,7 @@ try {
   Expand-Archive -LiteralPath $archive -DestinationPath $source
 
   $publicFiles = @(
-    'index.html', 'visite.html', 'visite.css', 'reservas.mjs',
+    'index.html', 'creditos-fotos.html', 'visite.html', 'visite.css', 'reservas.mjs',
     'placar-presencial.html', 'placar.css', 'placar-ui.mjs', 'placar-data.mjs',
     'gestao.html', 'gestao.js', 'gestao.css', 'gestao-unified.css', 'catalog-management.css',
     'training-engine.js', 'ifood-ops.js', 'styles.css', 'menu-ordering.css', 'script.js', 'store-hours.js',
@@ -108,7 +108,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Falha na publicacao Cloudflare Pages.' }
   } finally { Pop-Location }
 
-  foreach ($path in @('/index.html', '/gestao.html', '/training-engine.js', '/ifood-ops.js', '/gestao-unified.css', '/catalog-management.css', '/menu-ordering.css', '/product-images.js',
+  foreach ($path in @('/index.html', '/creditos-fotos.html', '/gestao.html', '/training-engine.js', '/ifood-ops.js', '/gestao-unified.css', '/catalog-management.css', '/menu-ordering.css', '/product-images.js',
       '/appearance-config.mjs', '/appearance-site.mjs', '/appearance-admin.mjs',
       '/appearance-theme.css', '/appearance-admin.css', '/visite.html', '/visite.css', '/reservas.mjs',
       '/placar-presencial.html', '/placar.css', '/placar-ui.mjs', '/placar-data.mjs',
